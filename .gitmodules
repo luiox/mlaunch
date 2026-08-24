@@ -1,0 +1,6 @@
+[submodule "third_party/DuiLib_DuiEditor"]
+	path = third_party/DuiLib_DuiEditor
+	url = https://github.com/luiox/DuiLib_DuiEditor.git
+[submodule "third_party/libca"]
+	path = third_party/libca
+	url = https://github.com/luiox/libca.git

@@ -1,0 +1,3 @@
+vendor/feather/
+__pycache__/
+*.pyc

@@ -1,0 +1,622 @@
+{
+  "total": 100,
+  "feather_packed": 71,
+  "missing": 29,
+  "items": [
+    {
+      "id": "minimize",
+      "zh": "最小化",
+      "source": "feather",
+      "source_name": "minimize",
+      "file": "icons/feather/minimize.svg"
+    },
+    {
+      "id": "maximize",
+      "zh": "最大化",
+      "source": "feather",
+      "source_name": "maximize",
+      "file": "icons/feather/maximize.svg"
+    },
+    {
+      "id": "info",
+      "zh": "信息",
+      "source": "feather",
+      "source_name": "info",
+      "file": "icons/feather/info.svg"
+    },
+    {
+      "id": "settings",
+      "zh": "设置",
+      "source": "feather",
+      "source_name": "settings",
+      "file": "icons/feather/settings.svg"
+    },
+    {
+      "id": "menu",
+      "zh": "菜单（三条横线）",
+      "source": "feather",
+      "source_name": "menu",
+      "file": "icons/feather/menu.svg"
+    },
+    {
+      "id": "file",
+      "zh": "文件（通用）",
+      "source": "feather",
+      "source_name": "file",
+      "file": "icons/feather/file.svg"
+    },
+    {
+      "id": "folder",
+      "zh": "文件夹",
+      "source": "feather",
+      "source_name": "folder",
+      "file": "icons/feather/folder.svg"
+    },
+    {
+      "id": "image",
+      "zh": "图片文件",
+      "source": "feather",
+      "source_name": "image",
+      "file": "icons/feather/image.svg"
+    },
+    {
+      "id": "video",
+      "zh": "视频文件",
+      "source": "feather",
+      "source_name": "video",
+      "file": "icons/feather/video.svg"
+    },
+    {
+      "id": "archive",
+      "zh": "压缩包",
+      "source": "feather",
+      "source_name": "archive",
+      "file": "icons/feather/archive.svg"
+    },
+    {
+      "id": "code",
+      "zh": "代码文件",
+      "source": "feather",
+      "source_name": "code",
+      "file": "icons/feather/code.svg"
+    },
+    {
+      "id": "new",
+      "zh": "新建",
+      "source": "feather",
+      "source_name": "plus",
+      "file": "icons/feather/new.svg"
+    },
+    {
+      "id": "open",
+      "zh": "打开",
+      "source": "feather",
+      "source_name": "folder",
+      "file": "icons/feather/open.svg"
+    },
+    {
+      "id": "save",
+      "zh": "保存",
+      "source": "feather",
+      "source_name": "save",
+      "file": "icons/feather/save.svg"
+    },
+    {
+      "id": "delete",
+      "zh": "删除",
+      "source": "feather",
+      "source_name": "delete",
+      "file": "icons/feather/delete.svg"
+    },
+    {
+      "id": "edit",
+      "zh": "编辑",
+      "source": "feather",
+      "source_name": "edit",
+      "file": "icons/feather/edit.svg"
+    },
+    {
+      "id": "copy",
+      "zh": "复制",
+      "source": "feather",
+      "source_name": "copy",
+      "file": "icons/feather/copy.svg"
+    },
+    {
+      "id": "find",
+      "zh": "查找",
+      "source": "feather",
+      "source_name": "search",
+      "file": "icons/feather/find.svg"
+    },
+    {
+      "id": "replace",
+      "zh": "替换",
+      "source": "feather",
+      "source_name": "refresh-cw",
+      "file": "icons/feather/replace.svg"
+    },
+    {
+      "id": "back",
+      "zh": "后退",
+      "source": "feather",
+      "source_name": "arrow-left",
+      "file": "icons/feather/back.svg"
+    },
+    {
+      "id": "forward",
+      "zh": "前进",
+      "source": "feather",
+      "source_name": "arrow-right",
+      "file": "icons/feather/forward.svg"
+    },
+    {
+      "id": "up",
+      "zh": "上一级",
+      "source": "feather",
+      "source_name": "arrow-up",
+      "file": "icons/feather/up.svg"
+    },
+    {
+      "id": "refresh",
+      "zh": "刷新",
+      "source": "feather",
+      "source_name": "refresh-cw",
+      "file": "icons/feather/refresh.svg"
+    },
+    {
+      "id": "home",
+      "zh": "主页",
+      "source": "feather",
+      "source_name": "home",
+      "file": "icons/feather/home.svg"
+    },
+    {
+      "id": "zoom_in",
+      "zh": "放大",
+      "source": "feather",
+      "source_name": "zoom-in",
+      "file": "icons/feather/zoom_in.svg"
+    },
+    {
+      "id": "zoom_out",
+      "zh": "缩小",
+      "source": "feather",
+      "source_name": "zoom-out",
+      "file": "icons/feather/zoom_out.svg"
+    },
+    {
+      "id": "fullscreen",
+      "zh": "全屏",
+      "source": "feather",
+      "source_name": "maximize",
+      "file": "icons/feather/fullscreen.svg"
+    },
+    {
+      "id": "fullscreen_exit",
+      "zh": "退出全屏",
+      "source": "feather",
+      "source_name": "minimize",
+      "file": "icons/feather/fullscreen_exit.svg"
+    },
+    {
+      "id": "grid",
+      "zh": "网格视图",
+      "source": "feather",
+      "source_name": "grid",
+      "file": "icons/feather/grid.svg"
+    },
+    {
+      "id": "search",
+      "zh": "搜索",
+      "source": "feather",
+      "source_name": "search",
+      "file": "icons/feather/search.svg"
+    },
+    {
+      "id": "filter",
+      "zh": "过滤",
+      "source": "feather",
+      "source_name": "filter",
+      "file": "icons/feather/filter.svg"
+    },
+    {
+      "id": "sort_asc",
+      "zh": "升序",
+      "source": "feather",
+      "source_name": "arrow-up",
+      "file": "icons/feather/sort_asc.svg"
+    },
+    {
+      "id": "sort_desc",
+      "zh": "降序",
+      "source": "feather",
+      "source_name": "arrow-down",
+      "file": "icons/feather/sort_desc.svg"
+    },
+    {
+      "id": "check",
+      "zh": "勾选/完成",
+      "source": "feather",
+      "source_name": "check",
+      "file": "icons/feather/check.svg"
+    },
+    {
+      "id": "circle",
+      "zh": "单选/圆圈",
+      "source": "feather",
+      "source_name": "circle",
+      "file": "icons/feather/circle.svg"
+    },
+    {
+      "id": "square",
+      "zh": "复选框",
+      "source": "feather",
+      "source_name": "square",
+      "file": "icons/feather/square.svg"
+    },
+    {
+      "id": "star",
+      "zh": "收藏/星标",
+      "source": "feather",
+      "source_name": "star",
+      "file": "icons/feather/star.svg"
+    },
+    {
+      "id": "heart",
+      "zh": "喜欢/收藏",
+      "source": "feather",
+      "source_name": "heart",
+      "file": "icons/feather/heart.svg"
+    },
+    {
+      "id": "flag",
+      "zh": "标记",
+      "source": "feather",
+      "source_name": "flag",
+      "file": "icons/feather/flag.svg"
+    },
+    {
+      "id": "tag",
+      "zh": "标签",
+      "source": "feather",
+      "source_name": "tag",
+      "file": "icons/feather/tag.svg"
+    },
+    {
+      "id": "clock",
+      "zh": "时间/历史",
+      "source": "feather",
+      "source_name": "clock",
+      "file": "icons/feather/clock.svg"
+    },
+    {
+      "id": "calendar",
+      "zh": "日期/日历",
+      "source": "feather",
+      "source_name": "calendar",
+      "file": "icons/feather/calendar.svg"
+    },
+    {
+      "id": "link",
+      "zh": "链接",
+      "source": "feather",
+      "source_name": "link",
+      "file": "icons/feather/link.svg"
+    },
+    {
+      "id": "web",
+      "zh": "网页/浏览器",
+      "source": "feather",
+      "source_name": "globe",
+      "file": "icons/feather/web.svg"
+    },
+    {
+      "id": "download",
+      "zh": "下载",
+      "source": "feather",
+      "source_name": "download",
+      "file": "icons/feather/download.svg"
+    },
+    {
+      "id": "upload",
+      "zh": "上传",
+      "source": "feather",
+      "source_name": "upload",
+      "file": "icons/feather/upload.svg"
+    },
+    {
+      "id": "cloud",
+      "zh": "云",
+      "source": "feather",
+      "source_name": "cloud",
+      "file": "icons/feather/cloud.svg"
+    },
+    {
+      "id": "share",
+      "zh": "分享",
+      "source": "feather",
+      "source_name": "share",
+      "file": "icons/feather/share.svg"
+    },
+    {
+      "id": "external",
+      "zh": "外部链接",
+      "source": "feather",
+      "source_name": "external-link",
+      "file": "icons/feather/external.svg"
+    },
+    {
+      "id": "play",
+      "zh": "播放",
+      "source": "feather",
+      "source_name": "play",
+      "file": "icons/feather/play.svg"
+    },
+    {
+      "id": "pause",
+      "zh": "暂停",
+      "source": "feather",
+      "source_name": "pause",
+      "file": "icons/feather/pause.svg"
+    },
+    {
+      "id": "prev",
+      "zh": "上一首",
+      "source": "feather",
+      "source_name": "skip-back",
+      "file": "icons/feather/prev.svg"
+    },
+    {
+      "id": "next",
+      "zh": "下一首",
+      "source": "feather",
+      "source_name": "skip-forward",
+      "file": "icons/feather/next.svg"
+    },
+    {
+      "id": "volume",
+      "zh": "音量",
+      "source": "feather",
+      "source_name": "volume",
+      "file": "icons/feather/volume.svg"
+    },
+    {
+      "id": "volume_mute",
+      "zh": "静音",
+      "source": "feather",
+      "source_name": "volume-x",
+      "file": "icons/feather/volume_mute.svg"
+    },
+    {
+      "id": "mic",
+      "zh": "麦克风",
+      "source": "feather",
+      "source_name": "mic",
+      "file": "icons/feather/mic.svg"
+    },
+    {
+      "id": "computer",
+      "zh": "我的电脑",
+      "source": "feather",
+      "source_name": "monitor",
+      "file": "icons/feather/computer.svg"
+    },
+    {
+      "id": "cmd",
+      "zh": "命令行",
+      "source": "feather",
+      "source_name": "terminal",
+      "file": "icons/feather/cmd.svg"
+    },
+    {
+      "id": "shutdown",
+      "zh": "关机",
+      "source": "feather",
+      "source_name": "power",
+      "file": "icons/feather/shutdown.svg"
+    },
+    {
+      "id": "restart",
+      "zh": "重启",
+      "source": "feather",
+      "source_name": "rotate-cw",
+      "file": "icons/feather/restart.svg"
+    },
+    {
+      "id": "lock",
+      "zh": "锁定",
+      "source": "feather",
+      "source_name": "lock",
+      "file": "icons/feather/lock.svg"
+    },
+    {
+      "id": "unlock",
+      "zh": "解锁",
+      "source": "feather",
+      "source_name": "unlock",
+      "file": "icons/feather/unlock.svg"
+    },
+    {
+      "id": "key",
+      "zh": "密钥/授权",
+      "source": "feather",
+      "source_name": "key",
+      "file": "icons/feather/key.svg"
+    },
+    {
+      "id": "printer",
+      "zh": "打印机",
+      "source": "feather",
+      "source_name": "printer",
+      "file": "icons/feather/printer.svg"
+    },
+    {
+      "id": "battery",
+      "zh": "电池",
+      "source": "feather",
+      "source_name": "battery",
+      "file": "icons/feather/battery.svg"
+    },
+    {
+      "id": "wifi",
+      "zh": "无线网络",
+      "source": "feather",
+      "source_name": "wifi",
+      "file": "icons/feather/wifi.svg"
+    },
+    {
+      "id": "app",
+      "zh": "应用/快捷方式",
+      "source": "feather",
+      "source_name": "box",
+      "file": "icons/feather/app.svg"
+    },
+    {
+      "id": "plus",
+      "zh": "添加",
+      "source": "feather",
+      "source_name": "plus",
+      "file": "icons/feather/plus.svg"
+    },
+    {
+      "id": "minus",
+      "zh": "移除",
+      "source": "feather",
+      "source_name": "minus",
+      "file": "icons/feather/minus.svg"
+    },
+    {
+      "id": "history",
+      "zh": "最近使用",
+      "source": "feather",
+      "source_name": "clock",
+      "file": "icons/feather/history.svg"
+    },
+    {
+      "id": "clear",
+      "zh": "清空",
+      "source": "feather",
+      "source_name": "x-circle",
+      "file": "icons/feather/clear.svg"
+    }
+  ],
+  "missing_items": [
+    {
+      "id": "close",
+      "zh": "关闭"
+    },
+    {
+      "id": "restore",
+      "zh": "还原（窗口）"
+    },
+    {
+      "id": "help",
+      "zh": "帮助"
+    },
+    {
+      "id": "warning",
+      "zh": "警告"
+    },
+    {
+      "id": "error",
+      "zh": "错误"
+    },
+    {
+      "id": "folder_open",
+      "zh": "打开文件夹"
+    },
+    {
+      "id": "audio",
+      "zh": "音频文件"
+    },
+    {
+      "id": "pdf",
+      "zh": "PDF 文件"
+    },
+    {
+      "id": "word",
+      "zh": "Word 文档"
+    },
+    {
+      "id": "excel",
+      "zh": "Excel 表格"
+    },
+    {
+      "id": "ppt",
+      "zh": "PPT 演示"
+    },
+    {
+      "id": "save_as",
+      "zh": "另存为"
+    },
+    {
+      "id": "paste",
+      "zh": "粘贴"
+    },
+    {
+      "id": "cut",
+      "zh": "剪切"
+    },
+    {
+      "id": "undo",
+      "zh": "撤销"
+    },
+    {
+      "id": "redo",
+      "zh": "重做"
+    },
+    {
+      "id": "select_all",
+      "zh": "全选"
+    },
+    {
+      "id": "sort",
+      "zh": "排序"
+    },
+    {
+      "id": "unlink",
+      "zh": "断开链接"
+    },
+    {
+      "id": "stop",
+      "zh": "停止"
+    },
+    {
+      "id": "control_panel",
+      "zh": "控制面板"
+    },
+    {
+      "id": "registry",
+      "zh": "注册表"
+    },
+    {
+      "id": "group",
+      "zh": "分组"
+    },
+    {
+      "id": "tab",
+      "zh": "标签页"
+    },
+    {
+      "id": "pin",
+      "zh": "钉住（置顶）"
+    },
+    {
+      "id": "unpin",
+      "zh": "取消钉住"
+    },
+    {
+      "id": "drag",
+      "zh": "拖拽"
+    },
+    {
+      "id": "freq",
+      "zh": "常用/频率"
+    },
+    {
+      "id": "search_history",
+      "zh": "搜索历史"
+    }
+  ]
+}
