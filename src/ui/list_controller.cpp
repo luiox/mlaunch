@@ -41,9 +41,7 @@ void ListController::RenderGroups() {
     for (const auto* group : groups) {
         auto* row = new CListContainerElementUI();
         row->SetFixedHeight(34);
-        // 对齐 Poner：选中浅灰高亮条，悬停更浅的灰。
-        row->SetAttribute(_T("selectedbkcolor"), _T("0xFFD2D2D2"));
-        row->SetAttribute(_T("hotbkcolor"), _T("0xFFF0F0F0"));
+        // 选中/悬停高亮由 GroupListUI 列表级 item 色控制（对齐 Poner 灰阶）。
 
         std::wstring display_name = launcher::util::Utf8ToWide(group->name);
         if (group->hidden) {
