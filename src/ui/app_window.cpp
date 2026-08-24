@@ -125,10 +125,10 @@ bool WriteUiStateAtomically(const std::filesystem::path& ini_path, const UiState
 
 } // namespace
 
-AppWindow::AppWindow()
+AppWindow::AppWindow(std::filesystem::path legacy_root)
     : launch_executor_(),
       shortcut_resolver_(),
-      backend_(GetAppBaseDir(), std::filesystem::current_path(), &launch_executor_, &shortcut_resolver_),
+      backend_(GetAppBaseDir(), std::move(legacy_root), &launch_executor_, &shortcut_resolver_),
             icon_manager_(GetAppBaseDir()),
             ui_builder_(*this),
             list_controller_(*this),
@@ -337,6 +337,22 @@ bool AppWindow::LoadBackendData() {
 
     if (backend_.ConsumeLastLoadCorrupted()) {
         ShowBackupRecoveryMenu();
+        return true;
+    }
+
+    // P0-M: 首次启动/迁移期检测旧版 Poner 数据，提供一键导入（幂等可反复执行）。
+    const auto legacy_data_path = backend_.LegacyRoot() / "Data.json";
+    launcher::log::Info("legacy import check: " + legacy_data_path.string());
+    std::error_code legacy_ec;
+    if (std::filesystem::exists(legacy_data_path, legacy_ec)) {
+        const int confirmed = MessageBoxW(m_hWnd,
+            L"Detected legacy Poner Data.json next to the app.\n"
+            L"Import now? (Idempotent merge by group + target path; safe to re-run)",
+            L"Import Poner Data",
+            MB_ICONQUESTION | MB_YESNO);
+        if (confirmed == IDYES) {
+            ImportPonerFile(legacy_data_path);
+        }
     }
     return true;
 }
@@ -726,9 +742,15 @@ void AppWindow::ExecuteMainCommand(UINT command_id) {
     case launcher::constants::command::kMainSortByName:
         status_.Warn("sort by name is not implemented yet");
         return;
-    case launcher::constants::command::kMainImportData:
-        status_.Warn("import data is not implemented yet");
+    case launcher::constants::command::kMainImportData: {
+        const std::wstring file = PickJsonFilePath();
+        if (file.empty()) {
+            status_.Warn("import canceled");
+            return;
+        }
+        ImportPonerFile(std::filesystem::path(file));
         return;
+    }
     case launcher::constants::command::kMainExportData:
         status_.Warn("export data is not implemented yet");
         return;
@@ -831,6 +853,43 @@ std::wstring AppWindow::PickExecutablePath() const {
         return {};
     }
     return file_path;
+}
+
+std::wstring AppWindow::PickJsonFilePath() const {
+    wchar_t file_path[MAX_PATH] = {0};
+    OPENFILENAMEW ofn{};
+    ofn.lStructSize = sizeof(ofn);
+    ofn.hwndOwner = m_hWnd;
+    ofn.lpstrFilter = L"JSON Data (*.json)\0*.json\0All Files (*.*)\0*.*\0";
+    ofn.lpstrFile = file_path;
+    ofn.nMaxFile = MAX_PATH;
+    ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_EXPLORER;
+    if (!GetOpenFileNameW(&ofn)) {
+        return {};
+    }
+    return file_path;
+}
+
+bool AppWindow::ImportPonerFile(const std::filesystem::path& path) {
+    std::string error;
+    const auto merged = backend_.ImportPonerData(path, &error);
+    if (merged == 0 && !error.empty()) {
+        status_.Error("import failed: " + error);
+        return false;
+    }
+
+    RenderGroups();
+    if (!group_ids_.empty()) {
+        SelectGroupByIndex(0);
+    }
+    RenderItems();
+
+    if (merged == 0) {
+        status_.Info("nothing new to import");
+    } else {
+        status_.Info("imported " + std::to_string(merged) + " items from " + path.filename().string());
+    }
+    return true;
 }
 
 bool AppWindow::AddItemFromFile() {

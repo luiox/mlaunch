@@ -131,6 +131,17 @@ public:
 
     /** @brief Undo the most recent soft delete; returns the item to its original group and index. */
     bool UndoLastDelete(std::string* error = nullptr);
+    /**
+     * @brief Idempotent import from legacy Poner Data.json.
+     *
+     * Merge key is (group name, target path): existing items get Count/name
+     * refreshed, new items are appended, missing groups are created. Safe to
+     * re-run while Poner is still in daily use.
+     * @return Number of items merged (updated + appended).
+     */
+    std::size_t ImportPonerData(const std::filesystem::path& legacy_json_path, std::string* error = nullptr);
+    /** @brief Directory treated as the legacy Poner install root. */
+    const std::filesystem::path& LegacyRoot() const { return legacy_root_; }
     /** @brief List backup files under backups/, newest first. */
     std::vector<BackupEntry> ListBackups() const;
     /** @brief Validate a backup file and restore it as the current dataset. */

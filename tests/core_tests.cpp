@@ -555,3 +555,101 @@ TEST(BackendTest, DropImportUsesInjectedResolver) {
     EXPECT_EQ(group->items[0].target_path, "C:\\resolved\\target.exe");
     EXPECT_EQ(group->items[0].arguments, "/resolved-arg");
 }
+
+TEST(BackendTest, ImportPonerDataIsIdempotent) {
+    const auto legacy = MakeTempDir("legacy_poner_import");
+    const auto base = MakeTempDir("base_poner_import");
+
+    WriteText(legacy / "Data.json", R"({
+        "Common": [
+            {"Name": "Everything", "TargetPath": "C:\\Tools\\Everything.exe", "IconLocation": "C:\\Tools\\Everything.exe", "Arguments": "", "Count": 5},
+            {"Name": "----tools----", "TargetPath": "", "IconLocation": "", "Arguments": "", "Count": 0}
+        ]
+    })");
+
+    FakeLaunchExecutor executor;
+    core::LauncherBackend b(base, legacy, &executor, nullptr);
+    std::string error;
+    ASSERT_TRUE(b.Load(&error)) << error;
+
+    const auto first = b.ImportPonerData(legacy / "Data.json", &error);
+    ASSERT_GT(first, 0u) << error;
+    const auto second = b.ImportPonerData(legacy / "Data.json", &error);
+    ASSERT_GT(second, 0u) << error;
+
+    const auto* group = FindGroupById(b, [&] {
+        for (const auto& g : b.Data().groups) {
+            if (g.name == "Common") return g.id;
+        }
+        return std::string();
+    }());
+    ASSERT_NE(group, nullptr);
+
+    std::size_t app_items = 0;
+    std::size_t separators = 0;
+    for (const auto& item : group->items) {
+        if (item.item_type == "separator") ++separators; else ++app_items;
+    }
+    EXPECT_EQ(app_items, 1u) << "duplicate import must not append";
+    EXPECT_EQ(separators, 1u) << "separator must be deduped by name";
+    EXPECT_EQ(group->items[0].launch_count, 5u);
+}
+
+TEST(BackendTest, ImportPonerDataUpdatesCountAndAppendsNew) {
+    const auto legacy = MakeTempDir("legacy_poner_update");
+    const auto base = MakeTempDir("base_poner_update");
+
+    WriteText(legacy / "Data.json", R"({
+        "Common": [
+            {"Name": "Everything", "TargetPath": "C:\\Tools\\Everything.exe", "IconLocation": "C:\\Tools\\Everything.exe", "Arguments": "", "Count": 5}
+        ]
+    })");
+
+    core::LauncherBackend b(base, legacy, nullptr, nullptr);
+    std::string error;
+    ASSERT_TRUE(b.Load(&error)) << error;
+    ASSERT_GT(b.ImportPonerData(legacy / "Data.json", &error), 0u) << error;
+
+    // Poner 侧继续日用：Count 变化 + 新条目出现，再次导入应合并而非重复。
+    WriteText(legacy / "Data.json", R"({
+        "Common": [
+            {"Name": "Everything", "TargetPath": "C:\\Tools\\Everything.exe", "IconLocation": "C:\\Tools\\Everything.exe", "Arguments": "", "Count": 9},
+            {"Name": "Procmon", "TargetPath": "C:\\Tools\\Procmon.exe", "IconLocation": "C:\\Tools\\Procmon.exe", "Arguments": "", "Count": 1}
+        ],
+        "IDE": [
+            {"Name": "VSCode", "TargetPath": "C:\\Tools\\vscode.exe", "IconLocation": "C:\\Tools\\vscode.exe", "Arguments": "", "Count": 3}
+        ]
+    })");
+
+    const auto merged = b.ImportPonerData(legacy / "Data.json", &error);
+    ASSERT_GT(merged, 0u) << error;
+
+    const auto* common = FindGroupById(b, [&] {
+        for (const auto& g : b.Data().groups) {
+            if (g.name == "Common") return g.id;
+        }
+        return std::string();
+    }());
+    ASSERT_NE(common, nullptr);
+    ASSERT_EQ(common->items.size(), 2u);
+    EXPECT_EQ(common->items[0].launch_count, 9u);
+    EXPECT_EQ(common->items[0].name, "Everything");
+
+    const auto* ide = FindGroupById(b, [&] {
+        for (const auto& g : b.Data().groups) {
+            if (g.name == "IDE") return g.id;
+        }
+        return std::string();
+    }());
+    ASSERT_NE(ide, nullptr) << "missing group must be created";
+    ASSERT_EQ(ide->items.size(), 1u);
+    EXPECT_EQ(ide->items[0].name, "VSCode");
+
+    // 导入前快照：backups/ 至少有一份 rolling 备份。
+    std::size_t backups = 0;
+    std::error_code ec;
+    for (const auto& entry : std::filesystem::directory_iterator(base / "backups", ec)) {
+        if (entry.is_regular_file()) ++backups;
+    }
+    EXPECT_GT(backups, 0u);
+}

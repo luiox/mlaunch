@@ -23,8 +23,10 @@ class AppWindow : public DuiLib::WindowImplBase {
 public:
     /**
      * @brief Construct the main launcher window.
+     * @param legacy_root process start directory (captured before DuiLib changes CWD);
+     *                    used for legacy Poner Data.json/Poner.cfg discovery.
      */
-    AppWindow();
+    explicit AppWindow(std::filesystem::path legacy_root);
     LPCTSTR GetWindowClassName() const override { return _T("NAssistantMainFrame"); }
     DuiLib::CDuiString GetSkinFile() override { return _T(""); }
     DuiLib::CDuiString GetSkinFolder() { return _T(""); }
@@ -87,8 +89,10 @@ private:
     bool OpenSelectedItemFolder();
     bool ShowSelectedItemShellMenu();
     bool CopySelectedItemPath();
+    bool ImportPonerFile(const std::filesystem::path& path);
 
     std::wstring PickExecutablePath() const;
+    std::wstring PickJsonFilePath() const;
     std::string GenerateNewGroupName() const;
     const core::Group* FindActiveGroup() const;
     const core::LaunchItem* FindSelectedItem() const;

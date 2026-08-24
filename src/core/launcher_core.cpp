@@ -769,6 +769,128 @@ void LauncherBackend::AppendJournal(const std::string& action, const std::string
     }
 }
 
+std::size_t LauncherBackend::ImportPonerData(const std::filesystem::path& legacy_json_path, std::string* error) {
+    if (!EnsureLoaded(error)) {
+        return 0;
+    }
+
+    std::error_code ec;
+    if (!std::filesystem::exists(legacy_json_path, ec)) {
+        SetError(error, "legacy data file not found");
+        return 0;
+    }
+
+    // 安全层：导入前显式快照当前数据（rolling 命名，随轮转自然淘汰）。
+    RotateBackupsBeforeSave();
+
+    auto raw = ReadTextFile(legacy_json_path);
+    std::string parse_error;
+    auto parsed = ParseJsonText(raw, &parse_error);
+    if (!parsed) {
+        SetError(error, "parse legacy Data.json failed: " + parse_error);
+        return 0;
+    }
+    ca::json::JsonDocument doc = std::move(*parsed);
+    const auto& legacy = doc.root();
+    if (!legacy.is_object()) {
+        SetError(error, "legacy Data.json format invalid");
+        return 0;
+    }
+
+    int next_order = 0;
+    for (const auto& g : data_.groups) {
+        if (!g.hidden) {
+            next_order = std::max(next_order, g.order + 1);
+        }
+    }
+
+    std::size_t merged = 0;
+    for (const auto& member : legacy.as_object()) {
+        const auto group_name = ToStdString(member.first);
+        if (group_name.empty() || !member.second.is_array()) {
+            continue;
+        }
+
+        // 组按名称匹配（忽略大小写，跳过隐藏分组），缺失则追加到末尾。
+        Group* target_group = nullptr;
+        for (auto& g : data_.groups) {
+            if (!g.hidden && ToLowerAscii(g.name) == ToLowerAscii(group_name)) {
+                target_group = &g;
+                break;
+            }
+        }
+        if (target_group == nullptr) {
+            Group g;
+            g.id = GenerateId("group");
+            g.name = group_name;
+            g.order = next_order++;
+            data_.groups.push_back(std::move(g));
+            target_group = &data_.groups.back();
+        }
+
+        for (const auto& ji : member.second.as_array()) {
+            LaunchItem incoming;
+            incoming.name = GetStr(ji, "Name", std::string());
+            incoming.target_path = GetStr(ji, "TargetPath", std::string());
+            incoming.icon_location = GetStr(ji, "IconLocation", std::string());
+            incoming.arguments = GetStr(ji, "Arguments", std::string());
+            incoming.launch_count = GetU64(ji, "Count", 0);
+            incoming.item_type = IsSeparatorItem(incoming.name, incoming.target_path, incoming.icon_location) ? "separator" : "app";
+            incoming.enabled = true;
+
+            if (incoming.item_type == "separator") {
+                // 分隔条目无稳定 TargetPath，按名称去重保持幂等。
+                bool exists = false;
+                for (const auto& item : target_group->items) {
+                    if (item.item_type == "separator" && item.name == incoming.name) {
+                        exists = true;
+                        break;
+                    }
+                }
+                if (!exists) {
+                    LaunchItem item = incoming;
+                    item.id = GenerateId("item");
+                    target_group->items.push_back(std::move(item));
+                    ++merged;
+                }
+                continue;
+            }
+
+            // 幂等键: (组名, TargetPath)，路径忽略大小写。
+            const auto target_key = ToLowerAscii(incoming.target_path);
+            LaunchItem* existing = nullptr;
+            for (auto& item : target_group->items) {
+                if (item.item_type != "separator" && ToLowerAscii(item.target_path) == target_key) {
+                    existing = &item;
+                    break;
+                }
+            }
+
+            if (existing != nullptr) {
+                // 已存在：Count/名称以 Poner 为准，其余保留本地自定义。
+                existing->launch_count = incoming.launch_count;
+                if (!incoming.name.empty()) {
+                    existing->name = incoming.name;
+                }
+                ++merged;
+            } else {
+                LaunchItem item = incoming;
+                item.id = GenerateId("item");
+                target_group->items.push_back(std::move(item));
+                ++merged;
+            }
+        }
+    }
+
+    if (merged > 0) {
+        AppendJournal("import_poner", "file=" + legacy_json_path.filename().string() + " merged=" + std::to_string(merged));
+        if (!SaveData(error)) {
+            return 0;
+        }
+    }
+    return merged;
+}
+
 bool LauncherBackend::UndoLastDelete(std::string* error) {
     if (!EnsureLoaded(error)) {
         return false;

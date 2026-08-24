@@ -1,6 +1,7 @@
 #include <windows.h>
 #include <UIlib.h>
 #include <cstdio>
+#include <filesystem>
 
 #include "app_window.h"
 
@@ -26,6 +27,10 @@ void SetupConsoleOutput() {
 int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int) {
     SetupConsoleOutput();
 
+    // DuiLib 的 SetCurrentPath 会把进程 CWD 改成 exe 目录，
+    // 旧版 Poner 数据发现依赖启动目录，必须先在这里捕获。
+    const std::filesystem::path legacy_root = std::filesystem::current_path();
+
     HRESULT hr = CoInitialize(nullptr);
     if (FAILED(hr)) {
         return 1;
@@ -35,7 +40,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int) {
     CPaintManagerUI::SetCurrentPath(CPaintManagerUI::GetInstancePath());
     CPaintManagerUI::SetResourcePath(CPaintManagerUI::GetInstancePath());
 
-    AppWindow* frame = new AppWindow();
+    AppWindow* frame = new AppWindow(legacy_root);
     if (frame == nullptr) {
         CoUninitialize();
         return 1;
