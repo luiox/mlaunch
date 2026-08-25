@@ -5,6 +5,7 @@
 #include "app_window.h"
 #include "file_icon_control.h"
 #include "search_controller.h"
+#include "ui_controls.h"
 #include "utils/string_util.h"
 
 using namespace DuiLib;
@@ -39,8 +40,9 @@ void ListController::RenderGroups() {
     }
 
     for (const auto* group : groups) {
-        auto* row = new CListContainerElementUI();
-        row->SetFixedHeight(28);
+        auto* row = new appui::GroupRowUI();
+        // 参考图分组行距 33px（选中条 32px 描边带 + 1px 行距），明显高于 28px 的条目行。
+        row->SetFixedHeight(33);
         // 选中/悬停高亮由 GroupListUI 列表级 item 色控制（对齐 Poner 灰阶）。
 
         std::wstring display_name;
@@ -91,7 +93,7 @@ void ListController::RenderItems() {
                 auto* row = new CListContainerElementUI();
                 row->SetFixedHeight(28);
                 row->SetAttribute(_T("inset"), _T("4,0,4,0"));
-                row->SetAttribute(_T("childpadding"), _T("6"));
+                row->SetAttribute(_T("childpadding"), _T("10"));
                 row->SetAttribute(_T("childvalign"), _T("vcenter"));
 
                 auto* icon = new FileIconControl();
@@ -165,7 +167,7 @@ void ListController::RenderItems() {
                 auto* row = new CListContainerElementUI();
                 row->SetFixedHeight(28);
                 row->SetAttribute(_T("inset"), _T("4,0,4,0"));
-                row->SetAttribute(_T("childpadding"), _T("2"));
+                row->SetAttribute(_T("childpadding"), _T("10"));
                 row->SetAttribute(_T("childvalign"), _T("vcenter"));
 
                 auto* icon = new FileIconControl();
@@ -214,7 +216,7 @@ void ListController::RenderItems() {
         auto* row = new CListContainerElementUI();
         row->SetFixedHeight(28);
         row->SetAttribute(_T("inset"), _T("4,0,4,0"));
-        row->SetAttribute(_T("childpadding"), _T("2"));
+        row->SetAttribute(_T("childpadding"), _T("10"));
         row->SetAttribute(_T("childvalign"), _T("vcenter"));
 
         auto* icon = new FileIconControl();

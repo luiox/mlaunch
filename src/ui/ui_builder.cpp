@@ -13,8 +13,9 @@ UiBuilder::UiBuilder(AppWindow& owner)
 CControlUI* UiBuilder::BuildRootUi() const {
     auto* root = new CVerticalLayoutUI();
     root->SetAttribute(_T("bkcolor"), _T("0xFFFFFFFF"));
+    // 参考图四边均无边框线（左/上/下 E6E6E6 或白直抵边缘，右缘为滚动条）。
     root->SetAttribute(_T("bordercolor"), _T("0xFFD2D2D2"));
-    root->SetAttribute(_T("bordersize"), _T("1"));
+    root->SetAttribute(_T("bordersize"), _T("0"));
     root->SetAttribute(_T("inset"), _T("0,0,0,0"));
     root->SetAttribute(_T("childpadding"), _T("0"));
 
@@ -89,11 +90,7 @@ CControlUI* UiBuilder::BuildRootUi() const {
 
     body->Add(groupPanel);
 
-    auto* splitter = new CControlUI();
-    splitter->SetName(_T("panel_splitter"));
-    splitter->SetFixedWidth(1);
-    splitter->SetAttribute(_T("bkcolor"), _T("0xFFD2D2D2"));
-    body->Add(splitter);
+    // 参考图分组区与条目区之间无分隔线（E6E6E6 直接过渡到 FFFFFF），不再放置 splitter。
 
     auto* itemPanel = new CVerticalLayoutUI();
     itemPanel->SetName(_T("item_panel"));
@@ -109,6 +106,12 @@ CControlUI* UiBuilder::BuildRootUi() const {
 
     body->Add(itemPanel);
     root->Add(body);
+
+    // 滚动条对齐参考图：12px 极简滑块（EBEBEB 填充 + D7D7D7 描边），
+    // 条目区轨道白色（与列表底色一致，仅滑块可见），分组区轨道与面板同灰。
+    const DuiLib::CDuiString thumb_attr = owner_.icon_manager_.MakeScrollbarThumbAttr();
+    appui::ApplyFlatScrollbar(groups, thumb_attr, 0xFFE6E6E6);
+    appui::ApplyFlatScrollbar(items, thumb_attr, 0xFFFFFFFF);
 
     // 状态反馈不再占用常驻状态栏（启动器空间宝贵），改为浮动 Toast：
     // 平时隐藏，有消息时显示，由 StatusPresenter 通过定时器自动隐藏。

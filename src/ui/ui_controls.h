@@ -46,6 +46,20 @@ public:
     LPCTSTR GetClass() const override { return _T("AppItemList"); }
 };
 
+// 分组行：参考图选中条为 D2D2D2 填充 + 四周 1px CDCDCD 描边，
+// 列表级 item 背景只能填色，描边在行自身 DoPaint 末尾补画（盖过子控件）。
+class GroupRowUI : public DuiLib::CListContainerElementUI {
+public:
+    LPCTSTR GetClass() const override { return _T("AppGroupRow"); }
+
+protected:
+    bool DoPaint(DuiLib::UIRender* pRender, const DuiLib::CDuiRect& rcPaint, DuiLib::CControlUI* pStopControl) override;
+};
+
+// 启用列表竖向滚动条并配置为参考图的极简样式：
+// 12px 宽、无箭头按钮、轨道纯色、滑块用带 1px 描边的九宫格图。
+void ApplyFlatScrollbar(DuiLib::CListUI* list, const DuiLib::CDuiString& thumb_attr, DWORD track_bkcolor);
+
 class SearchBoxUI : public DuiLib::CEditUI {
 public:
     SearchBoxUI();

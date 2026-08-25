@@ -121,6 +121,32 @@ icon::Icon IconManager::ResolveTopBarIcon(icon::Icon preferred, icon::Icon fallb
     return icon::Icon::None;
 }
 
+DuiLib::CDuiString IconManager::MakeScrollbarThumbAttr() const {
+    const auto path = cache_dir_ / "scroll_thumb.svg";
+    std::error_code ec;
+    std::filesystem::create_directories(cache_dir_, ec);
+    if (!std::filesystem::exists(path)) {
+        // 12x12：外圈 1px D7D7D7 描边 + 内部 EBEBEB 填充，配合 corner='1,1,1,1' 九宫格拉伸。
+        static constexpr const char* kSvg =
+            "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"12\" height=\"12\" viewBox=\"0 0 12 12\">"
+            "<rect x=\"0\" y=\"0\" width=\"12\" height=\"12\" fill=\"#D7D7D7\"/>"
+            "<rect x=\"1\" y=\"1\" width=\"10\" height=\"10\" fill=\"#EBEBEB\"/>"
+            "</svg>";
+        std::ofstream stream(path, std::ios::binary | std::ios::trunc);
+        if (stream.is_open()) {
+            stream.write(kSvg, static_cast<std::streamsize>(std::char_traits<char>::length(kSvg)));
+        }
+    }
+    if (!std::filesystem::exists(path)) {
+        return {};
+    }
+    std::wstring path_w = path.wstring();
+    std::replace(path_w.begin(), path_w.end(), L'\\', L'/');
+    DuiLib::CDuiString out;
+    out.Format(_T("file='%s' corner='1,1,1,1'"), path_w.c_str());
+    return out;
+}
+
 DuiLib::CDuiString IconManager::MakeSvgImageAttr(icon::Icon icon, int draw_px, int box_px) const {
     if (icon == icon::Icon::None) {
         return {};

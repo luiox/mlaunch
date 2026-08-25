@@ -15,6 +15,7 @@ public:
     std::string ParseItemIconSource(const core::LaunchItem& item) const;
     icon::Icon ResolveTopBarIcon(icon::Icon preferred, icon::Icon fallback) const;
     DuiLib::CDuiString MakeSvgImageAttr(icon::Icon icon, int draw_px = 16, int box_px = 26) const;
+    DuiLib::CDuiString MakeScrollbarThumbAttr() const;
 
 private:
     static void ReplaceAllInPlace(std::string* text, const std::string& from, const std::string& to);
