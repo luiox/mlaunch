@@ -27,7 +27,26 @@ struct Theme {
 
 const Theme& GetTheme();
 
-class IconButtonUI : public DuiLib::CButtonUI {
+// 此 fork 的 CButtonUI 状态色只能走图片（normalbkcolor 等属性不存在，
+// 会被静默忽略导致按钮无底色），这里在 PaintStatusImage 里按状态自绘纯色。
+class ButtonUI : public DuiLib::CButtonUI {
+public:
+    LPCTSTR GetClass() const override { return _T("AppButton"); }
+    void SetStateColors(DWORD normal, DWORD hot, DWORD pushed);
+
+protected:
+    void PaintStatusImage(DuiLib::UIRender* pRender) override;
+
+private:
+    DWORD normal_color_ = 0x00000000;
+    DWORD hot_color_ = 0x00000000;
+    DWORD pushed_color_ = 0x00000000;
+};
+
+// 主体系文本按钮：E6E6E6 常态 / D5D5D5 悬停按下，无边框，高 28。
+DuiLib::CButtonUI* MakeTextButton(LPCTSTR name, LPCTSTR text, int width = 0);
+
+class IconButtonUI : public ButtonUI {
 public:
     IconButtonUI();
     LPCTSTR GetClass() const override { return _T("AppIconButton"); }

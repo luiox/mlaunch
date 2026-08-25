@@ -9,6 +9,41 @@ const Theme& GetTheme() {
     return theme;
 }
 
+void ButtonUI::SetStateColors(DWORD normal, DWORD hot, DWORD pushed) {
+    normal_color_ = normal;
+    hot_color_ = hot;
+    pushed_color_ = pushed;
+}
+
+void ButtonUI::PaintStatusImage(DuiLib::UIRender* pRender) {
+    DWORD color = normal_color_;
+    if (IsPushedState() && pushed_color_ != 0) {
+        color = pushed_color_;
+    } else if (IsHotState() && hot_color_ != 0) {
+        color = hot_color_;
+    }
+    if (color != 0) {
+        pRender->DrawColor(m_rcItem, DuiLib::CDuiSize(0, 0), color);
+    }
+    CButtonUI::PaintStatusImage(pRender);
+}
+
+CButtonUI* MakeTextButton(LPCTSTR name, LPCTSTR text, int width) {
+    auto* button = new ButtonUI();
+    button->SetName(name);
+    button->SetText(text);
+    if (width > 0) {
+        button->SetFixedWidth(width);
+    }
+    button->SetFixedHeight(28);
+    // 与主窗统一体系：常态 E6E6E6，悬停/按下 D5D5D5，无边框。
+    button->SetStateColors(0xFFE6E6E6, 0xFFD5D5D5, 0xFFD5D5D5);
+    button->SetTextColor(0xFF1A1A1A);
+    button->SetAttribute(_T("bordercolor"), _T("0x00000000"));
+    button->SetAttribute(_T("bordersize"), _T("0"));
+    return button;
+}
+
 IconButtonUI::IconButtonUI() {
     const Theme& theme = GetTheme();
     SetText(_T(""));
@@ -16,9 +51,7 @@ IconButtonUI::IconButtonUI() {
     SetFixedWidth(30);
     SetFixedHeight(30);
     SetTextColor(theme.text);
-    SetAttribute(_T("normalbkcolor"), theme.icon_btn_normal);
-    SetAttribute(_T("hotbkcolor"), theme.icon_btn_hot);
-    SetAttribute(_T("pushedbkcolor"), theme.icon_btn_pushed);
+    SetStateColors(0x00000000, 0xFFD0D0D0, 0xFFC4C4C4);
     SetAttribute(_T("bordercolor"), theme.border_color);
     SetAttribute(_T("bordersize"), theme.border_zero);
 }

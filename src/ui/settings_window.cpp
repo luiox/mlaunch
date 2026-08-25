@@ -8,6 +8,7 @@
 
 #include "edit_focus_helper.h"
 #include "logger.h"
+#include "ui_controls.h"
 #include "utils/string_util.h"
 
 using namespace DuiLib;
@@ -28,20 +29,8 @@ std::string TrimCopy(const std::string& value) {
 }
 
 CButtonUI* MakeTextButton(LPCTSTR name, LPCTSTR text, int width = 0) {
-    auto* button = new CButtonUI();
-    button->SetName(name);
-    button->SetText(text);
-    if (width > 0) {
-        button->SetFixedWidth(width);
-    }
-    // 与主窗 group_dialog 按钮同体系（E6E6E6/D5D5D5，无边框）。
-    button->SetAttribute(_T("normalbkcolor"), _T("0xFFE6E6E6"));
-    button->SetAttribute(_T("hotbkcolor"), _T("0xFFD5D5D5"));
-    button->SetAttribute(_T("pushedbkcolor"), _T("0xFFD5D5D5"));
-    button->SetAttribute(_T("textcolor"), _T("0xFF1A1A1A"));
-    button->SetAttribute(_T("bordercolor"), _T("0x00000000"));
-    button->SetAttribute(_T("bordersize"), _T("0"));
-    return button;
+    // 统一走 appui 工厂（CButtonUI 无状态色属性，必须用 appui::ButtonUI 自绘）。
+    return appui::MakeTextButton(name, text, width);
 }
 
 CEditUI* MakeInput(LPCTSTR name) {

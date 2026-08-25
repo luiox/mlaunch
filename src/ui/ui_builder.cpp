@@ -163,28 +163,10 @@ CControlUI* UiBuilder::BuildRootUi() const {
     actions->SetAttribute(_T("childpadding"), _T("8"));
     actions->SetAttribute(_T("childalign"), _T("right"));
 
-    auto* okButton = new CButtonUI();
-    okButton->SetName(_T("group_dialog_ok"));
-    okButton->SetText(_T("确定"));
-    okButton->SetFixedWidth(88);
-    okButton->SetFixedHeight(28);
-    okButton->SetAttribute(_T("normalbkcolor"), _T("0xFFE6E6E6"));
-    okButton->SetAttribute(_T("hotbkcolor"), _T("0xFFD5D5D5"));
-    okButton->SetAttribute(_T("pushedbkcolor"), _T("0xFFD5D5D5"));
-    okButton->SetAttribute(_T("textcolor"), _T("0xFF1A1A1A"));
-    okButton->SetAttribute(_T("bordercolor"), _T("0x00000000"));
+    auto* okButton = appui::MakeTextButton(_T("group_dialog_ok"), _T("确定"), 88);
     actions->Add(okButton);
 
-    auto* cancelButton = new CButtonUI();
-    cancelButton->SetName(_T("group_dialog_cancel"));
-    cancelButton->SetText(_T("取消"));
-    cancelButton->SetFixedWidth(88);
-    cancelButton->SetFixedHeight(28);
-    cancelButton->SetAttribute(_T("normalbkcolor"), _T("0xFFE6E6E6"));
-    cancelButton->SetAttribute(_T("hotbkcolor"), _T("0xFFD5D5D5"));
-    cancelButton->SetAttribute(_T("pushedbkcolor"), _T("0xFFD5D5D5"));
-    cancelButton->SetAttribute(_T("textcolor"), _T("0xFF1A1A1A"));
-    cancelButton->SetAttribute(_T("bordercolor"), _T("0x00000000"));
+    auto* cancelButton = appui::MakeTextButton(_T("group_dialog_cancel"), _T("取消"), 88);
     actions->Add(cancelButton);
 
     groupDialog->Add(actions);

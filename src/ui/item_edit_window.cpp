@@ -9,6 +9,7 @@
 #include "edit_focus_helper.h"
 #include "logger.h"
 #include "shell_services.h"
+#include "ui_controls.h"
 #include "utils/string_util.h"
 
 using namespace DuiLib;
@@ -29,20 +30,8 @@ std::string TrimCopy(const std::string& value) {
 }
 
 CButtonUI* MakeTextButton(LPCTSTR name, LPCTSTR text, int width = 0) {
-    auto* button = new CButtonUI();
-    button->SetName(name);
-    button->SetText(text);
-    if (width > 0) {
-        button->SetFixedWidth(width);
-    }
-    // 与主窗 group_dialog 按钮同体系（E6E6E6/D5D5D5，无边框）。
-    button->SetAttribute(_T("normalbkcolor"), _T("0xFFE6E6E6"));
-    button->SetAttribute(_T("hotbkcolor"), _T("0xFFD5D5D5"));
-    button->SetAttribute(_T("pushedbkcolor"), _T("0xFFD5D5D5"));
-    button->SetAttribute(_T("textcolor"), _T("0xFF1A1A1A"));
-    button->SetAttribute(_T("bordercolor"), _T("0x00000000"));
-    button->SetAttribute(_T("bordersize"), _T("0"));
-    return button;
+    // 统一走 appui 工厂（CButtonUI 无状态色属性，必须用 appui::ButtonUI 自绘）。
+    return appui::MakeTextButton(name, text, width);
 }
 
 CEditUI* MakeInput(LPCTSTR name) {
@@ -108,6 +97,7 @@ LRESULT ItemEditWindow::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& 
     top_row->SetAttribute(_T("childpadding"), _T("8"));
 
     auto* left_col = new CVerticalLayoutUI();
+    left_col->SetAttribute(_T("childvalign"), _T("center"));
     auto* name_row = new CHorizontalLayoutUI();
     name_row->SetFixedHeight(26);
     name_row->Add(MakeFieldLabel(_T("名称")));
@@ -117,7 +107,7 @@ LRESULT ItemEditWindow::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& 
     top_row->Add(left_col);
 
     auto* right_col = new CVerticalLayoutUI();
-    right_col->SetFixedWidth(112);
+    right_col->SetFixedWidth(124);
     right_col->SetAttribute(_T("childpadding"), _T("4"));
     right_col->SetAttribute(_T("childalign"), _T("center"));
     icon_preview_ = new FileIconControl();
@@ -126,7 +116,7 @@ LRESULT ItemEditWindow::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& 
     icon_preview_->SetFixedHeight(48);
     right_col->Add(icon_preview_);
     auto* icon_btn_row = new CHorizontalLayoutUI();
-    icon_btn_row->SetFixedHeight(24);
+    icon_btn_row->SetFixedHeight(26);
     icon_btn_row->SetAttribute(_T("childpadding"), _T("4"));
     icon_btn_row->Add(MakeTextButton(_T("item_dialog_icon_default"), _T("默认图标")));
     icon_btn_row->Add(MakeTextButton(_T("item_dialog_icon_change"), _T("修改图标")));
