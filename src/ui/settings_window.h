@@ -11,7 +11,7 @@
  * @brief Borderless popup window editing launcher settings (MVP).
  *
  * 对齐 ItemEditWindow 的弹出窗模式：Esc 取消、Enter 确认、任意空白拖拽。
- * 字段：热键、执行后隐藏、默认窗口宽高、分组栏宽度。
+ * 字段：热键、执行后最小化、默认窗口宽高、分组栏宽度。
  */
 class SettingsWindow : public DuiLib::WindowImplBase {
 public:

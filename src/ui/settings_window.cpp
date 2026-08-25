@@ -119,17 +119,17 @@ LRESULT SettingsWindow::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& 
     auto* hotkey_row = new CHorizontalLayoutUI();
     hotkey_row->SetFixedHeight(26);
     hotkey_row->SetAttribute(_T("childpadding"), _T("4"));
-    hotkey_row->Add(MakeFieldLabel(_T("全局热键"), 78));
+    hotkey_row->Add(MakeFieldLabel(_T("全局热键"), 92));
     hotkey_input_ = MakeInput(_T("settings_hotkey_input"));
     hotkey_row->Add(hotkey_input_);
     root->Add(hotkey_row);
     root->Add(MakeHint(_T("示例 Alt+1、Ctrl+Alt+S；留空禁用。修改后立即生效")));
 
-    // 执行后隐藏
+    // 执行后最小化（对齐 VB6 原版：启动条目后窗口最小化到任务栏）
     auto* hide_row = new CHorizontalLayoutUI();
     hide_row->SetFixedHeight(26);
     hide_row->SetAttribute(_T("childpadding"), _T("4"));
-    hide_row->Add(MakeFieldLabel(_T("执行后隐藏"), 78));
+    hide_row->Add(MakeFieldLabel(_T("执行后最小化"), 92));
     hide_toggle_ = MakeTextButton(_T("settings_hide_toggle"), draft_.execute_hide ? _T("开") : _T("关"), 56);
     hide_toggle_->SetFixedHeight(26);
     hide_toggle_->SetTextColor(draft_.execute_hide ? 0xFF1A73E8 : 0xFF909090);
@@ -140,7 +140,7 @@ LRESULT SettingsWindow::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& 
     auto* size_row = new CHorizontalLayoutUI();
     size_row->SetFixedHeight(26);
     size_row->SetAttribute(_T("childpadding"), _T("4"));
-    size_row->Add(MakeFieldLabel(_T("默认宽高"), 78));
+    size_row->Add(MakeFieldLabel(_T("默认宽高"), 92));
     width_input_ = MakeInput(_T("settings_width_input"));
     width_input_->SetFixedWidth(70);
     width_input_->SetNumberOnly(true);
@@ -156,7 +156,7 @@ LRESULT SettingsWindow::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& 
     auto* panel_row = new CHorizontalLayoutUI();
     panel_row->SetFixedHeight(26);
     panel_row->SetAttribute(_T("childpadding"), _T("4"));
-    panel_row->Add(MakeFieldLabel(_T("分组栏宽度"), 78));
+    panel_row->Add(MakeFieldLabel(_T("分组栏宽度"), 92));
     panel_input_ = MakeInput(_T("settings_panel_input"));
     panel_input_->SetFixedWidth(70);
     panel_input_->SetNumberOnly(true);

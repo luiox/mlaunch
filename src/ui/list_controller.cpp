@@ -58,10 +58,9 @@ void ListController::RenderGroups() {
 
         auto* name = new CLabelUI();
         name->SetText(display_name.c_str());
-        // 对齐 Poner：分组名右对齐，靠近分隔线。
-        name->SetAttribute(_T("padding"), _T("0,0,10,0"));
+        // 对齐参考图采样：分组名在面板内水平居中（Common/IDE 等中心 ≈ 面板中心）。
         name->SetTextColor(0xFF1A1A1A);
-        name->SetTextStyle(DT_RIGHT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+        name->SetTextStyle(DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
         row->Add(name);
 
         owner_.groups_list_->Add(row);

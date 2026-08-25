@@ -34,21 +34,23 @@ CControlUI* UiBuilder::BuildRootUi() const {
     auto* searchBtn = new appui::IconButtonUI();
     searchBtn->SetName(_T("searchbtn"));
     const auto search_icon = owner_.icon_manager_.ResolveTopBarIcon(icon::Icon::Search, icon::Icon::Search);
-    const CDuiString search_img_n = owner_.icon_manager_.MakeSvgImageAttr(search_icon);
+    // 顶栏按钮 30x30，box_px 与按钮同尺寸保证图标居中；draw_px 对齐参考图墨迹比例。
+    const CDuiString search_img_n = owner_.icon_manager_.MakeSvgImageAttr(search_icon, 16, 30);
     searchBtn->SetSvgImage(search_img_n);
     topBar->Add(searchBtn);
 
     auto* menuBtn = new appui::IconButtonUI();
     menuBtn->SetName(_T("menubtn"));
     const auto menu_icon = owner_.icon_manager_.ResolveTopBarIcon(icon::Icon::Menu, icon::Icon::Menu);
-    const CDuiString menu_img_n = owner_.icon_manager_.MakeSvgImageAttr(menu_icon);
+    const CDuiString menu_img_n = owner_.icon_manager_.MakeSvgImageAttr(menu_icon, 16, 30);
     menuBtn->SetSvgImage(menu_img_n);
     topBar->Add(menuBtn);
 
     auto* closeBtn = new appui::IconButtonUI();
     closeBtn->SetName(_T("closebtn"));
     const auto close_icon = owner_.icon_manager_.ResolveTopBarIcon(icon::Icon::Close, icon::Icon::Clear);
-    const CDuiString exit_img_n = owner_.icon_manager_.MakeSvgImageAttr(close_icon);
+    // Material close 的 glyph 只占 viewBox 13/24，放大到 20px 让墨迹 ≈10px 对齐参考图。
+    const CDuiString exit_img_n = owner_.icon_manager_.MakeSvgImageAttr(close_icon, 20, 30);
     closeBtn->SetSvgImage(exit_img_n);
     topBar->Add(closeBtn);
 

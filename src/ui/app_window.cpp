@@ -417,9 +417,9 @@ void AppWindow::LaunchSelectedItem() {
     status_.Info(result.message);
     RenderItems();
 
-    // 对齐 VB6 ExecuteHide：执行成功后按设置隐藏主窗口。
+    // 对齐 VB6 原版行为：执行成功后主窗口最小化（进任务栏，可点击还原），而非隐藏。
     if (backend_.CurrentSettings().execute_hide) {
-        ::ShowWindow(m_hWnd, SW_HIDE);
+        ::ShowWindow(m_hWnd, SW_MINIMIZE);
     }
 }
 
@@ -1058,6 +1058,12 @@ void AppWindow::RegisterConfiguredHotkey() {
 }
 
 void AppWindow::ToggleMainWindowVisibility() {
+    // 最小化的窗口 IsWindowVisible 仍为真，需先按 iconic 分流，否则热键无法还原。
+    if (::IsIconic(m_hWnd)) {
+        ::ShowWindow(m_hWnd, SW_RESTORE);
+        ::SetForegroundWindow(m_hWnd);
+        return;
+    }
     if (::IsWindowVisible(m_hWnd)) {
         ::ShowWindow(m_hWnd, SW_HIDE);
         return;
