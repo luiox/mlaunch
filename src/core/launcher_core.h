@@ -140,6 +140,12 @@ public:
      * @return Number of items merged (updated + appended).
      */
     std::size_t ImportPonerData(const std::filesystem::path& legacy_json_path, std::string* error = nullptr);
+    /** @brief Sort one group's items by display name (case-insensitive, stable). */
+    bool SortGroupItemsByName(const std::string& group_id, std::string* error = nullptr);
+    /** @brief Write the current dataset to an arbitrary path without touching backups. */
+    bool ExportData(const std::filesystem::path& target_path, std::string* error = nullptr);
+    /** @brief Validate, apply and persist new settings (clamps sizes, trims hotkey). */
+    bool UpdateSettings(const Settings& settings, std::string* error = nullptr);
     /** @brief Directory treated as the legacy Poner install root. */
     const std::filesystem::path& LegacyRoot() const { return legacy_root_; }
     /** @brief App install directory used to expand %pr%/%cr% placeholders at launch. */
@@ -173,6 +179,7 @@ private:
     std::string GenerateId(const std::string& prefix);
     LauncherData DefaultLauncherData() const;
     Settings ParsePonerCfg(const std::filesystem::path& cfg_path) const;
+    std::string SerializeCurrentData() const;
     bool EnsureLoaded(std::string* error) const;
     Group* FindGroup(const std::string& group_id);
     const Group* FindGroup(const std::string& group_id) const;

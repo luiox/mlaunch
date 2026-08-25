@@ -693,3 +693,107 @@ TEST(BackendTest, LaunchExpandsPlaceholdersAndEnvVars) {
     const auto user_pos = args.find("--user ");
     EXPECT_EQ(args.find('%', user_pos), std::string::npos) << args;
 }
+
+TEST(BackendTest, SortGroupItemsByNameIsCaseInsensitiveAndJournaled) {
+    const auto legacy = MakeTempDir("legacy_sort");
+    const auto base = MakeTempDir("base_sort");
+
+    core::LauncherBackend b(base, legacy, nullptr, nullptr);
+    std::string error;
+    ASSERT_TRUE(b.Load(&error)) << error;
+
+    const auto gid = b.AddGroup("Tools", &error);
+    ASSERT_FALSE(gid.empty()) << error;
+    const char* names[] = {"banana", "Apple", "cherry", "apricot"};
+    for (const auto* name : names) {
+        ASSERT_TRUE(b.UpsertItem(gid, MakeItemInput(name, "C:\\x.exe"), &error)) << error;
+    }
+
+    EXPECT_TRUE(b.SortGroupItemsByName(gid, &error)) << error;
+
+    // 回收站不允许排序。
+    std::string bin_error;
+    EXPECT_FALSE(b.SortGroupItemsByName(core::kRecycleBinGroupId, &bin_error));
+
+    const core::Group* group = nullptr;
+    for (const auto& g : b.Data().groups) {
+        if (g.id == gid) group = &g;
+    }
+    ASSERT_NE(group, nullptr);
+    ASSERT_EQ(group->items.size(), 4u);
+    EXPECT_EQ(group->items[0].name, "Apple");
+    EXPECT_EQ(group->items[1].name, "apricot");
+    EXPECT_EQ(group->items[2].name, "banana");
+    EXPECT_EQ(group->items[3].name, "cherry");
+
+    // journal 记录 sort_group 动作。
+    std::ifstream journal(base / "operations.log");
+    std::string content((std::istreambuf_iterator<char>(journal)), std::istreambuf_iterator<char>());
+    EXPECT_NE(content.find("sort_group"), std::string::npos);
+}
+
+TEST(BackendTest, ExportDataWritesStandaloneSnapshot) {
+    const auto legacy = MakeTempDir("legacy_export");
+    const auto base = MakeTempDir("base_export");
+
+    core::LauncherBackend b(base, legacy, nullptr, nullptr);
+    std::string error;
+    ASSERT_TRUE(b.Load(&error)) << error;
+
+    const auto gid = b.AddGroup("Exported", &error);
+    ASSERT_TRUE(b.UpsertItem(gid, MakeItemInput("Tool", "C:\\tool.exe"), &error)) << error;
+
+    const auto export_dir = MakeTempDir("export_out");
+    const auto target = export_dir / L"sub" / L"export.json";
+    EXPECT_TRUE(b.ExportData(target, &error)) << error;
+
+    // 导出文件可被全新 backend 完整读回。
+    const auto import_base = MakeTempDir("base_export_roundtrip");
+    WriteText(import_base / "launcher.v2.json", [&] {
+        std::ifstream in(target, std::ios::binary);
+        return std::string((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+    }());
+    core::LauncherBackend b2(import_base, import_base / "nope", nullptr, nullptr);
+    std::string error2;
+    ASSERT_TRUE(b2.Load(&error2)) << error2;
+    bool found = false;
+    for (const auto& g : b2.Data().groups) {
+        for (const auto& i : g.items) {
+            if (g.name == "Exported" && i.name == "Tool") found = true;
+        }
+    }
+    EXPECT_TRUE(found);
+
+    // 空路径拒绝导出。
+    std::string empty_error;
+    EXPECT_FALSE(b.ExportData(std::filesystem::path(), &empty_error));
+}
+
+TEST(BackendTest, UpdateSettingsPersistsAndClamps) {
+    const auto legacy = MakeTempDir("legacy_settings");
+    const auto base = MakeTempDir("base_settings");
+
+    core::LauncherBackend b(base, legacy, nullptr, nullptr);
+    std::string error;
+    ASSERT_TRUE(b.Load(&error)) << error;
+
+    core::Settings next = b.CurrentSettings();
+    next.hotkey = "  Ctrl+Alt+Space ";
+    next.execute_hide = false;
+    next.group_panel_width = 9999.0;   // 应钳到 600
+    next.main_window_width = 1200.0;
+    next.main_window_height = 800.0;
+    EXPECT_TRUE(b.UpdateSettings(next, &error)) << error;
+
+    EXPECT_EQ(b.CurrentSettings().hotkey, "Ctrl+Alt+Space");
+    EXPECT_FALSE(b.CurrentSettings().execute_hide);
+    EXPECT_DOUBLE_EQ(b.CurrentSettings().group_panel_width, 600.0);
+
+    // 新实例重新加载后设置仍在（持久化验证）。
+    core::LauncherBackend b2(base, legacy, nullptr, nullptr);
+    std::string error2;
+    ASSERT_TRUE(b2.Load(&error2)) << error2;
+    EXPECT_EQ(b2.CurrentSettings().hotkey, "Ctrl+Alt+Space");
+    EXPECT_FALSE(b2.CurrentSettings().execute_hide);
+    EXPECT_DOUBLE_EQ(b2.CurrentSettings().main_window_width, 1200.0);
+}

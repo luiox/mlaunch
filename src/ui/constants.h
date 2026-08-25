@@ -44,6 +44,9 @@ constexpr UINT kBackupRestoreMax = 9;
 constexpr UINT kBackupStartFresh = 4900;
 } // namespace command
 
+/// @brief Global hotkey id used with RegisterHotKey on the main window.
+constexpr int kAppHotkeyId = 0xA001;
+
 namespace timer {
 constexpr UINT_PTR kUiStateSave = 0x4E53;
 constexpr UINT_PTR kListDragPoll = 0x4E54;

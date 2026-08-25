@@ -44,7 +44,7 @@ void SearchController::ToggleSearchMode() {
     }
     UpdateSearchUi();
     owner_.RenderItems();
-    owner_.status_.Info(owner_.search_mode_ ? "search mode on" : "search mode off");
+    owner_.status_.Info(owner_.search_mode_ ? "搜索模式：开" : "搜索模式：关");
 }
 
 std::string SearchController::CommandIdToItemId(int cmd_id) {

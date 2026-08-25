@@ -359,7 +359,7 @@ void ItemEditWindow::Notify(TNotifyUI& msg) {
             return;
         }
         if (name == _T("item_dialog_browse")) {
-            const std::wstring file = core::PickOpenPath(m_hWnd, L"Executable Files (*.exe)\0*.exe\0All Files (*.*)\0*.*\0");
+            const std::wstring file = core::PickOpenPath(m_hWnd, L"可执行文件 (*.exe)\0*.exe\0所有文件 (*.*)\0*.*\0");
             if (!file.empty()) {
                 target_input_->SetText(file.c_str());
                 RefreshIcon();
@@ -372,7 +372,7 @@ void ItemEditWindow::Notify(TNotifyUI& msg) {
             return;
         }
         if (name == _T("item_dialog_icon_change")) {
-            const std::wstring file = core::PickOpenPath(m_hWnd, L"Icon Sources (*.ico;*.exe;*.dll)\0*.ico;*.exe;*.dll\0All Files (*.*)\0*.*\0");
+            const std::wstring file = core::PickOpenPath(m_hWnd, L"图标来源 (*.ico;*.exe;*.dll)\0*.ico;*.exe;*.dll\0所有文件 (*.*)\0*.*\0");
             if (!file.empty()) {
                 icon_location_ = launcher::util::WideToUtf8(file);
                 RefreshIcon();

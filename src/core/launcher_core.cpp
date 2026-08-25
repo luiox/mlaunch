@@ -648,9 +648,7 @@ bool LauncherBackend::Load(std::string* error) {
     return true;
 }
 
-bool LauncherBackend::SaveData(std::string* error) const {
-    RotateBackupsBeforeSave();
-
+std::string LauncherBackend::SerializeCurrentData() const {
     ca::json::JsonDocument doc;
     auto& arena = doc.arena();
     ca::json::JsonValue root = ca::json::JsonValue::make_object();
@@ -682,7 +680,12 @@ bool LauncherBackend::SaveData(std::string* error) const {
     root.set(arena.intern("groups"), std::move(groups));
     doc.root() = std::move(root);
 
-    return WriteTextAtomic(data_path_, SerializeDocument(doc), error);
+    return SerializeDocument(doc);
+}
+
+bool LauncherBackend::SaveData(std::string* error) const {
+    RotateBackupsBeforeSave();
+    return WriteTextAtomic(data_path_, SerializeCurrentData(), error);
 }
 
 bool LauncherBackend::SaveSettings(std::string* error) const {
@@ -914,6 +917,74 @@ std::size_t LauncherBackend::ImportPonerData(const std::filesystem::path& legacy
         }
     }
     return merged;
+}
+
+bool LauncherBackend::SortGroupItemsByName(const std::string& group_id, std::string* error) {
+    if (!EnsureLoaded(error)) {
+        return false;
+    }
+    if (IsRecycleBinId(group_id)) {
+        SetError(error, "recycle bin is managed automatically");
+        return false;
+    }
+
+    Group* group = FindGroup(group_id);
+    if (group == nullptr) {
+        SetError(error, "group not found");
+        return false;
+    }
+
+    // stable_sort：同名条目（如分隔条）保持原有相对顺序。
+    std::stable_sort(group->items.begin(), group->items.end(),
+        [](const LaunchItem& lhs, const LaunchItem& rhs) {
+            return ToLowerAscii(lhs.name) < ToLowerAscii(rhs.name);
+        });
+
+    AppendJournal("sort_group", "id=" + group->id + " name=" + group->name + " count=" + std::to_string(group->items.size()));
+    return SaveData(error);
+}
+
+bool LauncherBackend::ExportData(const std::filesystem::path& target_path, std::string* error) {
+    if (!EnsureLoaded(error)) {
+        return false;
+    }
+    if (target_path.empty()) {
+        SetError(error, "export path is empty");
+        return false;
+    }
+
+    std::error_code ec;
+    if (target_path.has_parent_path()) {
+        std::filesystem::create_directories(target_path.parent_path(), ec);
+    }
+
+    // 导出属于可回滚动作（只新增外部副本，不触碰当前数据），不走备份轮转。
+    if (!WriteTextAtomic(target_path, SerializeCurrentData(), error)) {
+        return false;
+    }
+
+    AppendJournal("export_data", "to=" + target_path.string());
+    return true;
+}
+
+bool LauncherBackend::UpdateSettings(const Settings& settings, std::string* error) {
+    if (!EnsureLoaded(error)) {
+        return false;
+    }
+
+    Settings next = settings;
+    next.hotkey = Trim(next.hotkey);
+    next.group_panel_width = std::clamp(next.group_panel_width, 80.0, 600.0);
+    next.main_window_width = std::max(next.main_window_width, 320.0);
+    next.main_window_height = std::max(next.main_window_height, 220.0);
+
+    settings_ = std::move(next);
+
+    AppendJournal("update_settings",
+        "hotkey=" + settings_.hotkey +
+        " execute_hide=" + (settings_.execute_hide ? "1" : "0") +
+        " panel_width=" + std::to_string(static_cast<int>(settings_.group_panel_width)));
+    return SaveSettings(error);
 }
 
 bool LauncherBackend::UndoLastDelete(std::string* error) {

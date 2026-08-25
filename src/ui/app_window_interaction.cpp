@@ -82,13 +82,13 @@ bool AppWindow::CommitListDragReorder() {
         const std::string dragged_group_id = group_ids_[list_drag_from_index_];
         const std::string hover_group_id = group_ids_[list_drag_hover_index_];
         if (backend_.IsRecycleBinId(dragged_group_id) || backend_.IsRecycleBinId(hover_group_id)) {
-            status_.Warn("recycle bin position is fixed");
+            status_.Warn("回收站位置固定，不可拖动");
             return false;
         }
 
         DebugLog("reorder groups request id=" + dragged_group_id + " from=" + std::to_string(list_drag_from_index_) + " to=" + std::to_string(list_drag_hover_index_));
         if (!backend_.ReorderGroup(dragged_group_id, list_drag_hover_index_, &error)) {
-            status_.Error("reorder group failed: " + error);
+            status_.Error("分组排序失败：" + error);
             return false;
         }
 
@@ -96,13 +96,13 @@ bool AppWindow::CommitListDragReorder() {
         SelectGroupByIndex(list_drag_hover_index_);
         m_pm.NeedUpdate();
         DebugLog("commit groups from=" + std::to_string(list_drag_from_index_) + " to=" + std::to_string(list_drag_hover_index_));
-        status_.Info("group reordered");
+        status_.Info("分组已调整顺序");
         return true;
     }
 
     if (drag_list_kind_ == DragListKind::Items) {
         if (search_mode_) {
-            status_.Warn("item reorder is disabled in search mode");
+            status_.Warn("搜索模式下不可调整条目顺序");
             return false;
         }
         if (list_drag_from_index_ >= static_cast<int>(item_ids_.size()) || list_drag_hover_index_ >= static_cast<int>(item_ids_.size())) {
@@ -115,7 +115,7 @@ bool AppWindow::CommitListDragReorder() {
         const std::string dragged_item_id = item_ids_[list_drag_from_index_];
         DebugLog("reorder items request id=" + dragged_item_id + " from=" + std::to_string(list_drag_from_index_) + " to=" + std::to_string(list_drag_hover_index_));
         if (!backend_.ReorderItemInGroup(active_group_id_, dragged_item_id, list_drag_hover_index_, &error)) {
-            status_.Error("reorder item failed: " + error);
+            status_.Error("条目排序失败：" + error);
             return false;
         }
 
@@ -131,7 +131,7 @@ bool AppWindow::CommitListDragReorder() {
             }
         }
         DebugLog("commit items from=" + std::to_string(list_drag_from_index_) + " to=" + std::to_string(list_drag_hover_index_));
-        status_.Info("item reordered");
+        status_.Info("条目已调整顺序");
         return true;
     }
 
@@ -156,19 +156,19 @@ void AppWindow::HandleFileDrop(HDROP drop_handle) {
     }
 
     if (backend_.IsRecycleBinId(active_group_id_)) {
-        status_.Warn("cannot drop into recycle bin");
+        status_.Warn("不能拖入回收站");
         return;
     }
 
     std::string error;
     const auto created = backend_.CreateItemsFromDroppedPaths(active_group_id_, files, &error);
     if (!error.empty()) {
-        status_.Error("drop import failed: " + error);
+        status_.Error("拖入导入失败：" + error);
     } else if (created > 0) {
         RenderItems();
-        status_.Info("imported items: " + std::to_string(created));
+        status_.Info("已导入条目：" + std::to_string(created));
     } else {
-        status_.Warn("no valid dropped items");
+        status_.Warn("没有有效的拖入条目");
     }
 }
 
@@ -186,6 +186,12 @@ LRESULT AppWindow::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, 
         }
         return pt;
     };
+
+    if (uMsg == WM_HOTKEY && wParam == launcher::constants::kAppHotkeyId) {
+        ToggleMainWindowVisibility();
+        bHandled = TRUE;
+        return 0;
+    }
 
     if (uMsg == WM_GETMINMAXINFO) {
         auto* info = reinterpret_cast<MINMAXINFO*>(lParam);
@@ -495,9 +501,22 @@ LRESULT AppWindow::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, 
             bHandled = TRUE;
             return 0;
         }
+
+        // 非列表区域（标题栏/空白处）：打开主菜单。
+        ShowMainContextMenu(screen_point);
+        bHandled = TRUE;
+        return 0;
     }
 
     if (uMsg == WM_KEYDOWN) {
+        if (wParam == VK_APPS ||
+            (wParam == 'M' && (::GetKeyState(VK_CONTROL) & 0x8000) != 0)) {
+            // 键盘菜单入口：与右键同一条路由（光标处命中分组/条目/主菜单）。
+            // 部分 DuiLib fork 会吞掉 Shift+F10 的 DefWindowProc 转换，这里主动补发。
+            ::PostMessage(m_hWnd, WM_CONTEXTMENU, reinterpret_cast<WPARAM>(m_hWnd), static_cast<LPARAM>(-1));
+            bHandled = TRUE;
+            return 0;
+        }
         if (group_dialog_ != nullptr && group_dialog_->IsVisible()) {
             if (wParam == VK_RETURN) {
                 ConfirmGroupDialog();
@@ -552,11 +571,16 @@ LRESULT AppWindow::OnClose(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandl
         splitter_dragging_ = false;
         ReleaseCapture();
     }
+    if (hotkey_registered_) {
+        ::UnregisterHotKey(m_hWnd, launcher::constants::kAppHotkeyId);
+        hotkey_registered_ = false;
+    }
     if (ui_state_timer_active_) {
         ::KillTimer(m_hWnd, launcher::constants::timer::kUiStateSave);
         ui_state_timer_active_ = false;
     }
     ::KillTimer(m_hWnd, launcher::constants::timer::kStatusToast);
+    CloseSettingsDialog();
     CloseItemDialog();
     SaveUiState();
     PostQuitMessage(0);

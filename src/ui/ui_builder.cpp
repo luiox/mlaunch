@@ -139,7 +139,7 @@ CControlUI* UiBuilder::BuildRootUi() const {
 
     auto* groupDialogTitle = new CLabelUI();
     groupDialogTitle->SetName(_T("group_dialog_title"));
-    groupDialogTitle->SetText(_T("Add Group"));
+    groupDialogTitle->SetText(_T("新建分组"));
     groupDialogTitle->SetFixedHeight(24);
     groupDialogTitle->SetTextColor(0xFF1A1A1A);
     groupDialogTitle->SetFont(0);
@@ -159,7 +159,7 @@ CControlUI* UiBuilder::BuildRootUi() const {
 
     auto* okButton = new CButtonUI();
     okButton->SetName(_T("group_dialog_ok"));
-    okButton->SetText(_T("OK"));
+    okButton->SetText(_T("确定"));
     okButton->SetFixedWidth(88);
     okButton->SetFixedHeight(28);
     okButton->SetAttribute(_T("normalbkcolor"), _T("0xFFE6E6E6"));
@@ -171,7 +171,7 @@ CControlUI* UiBuilder::BuildRootUi() const {
 
     auto* cancelButton = new CButtonUI();
     cancelButton->SetName(_T("group_dialog_cancel"));
-    cancelButton->SetText(_T("Cancel"));
+    cancelButton->SetText(_T("取消"));
     cancelButton->SetFixedWidth(88);
     cancelButton->SetFixedHeight(28);
     cancelButton->SetAttribute(_T("normalbkcolor"), _T("0xFFE6E6E6"));

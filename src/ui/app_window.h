@@ -32,6 +32,8 @@ public:
     DuiLib::CDuiString GetSkinFolder() { return _T(""); }
     bool HasRestoredWindowPlacement() const { return has_restored_window_; }
     bool ShouldStartMaximized() const { return start_maximized_; }
+    /** @brief Resize window to settings default size (used when no saved layout). */
+    void ApplyDefaultWindowSize();
     std::string IconSourceForItem(const core::LaunchItem& item) const;
 
     void Notify(DuiLib::TNotifyUI& msg) override;
@@ -92,9 +94,21 @@ private:
 
     void OpenItemDialog(bool edit_mode);
     void CloseItemDialog();
+    void OpenSettingsDialog();
+    void CloseSettingsDialog();
     std::filesystem::path GetExeDir() const;
 
+    /** @brief Re-apply persisted settings: global hotkey, live group panel width. */
+    void ApplySettings();
+    /** @brief (Re)register the configured global hotkey; empty hotkey unregisters. */
+    void RegisterConfiguredHotkey();
+    /** @brief Parse "Ctrl+Alt+S" style text into Win32 modifier/VK codes. */
+    static bool ParseHotkeyString(const std::string& text, UINT* modifiers, UINT* virtual_key);
+    /** @brief Toggle main window show/hide (global hotkey action). */
+    void ToggleMainWindowVisibility();
+
     std::wstring PickJsonFilePath() const;
+    std::wstring PickSaveJsonFilePath() const;
     std::string GenerateNewGroupName() const;
     const core::Group* FindActiveGroup() const;
     const core::LaunchItem* FindSelectedItem() const;
@@ -166,4 +180,5 @@ private:
 
     bool ui_state_dirty_ = false;
     bool ui_state_timer_active_ = false;
+    bool hotkey_registered_ = false;
 };

@@ -54,6 +54,8 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int) {
     }
 
     if (!frame->HasRestoredWindowPlacement()) {
+        // 无已保存布局时使用设置里的默认窗口宽高。
+        frame->ApplyDefaultWindowSize();
         frame->CenterWindow();
     }
     ::ShowWindow(hwnd, frame->ShouldStartMaximized() ? SW_SHOWMAXIMIZED : SW_SHOWNORMAL);

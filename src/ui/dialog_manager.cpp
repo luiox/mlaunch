@@ -6,6 +6,7 @@
 #include "app_window.h"
 #include "item_edit_window.h"
 #include "logger.h"
+#include "settings_window.h"
 #include "utils/string_util.h"
 
 using namespace DuiLib;
@@ -15,7 +16,7 @@ DialogManager::DialogManager(AppWindow& owner)
 
 void DialogManager::OpenGroupDialog(bool rename_mode, const std::string& group_id) {
     if (owner_.group_dialog_ == nullptr || owner_.group_dialog_input_ == nullptr || owner_.group_dialog_title_ == nullptr) {
-        owner_.status_.Error("group dialog is not available");
+        owner_.status_.Error("分组对话框不可用");
         return;
     }
 
@@ -31,13 +32,13 @@ void DialogManager::OpenGroupDialog(bool rename_mode, const std::string& group_i
             }
         }
         if (group == nullptr) {
-            owner_.status_.Warn("group not found");
+            owner_.status_.Warn("分组不存在");
             return;
         }
-        owner_.group_dialog_title_->SetText(_T("Rename Group"));
+        owner_.group_dialog_title_->SetText(_T("重命名分组"));
         owner_.group_dialog_input_->SetText(launcher::util::Utf8ToWide(group->name).c_str());
     } else {
-        owner_.group_dialog_title_->SetText(_T("Add Group"));
+        owner_.group_dialog_title_->SetText(_T("新建分组"));
         owner_.group_dialog_input_->SetText(_T(""));
     }
 
@@ -69,25 +70,25 @@ void DialogManager::ConfirmGroupDialog() {
     }
 
     if (trimmed.empty()) {
-        owner_.status_.Warn("group name cannot be empty");
+        owner_.status_.Warn("分组名不能为空");
         return;
     }
 
     std::string error;
     if (owner_.group_dialog_rename_mode_) {
         if (!owner_.backend_.RenameGroup(owner_.group_dialog_group_id_, trimmed, &error)) {
-            owner_.status_.Error("rename group failed: " + error);
+            owner_.status_.Error("重命名分组失败：" + error);
             return;
         }
-        owner_.status_.Info("group renamed");
+        owner_.status_.Info("分组已重命名");
     } else {
         const std::string created_id = owner_.backend_.AddGroup(trimmed, &error);
         if (created_id.empty()) {
-            owner_.status_.Error("add group failed: " + error);
+            owner_.status_.Error("新建分组失败：" + error);
             return;
         }
         owner_.active_group_id_ = created_id;
-        owner_.status_.Info("group added");
+        owner_.status_.Info("分组已创建");
     }
 
     CloseGroupDialog();
@@ -119,7 +120,7 @@ void DialogManager::OpenItemDialog(bool edit_mode, const std::string& group_id, 
             if (found != nullptr) break;
         }
         if (found == nullptr) {
-            owner_.status_.Warn("item not found");
+            owner_.status_.Warn("条目不存在");
             return;
         }
         initial = *found;
@@ -146,6 +147,43 @@ void DialogManager::CloseItemDialog() {
     }
 }
 
+void DialogManager::OpenSettingsDialog() {
+    if (settings_window_ != nullptr) {
+        ::SetForegroundWindow(*settings_window_);
+        return;
+    }
+
+    settings_window_ = new SettingsWindow(
+        owner_.backend_.CurrentSettings(),
+        [this](bool confirmed, const core::Settings& settings) {
+            OnSettingsDone(confirmed, settings);
+        });
+    settings_window_->CreateAndShow(owner_.m_hWnd);
+}
+
+void DialogManager::CloseSettingsDialog() {
+    if (settings_window_ != nullptr) {
+        settings_window_->Close();
+        settings_window_ = nullptr;
+    }
+}
+
+void DialogManager::OnSettingsDone(bool confirmed, const core::Settings& settings) {
+    settings_window_ = nullptr;
+    if (!confirmed) {
+        return;
+    }
+
+    std::string error;
+    if (!owner_.backend_.UpdateSettings(settings, &error)) {
+        owner_.status_.Error("保存设置失败：" + error);
+        return;
+    }
+
+    owner_.ApplySettings();
+    owner_.status_.Info("设置已保存");
+}
+
 void DialogManager::OnItemEditDone(const std::string& group_id, bool confirmed, const std::string& item_id,
                                    const std::string& name, const std::string& target,
                                    const std::string& args, const std::string& icon_location) {
@@ -167,10 +205,10 @@ void DialogManager::OnItemEditDone(const std::string& group_id, bool confirmed, 
 
     std::string error;
     if (!owner_.backend_.UpsertItem(group_id, input, &error)) {
-        owner_.status_.Error("save item failed: " + error);
+        owner_.status_.Error("保存条目失败：" + error);
         return;
     }
 
     owner_.RenderItems();
-    owner_.status_.Info(item_id.empty() ? "item added" : "item updated");
+    owner_.status_.Info(item_id.empty() ? "项目已添加" : "项目已更新");
 }

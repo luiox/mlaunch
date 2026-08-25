@@ -43,7 +43,13 @@ void ListController::RenderGroups() {
         row->SetFixedHeight(34);
         // 选中/悬停高亮由 GroupListUI 列表级 item 色控制（对齐 Poner 灰阶）。
 
-        std::wstring display_name = launcher::util::Utf8ToWide(group->name);
+        std::wstring display_name;
+        if (group->hidden && core::LauncherBackend::IsRecycleBinId(group->id)) {
+            // 数据文件里的组名可能是旧英文常量，显示层统一为中文。
+            display_name = L"回收站";
+        } else {
+            display_name = launcher::util::Utf8ToWide(group->name);
+        }
         if (group->hidden) {
             display_name += L" (" + std::to_wstring(group->items.size()) + L")";
         }
@@ -121,25 +127,25 @@ void ListController::RenderItems() {
 
             switch (active_cmd) {
             case launcher::constants::search_cmd::kCmd:
-                add_command_row(L"Open Command Prompt", L"cmd", active_cmd);
+                add_command_row(L"打开命令提示符", L"cmd", active_cmd);
                 break;
             case launcher::constants::search_cmd::kSettings:
-                add_command_row(L"Open System Settings", L"setting", active_cmd);
+                add_command_row(L"打开系统设置", L"setting", active_cmd);
                 break;
             case launcher::constants::search_cmd::kShutdown:
-                add_command_row(L"Shut Down Computer", L"shutdown", active_cmd);
+                add_command_row(L"关闭计算机", L"shutdown", active_cmd);
                 break;
             case launcher::constants::search_cmd::kReboot:
-                add_command_row(L"Restart Computer", L"reboot", active_cmd);
+                add_command_row(L"重启计算机", L"reboot", active_cmd);
                 break;
             case launcher::constants::search_cmd::kLogoff:
-                add_command_row(L"Log Off Current User", L"logoff", active_cmd);
+                add_command_row(L"注销当前用户", L"logoff", active_cmd);
                 break;
             case launcher::constants::search_cmd::kScreenoff:
-                add_command_row(L"Turn Off Display", L"screenoff", active_cmd);
+                add_command_row(L"关闭显示器", L"screenoff", active_cmd);
                 break;
             case launcher::constants::search_cmd::kBaidu:
-                add_command_row(L"Search Baidu", launcher::util::Utf8ToWide(owner_.search_controller_.GetBaiduKeyword()), active_cmd);
+                add_command_row(L"百度搜索", launcher::util::Utf8ToWide(owner_.search_controller_.GetBaiduKeyword()), active_cmd);
                 break;
             }
             return;
