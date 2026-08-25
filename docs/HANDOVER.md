@@ -59,11 +59,24 @@ xmake build core_tests; xmake run core_tests   # 22 个用例
 
 **计划内项目全部完成。** 可选打磨（未排期）：
 - 搜索区输入框微调：更接近 VB6 的灰底容器 + 白输入区感受（对照 `docs/poner_ui_reference.png`）。
-- 设置窗"执行后隐藏"开关改 CCheckBoxUI（视觉态依赖图片资源，现为按钮开/关）。
+- 设置窗"执行后最小化"开关改 CCheckBoxUI（视觉态依赖图片资源，现为按钮开/关）。
 - 热键输入改为按键捕获（现为文本框输入 `Alt+1` 式文本）。
 - 清空分组确认对话框复用主窗内嵌 overlay，样式与弹出窗不统一（功能已验证）。
+- 新建分组 overlay 宽 360 > 窗口 331 时居中会贴左（低优先）。
 
-## 六、本次会话（2026-08-25 第三次）改动摘要
+## 六、本次会话（2026-08-25 第四次）改动摘要
+
+- **像素级对齐参考图（df138da）**：删除分组/条目区分隔线与窗外框（参考图无）；分组行高 28→33；选中条 D2D2D2 填充 + 四周 1px CDCDCD 描边（新 `GroupRowUI::DoPaint` 补画，容器级边框会被子控件盖住）+ 右缘 1px 缝隙（GroupListUI inset right=1）；条目行 childpadding 2→10；**恢复列表滚动**（CListUI 启用 vscrollbar，12px 无箭头极简样式：EBEBEB 滑块+D7D7D7 描边 SVG 九宫格 `scroll_thumb.svg`，轨道白/灰随面板；滚轮实测可用）。
+- **对齐原版行为（74bf2d8）**：分组名水平居中（参考图采样证实，原为误右对齐）；顶栏三图标 MakeSvgImageAttr box_px 26→30（修正偏左上 2-3px），close dest 16→20 补偿 glyph 覆盖率（墨迹 13x14/12x10/10x10 ≈ 参考 14x14/12x8/10x10）；**启动条目后 SW_HIDE→SW_MINIMIZE**（原版最小化进任务栏），设置项改名"执行后最小化"（标签列 78→92），Alt+1 加 IsIconic 分流支持最小化态直接还原。
+- **按钮状态色从未渲染的根因修复（c052c0d）**：此 fork CButtonUI **不存在** normalbkcolor/hotbkcolor/pushedbkcolor 属性（静默忽略落 CLabelUI），此前所有按钮底色/悬停反馈全部无效。新增 `appui::ButtonUI`（PaintStatusImage 按 IsHotState/IsPushedState 自绘纯色，IconButtonUI 改继承它恢复悬停灰底）+ 共享工厂 `appui::MakeTextButton`（E6E6E6/D5D5D5 高 28），主窗分组对话框/设置窗/编辑窗全部接入。编辑窗图标按钮行 24→26、右列 112→124、名称行与图标列 childvalign center。
+- **关键坑（新）**：
+  - **et mouse click 会点到置顶终端**（终端遮挡 x∈[230,1440]）导致焦点被抢、后续按键全进终端；菜单路由只需 `et mouse move` 定位光标（WM_CONTEXTMENU 按光标坐标 hit-test，不需要真实点击）。
+  - TrackPopupMenu 是原生菜单：条目菜单序 0管理员/1位置/2资源管理器菜单/3复制路径/sep/4添加/5编辑/6删除/7移动；无初始选中时第 1 个 Down 选中第 0 项，到"编辑"需 **6 个 Down**；主菜单到"设置"5 个 Down。Enter 误触"管理员运行"会弹 `etalien.exe` 安全确认框（#32770，属 mlaunch 进程，**只能 Esc**，Enter 会真启动）。
+  - `et wait element` 会段错误、`et element find` 依赖 powershell.exe（本机无）——UIA 路线不可用，原生菜单键盘导航仍是最优解。
+  - 误触"按名称排序"会改真实数据顺序：恢复用 `%LOCALAPPDATA%\nassistant\backups\launcher.v2.<排序时刻>.json` 覆盖 `launcher.v2.json` 后重启。
+- 验证工具沉淀：`tools/scan_icons.ps1`（顶栏图标墨迹 bbox）、`tools/scan_bands.ps1`（扫描 E6E6E6 按钮色带，验证按钮底色是否渲染）。
+
+## 六-a、上一次会话（2026-08-25 第三次）改动摘要（d763c20 / 6699a89）
 
 - **阴影窗（frmShadow 复刻）**：新增 `src/ui/shadow_window.{h,cpp}`——WS_EX_LAYERED|TRANSPARENT|TOOLWINDOW|NOACTIVATE 黑色剪影窗，`SetLayeredWindowAttributes` alpha 60，`SetWindowPos(shadow, main, +7,+7)` 插主窗 Z 序正下方；主窗 WM_WINDOWPOSCHANGED/WM_SHOWWINDOW 时 `Sync()`（拖动实时跟随），最小化/最大化/隐藏自动隐藏；OnCreate 里 `DwmSetWindowAttribute(DWMNCRP_DISABLED)` 关掉 DWM 软阴影保持 VB6 硬边风格。实测：+7,+7 精确跟随、移动实时跟随、Alt+1 显隐联动闭环。
 - **P-1 收尾**：core `ClearGroup`（整组软删除入回收站，单次落盘，Ctrl+Z 恢复最后一条）+ 分组菜单"清空分组…"+ 数量确认对话框（输入条目数才能执行，输错拒绝，journal `clear_group`）。测试 22→23。
@@ -75,7 +88,7 @@ xmake build core_tests; xmake run core_tests   # 22 个用例
   - **不要用 `m_pm.GetFocus()` 决定 Tab 轮换目标**：fork 的 `PreMessageHandler` 会抢先对 VK_TAB 做 `SetNextTabControl`，m_pFocus 不可信；用窗口内 `focus_index_` 成员确定性轮换。
   - 目标路径失效的条目走 Explorer 菜单 → SHParseDisplayName 失败 → 自动退回属性页（报错 toast），行为符合预期。
 
-## 六-b、上一次会话（2026-08-25 第二次）改动摘要（commit fd2e2aa）
+## 六-b、上一次会话（2026-08-25 第二次）改动摘要（fd2e2aa / d763c20 部分）
 
 - **设置窗 MVP**：新增 `src/ui/settings_window.{h,cpp}`（420x330 弹出窗，模式同 ItemEditWindow：Esc 取消/Enter 确认/空白拖拽/补焦点）。
 - **core 扩展**（`launcher_core.{h,cpp}`）：`SortGroupItemsByName`（大小写不敏感稳定排序+journal `sort_group`）、`ExportData`（原子写出独立快照+journal `export_data`）、`UpdateSettings`（钳制+journal `update_settings`）；SaveData 序列化抽成 `SerializeCurrentData` 复用。测试 19→22。
