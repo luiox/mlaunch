@@ -46,11 +46,14 @@ protected:
     void Confirm();
     void RefreshIcon();
     bool PointOnEditableControl(POINT pt) const;
+    /** @brief Tab 焦点轮换：名称 → 目标 → 参数 → 名称。 */
+    void CycleInputFocus();
 
 private:
     AppWindow& owner_;
     DoneCallback on_done_;
     bool edit_mode_ = false;
+    int focus_index_ = 0;
     std::string item_id_;
     std::string initial_name_;
     std::string initial_target_;

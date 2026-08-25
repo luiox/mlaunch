@@ -669,6 +669,8 @@ void AppWindow::ShowGroupContextMenu(const POINT& screen_point) {
     HMENU menu = CreatePopupMenu();
     AppendMenuW(menu, MF_STRING, launcher::constants::command::kGroupAdd, L"新建分组");
     AppendMenuW(menu, MF_STRING, launcher::constants::command::kGroupRename, L"重命名分组");
+    AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+    AppendMenuW(menu, MF_STRING, launcher::constants::command::kGroupClear, L"清空分组…");
     AppendMenuW(menu, MF_STRING, launcher::constants::command::kGroupDelete, L"删除分组");
 
     SetForegroundWindow(m_hWnd);
@@ -689,7 +691,7 @@ void AppWindow::ShowItemContextMenu(const POINT& screen_point) {
     } else {
         AppendMenuW(menu, MF_STRING, launcher::constants::command::kItemRunAs, L"以管理员身份运行");
         AppendMenuW(menu, MF_STRING, launcher::constants::command::kItemOpenFolder, L"打开所在位置");
-        AppendMenuW(menu, MF_STRING, launcher::constants::command::kItemShellMenu, L"属性（资源管理器）");
+        AppendMenuW(menu, MF_STRING, launcher::constants::command::kItemShellMenu, L"资源管理器菜单");
         AppendMenuW(menu, MF_STRING, launcher::constants::command::kItemCopyPath, L"复制完整路径");
         AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
         AppendMenuW(menu, MF_STRING, launcher::constants::command::kItemAdd, L"添加项目");
@@ -826,6 +828,20 @@ void AppWindow::ExecuteGroupCommand(UINT command_id) {
         return;
     }
 
+    if (command_id == launcher::constants::command::kGroupClear) {
+        const core::Group* group = FindActiveGroup();
+        if (group == nullptr) {
+            status_.Warn("请先选择分组");
+            return;
+        }
+        if (group->items.empty()) {
+            status_.Warn("分组已为空");
+            return;
+        }
+        OpenClearGroupDialog(group->id, group->items.size());
+        return;
+    }
+
     if (command_id == launcher::constants::command::kGroupDelete) {
         DeleteActiveGroup();
     }
@@ -833,6 +849,10 @@ void AppWindow::ExecuteGroupCommand(UINT command_id) {
 
 void AppWindow::OpenGroupDialog(bool rename_mode, const std::string& group_id) {
     dialog_manager_.OpenGroupDialog(rename_mode, group_id);
+}
+
+void AppWindow::OpenClearGroupDialog(const std::string& group_id, std::size_t expected_count) {
+    dialog_manager_.OpenClearGroupDialog(group_id, expected_count);
 }
 
 void AppWindow::CloseGroupDialog() {
@@ -1222,14 +1242,102 @@ bool AppWindow::ShowSelectedItemShellMenu() {
     }
 
     const std::wstring path_w = launcher::util::Utf8ToWide(item->target_path);
-    HINSTANCE instance = ShellExecuteW(m_hWnd, L"properties", path_w.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
-    if (reinterpret_cast<INT_PTR>(instance) <= 32) {
-        status_.Error("打开属性页失败");
+
+    // 非文件系统目标（URL 等）退回属性页。
+    PIDLIST_ABSOLUTE pidl_full = nullptr;
+    const HRESULT parse_hr = SHParseDisplayName(path_w.c_str(), nullptr, &pidl_full, 0, nullptr);
+    if (FAILED(parse_hr) || pidl_full == nullptr) {
+        HINSTANCE instance = ShellExecuteW(m_hWnd, L"properties", path_w.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+        if (reinterpret_cast<INT_PTR>(instance) <= 32) {
+            status_.Error("打开资源管理器菜单失败");
+            return false;
+        }
+        status_.Info("已打开属性页");
+        return true;
+    }
+
+    // 真正的资源管理器右键菜单：SHBindToParent + IContextMenu。
+    IShellFolder* parent_folder = nullptr;
+    PCUITEMID_CHILD child_pidl = nullptr;
+    IContextMenu* context_menu = nullptr;
+    HMENU menu = nullptr;
+    bool launched = false;
+
+    auto release_all = [&]() {
+        if (menu != nullptr) {
+            DestroyMenu(menu);
+            menu = nullptr;
+        }
+        if (context_menu != nullptr) {
+            context_menu->Release();
+            context_menu = nullptr;
+        }
+        if (parent_folder != nullptr) {
+            parent_folder->Release();
+            parent_folder = nullptr;
+        }
+        if (pidl_full != nullptr) {
+            ILFree(pidl_full);
+            pidl_full = nullptr;
+        }
+    };
+
+    HRESULT hr = SHBindToParent(pidl_full, IID_IShellFolder, reinterpret_cast<void**>(&parent_folder), &child_pidl);
+    if (FAILED(hr)) {
+        release_all();
+        status_.Error("打开资源管理器菜单失败");
         return false;
     }
 
-    status_.Info("已打开属性页");
-    return true;
+    hr = parent_folder->GetUIObjectOf(m_hWnd, 1, &child_pidl, IID_IContextMenu, nullptr, reinterpret_cast<void**>(&context_menu));
+    if (FAILED(hr)) {
+        release_all();
+        status_.Error("打开资源管理器菜单失败");
+        return false;
+    }
+
+    menu = CreatePopupMenu();
+    constexpr UINT kScratchFirst = 0x7000;
+    constexpr UINT kScratchLast = 0x7FFF;
+    hr = context_menu->QueryContextMenu(menu, 0, kScratchFirst, kScratchLast, CMF_NORMAL);
+    if (FAILED(hr)) {
+        release_all();
+        status_.Error("打开资源管理器菜单失败");
+        return false;
+    }
+
+    POINT invoke_pt{0, 0};
+    ::GetCursorPos(&invoke_pt);
+    SetForegroundWindow(m_hWnd);
+    const UINT command_id = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_RIGHTBUTTON | TPM_LEFTALIGN,
+                                           invoke_pt.x, invoke_pt.y, 0, m_hWnd, nullptr);
+    DestroyMenu(menu);
+    menu = nullptr;
+
+    if (command_id == 0) {
+        release_all();
+        return true; // 用户取消，不算失败
+    }
+
+    CMINVOKECOMMANDINFOEX invoke{};
+    invoke.cbSize = sizeof(invoke);
+    invoke.fMask = CMIC_MASK_UNICODE | CMIC_MASK_PTINVOKE;
+    invoke.hwnd = m_hWnd;
+    invoke.lpVerb = MAKEINTRESOURCEA(command_id - kScratchFirst);
+    invoke.lpVerbW = MAKEINTRESOURCEW(command_id - kScratchFirst);
+    invoke.nShow = SW_SHOWNORMAL;
+    invoke.ptInvoke = invoke_pt;
+    hr = context_menu->InvokeCommand(reinterpret_cast<CMINVOKECOMMANDINFO*>(&invoke));
+    release_all();
+
+    if (FAILED(hr)) {
+        status_.Error("执行资源管理器命令失败");
+        return false;
+    }
+
+    status_.Info("已执行资源管理器命令");
+    launched = true;
+    return launched;
 }
 
 bool AppWindow::CopySelectedItemPath() {

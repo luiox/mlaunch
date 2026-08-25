@@ -21,6 +21,7 @@ namespace command {
 constexpr UINT kGroupAdd = 1001;
 constexpr UINT kGroupRename = 1002;
 constexpr UINT kGroupDelete = 1003;
+constexpr UINT kGroupClear = 1004;
 
 constexpr UINT kItemAdd = 1101;
 constexpr UINT kItemEdit = 1102;

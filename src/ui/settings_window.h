@@ -32,10 +32,13 @@ public:
 protected:
     void Confirm();
     bool PointOnEditableControl(POINT pt) const;
+    /** @brief Tab 焦点轮换：热键 → 宽 → 高 → 分组栏宽。 */
+    void CycleInputFocus();
 
 private:
     DoneCallback on_done_;
     core::Settings draft_;
+    int focus_index_ = 0;
 
     DuiLib::CEditUI* hotkey_input_ = nullptr;
     DuiLib::CButtonUI* hide_toggle_ = nullptr;

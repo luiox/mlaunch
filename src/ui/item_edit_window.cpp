@@ -6,6 +6,7 @@
 #include <cctype>
 
 #include "app_window.h"
+#include "edit_focus_helper.h"
 #include "logger.h"
 #include "shell_services.h"
 #include "utils/string_util.h"
@@ -56,49 +57,8 @@ CEditUI* MakeInput(LPCTSTR name) {
 
 // 此 fork 的 CEditUI 依赖原生 EDIT 子窗口接收输入，但 UIEVENT_SETFOCUS
 // 路径创建不可靠；真实可用的创建路径是 UIEVENT_BUTTONDOWN（鼠标点击）。
-// 键盘自动化/程序化打开时没有点击，这里手动补一次等效事件序列。
-// 此 fork 的 CEditUI 依赖原生 EDIT 子窗口接收输入。超类化窗口类名为
-// "EditWnd"（CEditWndWin32::GetWindowClassName），不是系统 "Edit"。
-// 真实点击路径会经 UIEVENT_BUTTONDOWN 创建并聚焦；程序化打开时需手动补齐。
-HWND EnsureNativeEditFocused(CPaintManagerUI& pm, CEditUI* input, HWND dialog) {
-    if (input == nullptr) {
-        return nullptr;
-    }
-    HWND native_edit = ::FindWindowExW(dialog, nullptr, L"EditWnd", nullptr);
-    if (native_edit == nullptr) {
-        native_edit = ::FindWindowExW(dialog, nullptr, L"Edit", nullptr);
-    }
-    if (native_edit == nullptr) {
-        // manager 焦点已在目标控件时 SetFocus 会提前返回、不发 UIEVENT_SETFOCUS，
-        // 原生 EDIT 不会创建；先清空焦点再设回，强制触发创建。
-        if (pm.GetFocus() == input) {
-            pm.SetFocus(nullptr);
-        }
-        pm.SetFocus(input);
-        native_edit = ::FindWindowExW(dialog, nullptr, L"EditWnd", nullptr);
-        if (native_edit == nullptr) {
-            native_edit = ::FindWindowExW(dialog, nullptr, L"Edit", nullptr);
-        }
-    }
-    if (native_edit == nullptr) {
-        // 仍无则模拟真实点击路径（BUTTONDOWN 分支要求 IsFocused，上一步已满足）。
-        TEventUI ev = {0};
-        ev.Type = UIEVENT_BUTTONDOWN;
-        ev.pSender = input;
-        ev.ptMouse = input->GetPos();
-        ev.wKeyState = MK_LBUTTON;
-        ev.dwTimestamp = ::GetTickCount();
-        input->Event(ev);
-        native_edit = ::FindWindowExW(dialog, nullptr, L"EditWnd", nullptr);
-        if (native_edit == nullptr) {
-            native_edit = ::FindWindowExW(dialog, nullptr, L"Edit", nullptr);
-        }
-    }
-    if (native_edit != nullptr) {
-        ::SetFocus(native_edit);
-    }
-    return native_edit;
-}
+// 键盘自动化/程序化打开时没有点击，需手动补齐 —— 见 edit_focus_helper.h
+// 的 appui::FocusNativeEdit（同时子类化原生 EDIT，补上 Tab 轮换与 Ctrl+A）。
 
 CLabelUI* MakeFieldLabel(LPCTSTR text) {
     auto* label = new CLabelUI();
@@ -239,7 +199,7 @@ void ItemEditWindow::CreateAndShow(HWND owner_hwnd) {
     ::ShowWindow(m_hWnd, SW_SHOW);
     ::SetForegroundWindow(m_hWnd);
     name_input_->SetFocus();
-    EnsureNativeEditFocused(m_pm, name_input_, m_hWnd);
+    appui::FocusNativeEdit(m_pm, name_input_, m_hWnd);
 }
 
 void ItemEditWindow::RefreshIcon() {
@@ -285,6 +245,18 @@ void ItemEditWindow::Confirm() {
     Close();
 }
 
+void ItemEditWindow::CycleInputFocus() {
+    // 不依赖 manager 的 m_pFocus（PreMessageHandler 会抢先 SetNextTabControl），
+    // 用窗口内索引确定性轮换：名称 → 目标 → 参数。
+    DuiLib::CEditUI* order[] = {name_input_, target_input_, args_input_};
+    focus_index_ = (focus_index_ + 1) % 3;
+    const HWND native_edit = appui::FocusNativeEdit(m_pm, order[focus_index_], m_hWnd);
+    if (native_edit != nullptr) {
+        // Windows 惯例：Tab 进入字段时全选现有内容。
+        ::SendMessageW(native_edit, EM_SETSEL, 0, -1);
+    }
+}
+
 LRESULT ItemEditWindow::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled) {
     if (uMsg == WM_ACTIVATE && LOWORD(wParam) != WA_INACTIVE) {
         // 激活序列尚未结束（随后还有系统 WM_SETFOCUS 抢回焦点），
@@ -294,14 +266,21 @@ LRESULT ItemEditWindow::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lPa
     if (uMsg == kFocusEditMsg) {
         // 原生 EDIT 子窗口失焦即自毁（CEditWndWin32::OnKillFocus → WM_CLOSE），
         // 重新激活时需重建并把 Win32 焦点交给它，否则键盘输入进不来。
-        EnsureNativeEditFocused(m_pm, name_input_, m_hWnd);
+        focus_index_ = 0;
+        appui::FocusNativeEdit(m_pm, name_input_, m_hWnd);
+        bHandled = TRUE;
+        return 0;
+    }
+    if (uMsg == appui::kCycleFocusMsg) {
+        // 子类化 EDIT 内按 Tab 转发来的焦点轮换请求。
+        CycleInputFocus();
         bHandled = TRUE;
         return 0;
     }
     if (uMsg == WM_CHAR && wParam != VK_RETURN && wParam != VK_ESCAPE) {
         // 字符到达顶层窗口 = 原生 EDIT 没拿到 Win32 焦点（正常时字符直接进 EDIT）。
         // 尽力转交，避免键盘输入丢失。
-        HWND native_edit = EnsureNativeEditFocused(m_pm, name_input_, m_hWnd);
+        HWND native_edit = appui::FocusNativeEdit(m_pm, name_input_, m_hWnd);
         if (native_edit != nullptr) {
             ::SendMessage(native_edit, WM_CHAR, wParam, lParam);
             bHandled = TRUE;
@@ -309,6 +288,12 @@ LRESULT ItemEditWindow::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lPa
         }
     }
     if (uMsg == WM_KEYDOWN) {
+        if (wParam == VK_TAB) {
+            // 焦点不在原生 EDIT 内时 Tab 直接到达顶层窗口。
+            CycleInputFocus();
+            bHandled = TRUE;
+            return 0;
+        }
         if (wParam == VK_ESCAPE) {
             if (on_done_) {
                 on_done_(false, item_id_, {}, {}, {}, {});

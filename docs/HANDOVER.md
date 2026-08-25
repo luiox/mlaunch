@@ -54,21 +54,32 @@ xmake build core_tests; xmake run core_tests   # 22 个用例
 - 设置窗标题 `MLaunchSettings`（类 `MLaunchSettingsWindow`），编辑窗标题 `MLaunchItemEdit`——都可直接 `shot.ps1 -TitlePattern` 截图或 `window find`。
 - 已验证流（2026-08-25 第二次会话）：Ctrl+M→菜单→设置窗打开→Enter 确认→journal `update_settings`+settings.json 落盘；Esc 取消→无 journal；Alt+1 全局热键显隐切换实测通过。
 
-## 五、剩余工作（按 后续计划列表.md 顺序）
+## 五、剩余工作
 
-P0/P1 已全部收口，剩下都是 P2 与可选增强：
+计划列表只剩两项（均为低优先级）：
 
-1. **P2**：
-   - Explorer 真右键菜单（当前 kItemShellMenu 走 ShellExecuteW "properties" 属性页近似）
-   - 无边框窗口阴影（复刻 frmShadow）
-   - 像素级对齐：列表行高、图标灰底框去除、搜索区输入框微调（对照 `docs/poner_ui_reference.png`）
-2. **P-1 尾巴**：清空分组/批量删除的"输入数量"确认框
-3. **编辑窗可选增强**：Tab 焦点轮换、Ctrl+A 全选（原生 EDIT 已支持，需焦点在 EDIT 内）
-4. **设置窗可选增强**：执行后隐藏开关目前是按钮切换（CCheckBoxUI 视觉态依赖图片资源未用）；热键改为按键捕获输入
+1. **阴影窗**：复刻 `frmShadow` 的拖动与阴影行为（无边框窗口阴影）。
+2. **搜索区输入框微调**：更接近 VB6 的灰底容器 + 白输入区感受（对照 `docs/poner_ui_reference.png`）。
 
-## 六、本次会话（2026-08-25 第二次）改动摘要
+可选打磨（未排期）：
+- 设置窗"执行后隐藏"开关改 CCheckBoxUI（视觉态依赖图片资源，现为按钮开/关）。
+- 热键输入改为按键捕获（现为文本框输入 `Alt+1` 式文本）。
+- 清空分组确认对话框复用主窗内嵌 overlay，样式与弹出窗不统一（功能已验证）。
 
-- **设置窗 MVP**：新增 `src/ui/settings_window.{h,cpp}`（420x330 弹出窗，模式同 ItemEditWindow：Esc 取消/Enter 确认/空白拖拽/EnsureNativeEditFocused 补焦点）。
+## 六、本次会话（2026-08-25 第三次）改动摘要
+
+- **P-1 收尾**：core `ClearGroup`（整组软删除入回收站，单次落盘，Ctrl+Z 恢复最后一条）+ 分组菜单"清空分组…"+ 数量确认对话框（输入条目数才能执行，输错拒绝，journal `clear_group`）。测试 22→23。
+- **Explorer 真右键菜单**：`ShowSelectedItemShellMenu` 重写为 `SHParseDisplayName`+`SHBindToParent`+`IContextMenu`（QueryContextMenu/InvokeCommand，scratch id 0x7000-0x7FFF）；非文件系统目标退回属性页。实测打开/取消正常。
+- **像素对齐**：列表行高 34→28、图标 26x26 灰底 → 20x20 透明（对齐 `poner_ui_reference.png`）。
+- **弹窗键盘增强**：新增 `edit_focus_helper.{h,cpp}`——`FocusNativeEdit`（补焦点+**子类化原生 EDIT**）+ Tab 焦点轮换 + Ctrl+A 全选（WM_CHAR 0x01 与 WM_KEYDOWN 双路径，IME 开启时 'A' 变 VK_PROCESSKEY 只能靠 CHAR 路径）。Tab 进入字段全选内容（Windows 惯例）。
+- **关键坑（新）**：
+  - 切换输入框时必须先 `WM_CLOSE` 同步销毁旧原生 EDIT（fork 的 EDIT 失焦自毁是 PostMessage 异步，旧 EDIT 残留会让 FindWindowExW 命中错误窗口、新控件 SETFOCUS 不触发创建）。
+  - **不要用 `m_pm.GetFocus()` 决定 Tab 轮换目标**：fork 的 `PreMessageHandler` 会抢先对 VK_TAB 做 `SetNextTabControl`，m_pFocus 不可信；用窗口内 `focus_index_` 成员确定性轮换。
+  - 目标路径失效的条目走 Explorer 菜单 → SHParseDisplayName 失败 → 自动退回属性页（报错 toast），行为符合预期。
+
+## 六-b、上一次会话（2026-08-25 第二次）改动摘要（commit fd2e2aa）
+
+- **设置窗 MVP**：新增 `src/ui/settings_window.{h,cpp}`（420x330 弹出窗，模式同 ItemEditWindow：Esc 取消/Enter 确认/空白拖拽/补焦点）。
 - **core 扩展**（`launcher_core.{h,cpp}`）：`SortGroupItemsByName`（大小写不敏感稳定排序+journal `sort_group`）、`ExportData`（原子写出独立快照+journal `export_data`）、`UpdateSettings`（钳制+journal `update_settings`）；SaveData 序列化抽成 `SerializeCurrentData` 复用。测试 19→22。
 - **主菜单转正**：按名称排序/导出数据（`PickSaveJsonFilePath`）/设置 全部接入；非列表区域右键、Ctrl+M、Apps 键呼出菜单（`WM_KEYDOWN` 补发 `WM_CONTEXTMENU`，绕过 fork 吞 Shift+F10）。
 - **全局热键**：`RegisterHotKey`（constants `kAppHotkeyId`），`ParseHotkeyString` 解析 `Ctrl+Alt+S` 式文本（字母/数字/F1-F24/命名键/OEM 键，必须带修饰键）；WM_HOTKEY 切换主窗显隐；OnClose 注销。
@@ -81,8 +92,8 @@ P0/P1 已全部收口，剩下都是 P2 与可选增强：
 
 ```powershell
 cd D:\WorkSpace\mlaunch
-git log --oneline -3          # 应看到本次设置窗/主菜单提交
+git log --oneline -3          # 应看到本次清空分组/Explorer 菜单提交
 xmake build mlaunch           # 应 build ok（先关掉在跑的 mlaunch）
-xmake run core_tests          # 应 22 tests PASSED
+xmake run core_tests          # 应 23 tests PASSED
 ```
-UI 验证：运行 mlaunch → Ctrl+M 开主菜单 → Down×5+Enter 打开设置窗 → 改分组栏宽度 → 确定 → 检查 `%LOCALAPPDATA%\nassistant\operations.log` 出现 `update_settings` 且主窗分组栏立即变化；再按 Alt+1 验证全局热键显隐。
+UI 验证：运行 mlaunch → Ctrl+M 开主菜单 → Down×5+Enter 打开设置窗 → Tab 应在四个输入框间轮换且进入时全选 → Ctrl+A 重写热键 → Esc 取消。分组列表上 Ctrl+M → Down×3+Enter 打开"清空分组：输入 N 确认"，输错数量应拒绝。

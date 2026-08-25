@@ -40,7 +40,7 @@ void ListController::RenderGroups() {
 
     for (const auto* group : groups) {
         auto* row = new CListContainerElementUI();
-        row->SetFixedHeight(34);
+        row->SetFixedHeight(28);
         // 选中/悬停高亮由 GroupListUI 列表级 item 色控制（对齐 Poner 灰阶）。
 
         std::wstring display_name;
@@ -89,15 +89,14 @@ void ListController::RenderItems() {
         if (active_cmd != launcher::constants::search_cmd::kNone) {
             auto add_command_row = [&](const std::wstring& label, const std::wstring& desc, int cmd_id) {
                 auto* row = new CListContainerElementUI();
-                row->SetFixedHeight(34);
+                row->SetFixedHeight(28);
                 row->SetAttribute(_T("inset"), _T("4,0,4,0"));
                 row->SetAttribute(_T("childpadding"), _T("6"));
                 row->SetAttribute(_T("childvalign"), _T("vcenter"));
 
                 auto* icon = new FileIconControl();
-                icon->SetFixedWidth(26);
-                icon->SetFixedHeight(26);
-                icon->SetBkColor(0xFFE8F0FE);
+                icon->SetFixedWidth(20);
+                icon->SetFixedHeight(20);
                 row->Add(icon);
 
                 auto* text_layout = new CVerticalLayoutUI();
@@ -164,15 +163,14 @@ void ListController::RenderItems() {
                 }
 
                 auto* row = new CListContainerElementUI();
-                row->SetFixedHeight(34);
+                row->SetFixedHeight(28);
                 row->SetAttribute(_T("inset"), _T("4,0,4,0"));
                 row->SetAttribute(_T("childpadding"), _T("2"));
                 row->SetAttribute(_T("childvalign"), _T("vcenter"));
 
                 auto* icon = new FileIconControl();
-                icon->SetFixedWidth(26);
-                icon->SetFixedHeight(26);
-                icon->SetBkColor(0xFFEBEBEB);
+                icon->SetFixedWidth(20);
+                icon->SetFixedHeight(20);
                 icon->SetIconPath(launcher::util::Utf8ToWide(owner_.icon_manager_.ParseItemIconSource(item)));
                 row->Add(icon);
 
@@ -198,7 +196,7 @@ void ListController::RenderItems() {
     for (const auto& item : group->items) {
         if (item.item_type == "separator") {
             auto* row = new CListContainerElementUI();
-            row->SetFixedHeight(34);
+            row->SetFixedHeight(28);
 
             auto* name = new CLabelUI();
             name->SetText(launcher::util::Utf8ToWide(item.name).c_str());
@@ -214,15 +212,14 @@ void ListController::RenderItems() {
         }
 
         auto* row = new CListContainerElementUI();
-        row->SetFixedHeight(34);
+        row->SetFixedHeight(28);
         row->SetAttribute(_T("inset"), _T("4,0,4,0"));
         row->SetAttribute(_T("childpadding"), _T("2"));
         row->SetAttribute(_T("childvalign"), _T("vcenter"));
 
         auto* icon = new FileIconControl();
-        icon->SetFixedWidth(26);
-        icon->SetFixedHeight(26);
-        icon->SetBkColor(0xFFEBEBEB);
+        icon->SetFixedWidth(20);
+        icon->SetFixedHeight(20);
         icon->SetIconPath(launcher::util::Utf8ToWide(owner_.icon_manager_.ParseItemIconSource(item)));
         row->Add(icon);
 

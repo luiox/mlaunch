@@ -6,6 +6,8 @@
 #include <cctype>
 #include <cstdlib>
 
+#include "edit_focus_helper.h"
+#include "logger.h"
 #include "utils/string_util.h"
 
 using namespace DuiLib;
@@ -69,31 +71,6 @@ CLabelUI* MakeHint(LPCTSTR text) {
     hint->SetFont(1);
     hint->SetTextStyle(DT_LEFT | DT_TOP | DT_SINGLELINE | DT_END_ELLIPSIS);
     return hint;
-}
-
-// 与 ItemEditWindow 相同：本 fork 的原生 EDIT 失焦自毁，程序化打开需手动补焦点。
-HWND EnsureNativeEditFocused(CPaintManagerUI& pm, CEditUI* input, HWND dialog) {
-    if (input == nullptr) {
-        return nullptr;
-    }
-    HWND native_edit = ::FindWindowExW(dialog, nullptr, L"EditWnd", nullptr);
-    if (native_edit == nullptr) {
-        native_edit = ::FindWindowExW(dialog, nullptr, L"Edit", nullptr);
-    }
-    if (native_edit == nullptr) {
-        if (pm.GetFocus() == input) {
-            pm.SetFocus(nullptr);
-        }
-        pm.SetFocus(input);
-        native_edit = ::FindWindowExW(dialog, nullptr, L"EditWnd", nullptr);
-        if (native_edit == nullptr) {
-            native_edit = ::FindWindowExW(dialog, nullptr, L"Edit", nullptr);
-        }
-    }
-    if (native_edit != nullptr) {
-        ::SetFocus(native_edit);
-    }
-    return native_edit;
 }
 
 int ParseIntText(const CDuiString& text, bool* ok) {
@@ -215,7 +192,7 @@ void SettingsWindow::CreateAndShow(HWND owner_hwnd) {
     Create(nullptr, _T("MLaunchSettings"), WS_POPUP | WS_CLIPCHILDREN, WS_EX_TOOLWINDOW, x, y, kWindowWidth, kWindowHeight);
     ::ShowWindow(m_hWnd, SW_SHOW);
     ::SetForegroundWindow(m_hWnd);
-    EnsureNativeEditFocused(m_pm, hotkey_input_, m_hWnd);
+    appui::FocusNativeEdit(m_pm, hotkey_input_, m_hWnd);
 }
 
 bool SettingsWindow::PointOnEditableControl(POINT pt) const {
@@ -264,17 +241,35 @@ void SettingsWindow::Confirm() {
     Close();
 }
 
+void SettingsWindow::CycleInputFocus() {
+    // 不依赖 manager 的 m_pFocus（fork 的 PreMessageHandler 会抢先做
+    // SetNextTabControl 把焦点挪到按钮上），用窗口内索引确定性轮换。
+    DuiLib::CEditUI* order[] = {hotkey_input_, width_input_, height_input_, panel_input_};
+    focus_index_ = (focus_index_ + 1) % 4;
+    const HWND native_edit = appui::FocusNativeEdit(m_pm, order[focus_index_], m_hWnd);
+    if (native_edit != nullptr) {
+        // Windows 惯例：Tab 进入字段时全选现有内容。
+        ::SendMessageW(native_edit, EM_SETSEL, 0, -1);
+    }
+}
+
 LRESULT SettingsWindow::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled) {
     if (uMsg == WM_ACTIVATE && LOWORD(wParam) != WA_INACTIVE) {
         ::PostMessage(m_hWnd, kFocusEditMsg, 0, 0);
     }
     if (uMsg == kFocusEditMsg) {
-        EnsureNativeEditFocused(m_pm, hotkey_input_, m_hWnd);
+        focus_index_ = 0;
+        appui::FocusNativeEdit(m_pm, hotkey_input_, m_hWnd);
+        bHandled = TRUE;
+        return 0;
+    }
+    if (uMsg == appui::kCycleFocusMsg) {
+        CycleInputFocus();
         bHandled = TRUE;
         return 0;
     }
     if (uMsg == WM_CHAR && wParam != VK_RETURN && wParam != VK_ESCAPE) {
-        HWND native_edit = EnsureNativeEditFocused(m_pm, hotkey_input_, m_hWnd);
+        HWND native_edit = appui::FocusNativeEdit(m_pm, hotkey_input_, m_hWnd);
         if (native_edit != nullptr) {
             ::SendMessage(native_edit, WM_CHAR, wParam, lParam);
             bHandled = TRUE;
@@ -282,6 +277,11 @@ LRESULT SettingsWindow::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lPa
         }
     }
     if (uMsg == WM_KEYDOWN) {
+        if (wParam == VK_TAB) {
+            CycleInputFocus();
+            bHandled = TRUE;
+            return 0;
+        }
         if (wParam == VK_ESCAPE) {
             if (on_done_) {
                 on_done_(false, draft_);
