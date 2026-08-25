@@ -88,7 +88,7 @@ target("mlaunch")
     add_deps("mlaunch-core")
     add_deps("DuiLibLite")
 
-    add_syslinks("user32", "gdi32", "comctl32", "comdlg32", "ole32", "oleaut32", "imm32", "winmm", "version", "uxtheme", "shell32", "advapi32")
+    add_syslinks("user32", "gdi32", "comctl32", "comdlg32", "ole32", "oleaut32", "imm32", "winmm", "version", "uxtheme", "shell32", "advapi32", "dwmapi")
 
     after_build(function (target)
         if is_mode("debug") then

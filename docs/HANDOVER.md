@@ -43,6 +43,7 @@ xmake build core_tests; xmake run core_tests   # 22 个用例
 - **OpenCode 终端是置顶窗口**，遮挡屏幕约 x∈[230,1440]（1440x900）：鼠标点击会落在终端上，**键盘 SendInput 可正常到达前台窗口**。UI 自动化用纯键盘。
 - **`et window find --title "Poner"` 会匹配到真 Poner**（`D:\desktop\poner\Poner.exe`，用户可能开着它对照 UI，标题同名）！**必须 `--pid <mlaunch pid>` 限定**。
 - **et 键盘语法坑**：必须 `et keyboard hotkey --keys ctrl+m`（`--keys` 不能省！`et keyboard hotkey ctrl+m` 会 invalid_args 且被 Out-Null 吞掉，表现为"键发了没反应"）。单键 `et keyboard key --key down|enter|esc`。
+- **`et window find` 会匹配隐藏窗口**（visible 过滤不可靠）！判断窗口显隐必须用 `et window list --pid <pid> --include-hidden` 看 visible 字段。本次阴影窗调试时被它误导了很久（隐藏的窗口 find 依然命中）。
 - **本 fork 吞掉 Shift+F10**（前台正确也不产生 WM_CONTEXTMENU）。已给应用加了键盘菜单入口：**Ctrl+M 或 Apps 键** → 按光标位置路由分组/条目/主菜单。
 - 稳定的"打开主菜单"自动化序列（已验证）：
   1. `et window find --title Poner --pid <pid>` 取 handle
@@ -56,18 +57,15 @@ xmake build core_tests; xmake run core_tests   # 22 个用例
 
 ## 五、剩余工作
 
-计划列表只剩两项（均为低优先级）：
-
-1. **阴影窗**：复刻 `frmShadow` 的拖动与阴影行为（无边框窗口阴影）。
-2. **搜索区输入框微调**：更接近 VB6 的灰底容器 + 白输入区感受（对照 `docs/poner_ui_reference.png`）。
-
-可选打磨（未排期）：
+**计划内项目全部完成。** 可选打磨（未排期）：
+- 搜索区输入框微调：更接近 VB6 的灰底容器 + 白输入区感受（对照 `docs/poner_ui_reference.png`）。
 - 设置窗"执行后隐藏"开关改 CCheckBoxUI（视觉态依赖图片资源，现为按钮开/关）。
 - 热键输入改为按键捕获（现为文本框输入 `Alt+1` 式文本）。
 - 清空分组确认对话框复用主窗内嵌 overlay，样式与弹出窗不统一（功能已验证）。
 
 ## 六、本次会话（2026-08-25 第三次）改动摘要
 
+- **阴影窗（frmShadow 复刻）**：新增 `src/ui/shadow_window.{h,cpp}`——WS_EX_LAYERED|TRANSPARENT|TOOLWINDOW|NOACTIVATE 黑色剪影窗，`SetLayeredWindowAttributes` alpha 60，`SetWindowPos(shadow, main, +7,+7)` 插主窗 Z 序正下方；主窗 WM_WINDOWPOSCHANGED/WM_SHOWWINDOW 时 `Sync()`（拖动实时跟随），最小化/最大化/隐藏自动隐藏；OnCreate 里 `DwmSetWindowAttribute(DWMNCRP_DISABLED)` 关掉 DWM 软阴影保持 VB6 硬边风格。实测：+7,+7 精确跟随、移动实时跟随、Alt+1 显隐联动闭环。
 - **P-1 收尾**：core `ClearGroup`（整组软删除入回收站，单次落盘，Ctrl+Z 恢复最后一条）+ 分组菜单"清空分组…"+ 数量确认对话框（输入条目数才能执行，输错拒绝，journal `clear_group`）。测试 22→23。
 - **Explorer 真右键菜单**：`ShowSelectedItemShellMenu` 重写为 `SHParseDisplayName`+`SHBindToParent`+`IContextMenu`（QueryContextMenu/InvokeCommand，scratch id 0x7000-0x7FFF）；非文件系统目标退回属性页。实测打开/取消正常。
 - **像素对齐**：列表行高 34→28、图标 26x26 灰底 → 20x20 透明（对齐 `poner_ui_reference.png`）。

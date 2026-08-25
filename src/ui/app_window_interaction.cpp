@@ -187,6 +187,17 @@ LRESULT AppWindow::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, 
         return pt;
     };
 
+    if (uMsg == WM_SHOWWINDOW) {
+        // 注意：WM_SHOWWINDOW 在可见性变化"之前"发送，此时 IsWindowVisible
+        // 还是旧值；真正的跟随靠下面的 WM_WINDOWPOSCHANGED（变化后触发）。
+        shadow_window_.Sync();
+    }
+
+    if (uMsg == WM_WINDOWPOSCHANGED) {
+        // 拖动/缩放/显隐/Z 序变化时让剪影窗实时跟随（不吞，默认链继续）。
+        shadow_window_.Sync();
+    }
+
     if (uMsg == WM_HOTKEY && wParam == launcher::constants::kAppHotkeyId) {
         ToggleMainWindowVisibility();
         bHandled = TRUE;
@@ -580,6 +591,7 @@ LRESULT AppWindow::OnClose(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandl
         ui_state_timer_active_ = false;
     }
     ::KillTimer(m_hWnd, launcher::constants::timer::kStatusToast);
+    shadow_window_.Detach();
     CloseSettingsDialog();
     CloseItemDialog();
     SaveUiState();

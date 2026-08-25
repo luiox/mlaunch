@@ -10,6 +10,7 @@
 #include "icon_manager.h"
 #include "list_controller.h"
 #include "search_controller.h"
+#include "shadow_window.h"
 #include "shell_services.h"
 #include "status_presenter.h"
 #include "ui_builder.h"
@@ -139,6 +140,7 @@ private:
     ListController list_controller_;
     SearchController search_controller_;
     DialogManager dialog_manager_;
+    ShadowWindow shadow_window_;
 
     DuiLib::CListUI* groups_list_ = nullptr;
     DuiLib::CListUI* items_list_ = nullptr;

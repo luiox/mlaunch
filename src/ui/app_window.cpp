@@ -21,6 +21,8 @@
 #include "ui_builder.h"
 #include "utils/string_util.h"
 
+#include <dwmapi.h>
+
 using namespace DuiLib;
 
 namespace {
@@ -587,6 +589,15 @@ LRESULT AppWindow::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHand
     LoadBackendData();
     RestoreUiState();
     RegisterConfiguredHotkey();
+
+    // 复刻 VB6 frmShadow：关掉 DWM 软阴影，改用主窗后方的硬边偏移剪影。
+    {
+        const DWMNCRENDERINGPOLICY policy = DWMNCRP_DISABLED;
+        ::DwmSetWindowAttribute(m_hWnd, DWMWA_NCRENDERING_POLICY, &policy, sizeof(policy));
+    }
+    shadow_window_.Attach(m_hWnd);
+    shadow_window_.Sync();
+
     __InitWindow();
     bHandled = TRUE;
     return 0;
