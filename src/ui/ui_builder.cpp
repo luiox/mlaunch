@@ -76,7 +76,8 @@ CControlUI* UiBuilder::BuildRootUi() const {
     auto* groupPanel = new CVerticalLayoutUI();
     groupPanel->SetName(_T("group_panel"));
     groupPanel->SetFixedWidth(220);
-    groupPanel->SetAttribute(_T("bkcolor"), _T("0xFFFFFFFF"));
+    // 对齐参考图采样：分组区 E6E6E6 灰底（非白）。
+    groupPanel->SetAttribute(_T("bkcolor"), _T("0xFFE6E6E6"));
     groupPanel->SetAttribute(_T("bordercolor"), _T("0xFFD2D2D2"));
     groupPanel->SetAttribute(_T("bordersize"), _T("0"));
     groupPanel->SetAttribute(_T("inset"), _T("0,0,0,0"));

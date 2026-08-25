@@ -31,12 +31,12 @@ void IconButtonUI::SetSvgImage(const CDuiString& image_attr) {
 
 GroupListUI::GroupListUI() {
     const Theme& theme = GetTheme();
-    // 对齐 Poner：分组区白底，选中浅灰高亮条（本 fork 的 item 色在 TListInfoUI 上）。
-    SetBkColor(theme.white);
+    // 对齐参考图采样：分组区 E6E6E6 灰底，选中条 D2D2D2（与顶栏同灰阶体系）。
+    SetBkColor(theme.panel);
     auto* list_info = GetListInfo();
     list_info->SetItemBkColor(0x00000000);
     list_info->SetSelectedItemBkColor(0xFFD2D2D2);
-    list_info->SetHotItemBkColor(0xFFF0F0F0);
+    list_info->SetHotItemBkColor(0xFFDCDCDC);
     SetAttribute(_T("bordercolor"), theme.list_border_color);
     SetAttribute(_T("bordersize"), theme.border_zero);
     SetAttribute(_T("inset"), theme.inset_zero);

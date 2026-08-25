@@ -35,12 +35,13 @@ CButtonUI* MakeTextButton(LPCTSTR name, LPCTSTR text, int width = 0) {
     if (width > 0) {
         button->SetFixedWidth(width);
     }
-    button->SetAttribute(_T("normalbkcolor"), _T("0xFFF0F0F0"));
-    button->SetAttribute(_T("hotbkcolor"), _T("0xFFE2E2E2"));
-    button->SetAttribute(_T("pushedbkcolor"), _T("0xFFD8D8D8"));
+    // 与主窗 group_dialog 按钮同体系（E6E6E6/D5D5D5，无边框）。
+    button->SetAttribute(_T("normalbkcolor"), _T("0xFFE6E6E6"));
+    button->SetAttribute(_T("hotbkcolor"), _T("0xFFD5D5D5"));
+    button->SetAttribute(_T("pushedbkcolor"), _T("0xFFD5D5D5"));
     button->SetAttribute(_T("textcolor"), _T("0xFF1A1A1A"));
-    button->SetAttribute(_T("bordercolor"), _T("0xFFC8C8C8"));
-    button->SetAttribute(_T("bordersize"), _T("1"));
+    button->SetAttribute(_T("bordercolor"), _T("0x00000000"));
+    button->SetAttribute(_T("bordersize"), _T("0"));
     return button;
 }
 
@@ -48,7 +49,7 @@ CEditUI* MakeInput(LPCTSTR name) {
     auto* input = new CEditUI();
     input->SetName(name);
     input->SetFixedHeight(26);
-    input->SetAttribute(_T("bordercolor"), _T("0xFFC0C0C0"));
+    input->SetAttribute(_T("bordercolor"), _T("0xFFD2D2D2"));
     input->SetAttribute(_T("bordersize"), _T("1"));
     input->SetAttribute(_T("bkcolor"), _T("0xFFFFFFFF"));
     input->SetAttribute(_T("textpadding"), _T("6,3,6,3"));
@@ -91,11 +92,13 @@ ItemEditWindow::ItemEditWindow(AppWindow& owner,
 
 LRESULT ItemEditWindow::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled) {
     m_pm.Init(m_hWnd, GetManagerName(), this);
+    // 与主窗一致：默认微软雅黑 14（否则回落 DuiLib 内置宋体，字面明显不匹配）。
+    m_pm.SetDefaultFont(_T("微软雅黑"), 14, false, false, false, false);
     m_pm.AddFont(1, _T("微软雅黑"), 12, false, false, false);
 
     auto* root = new CVerticalLayoutUI();
     root->SetAttribute(_T("bkcolor"), _T("0xFFFFFFFF"));
-    root->SetAttribute(_T("bordercolor"), _T("0xFFB8B8B8"));
+    root->SetAttribute(_T("bordercolor"), _T("0xFFD2D2D2"));
     root->SetAttribute(_T("bordersize"), _T("1"));
     root->SetAttribute(_T("inset"), _T("14,12,14,12"));
     root->SetAttribute(_T("childpadding"), _T("8"));
