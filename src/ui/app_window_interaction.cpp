@@ -557,6 +557,7 @@ LRESULT AppWindow::OnClose(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandl
         ui_state_timer_active_ = false;
     }
     ::KillTimer(m_hWnd, launcher::constants::timer::kStatusToast);
+    CloseItemDialog();
     SaveUiState();
     PostQuitMessage(0);
     bHandled = FALSE;

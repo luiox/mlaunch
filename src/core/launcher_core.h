@@ -142,6 +142,8 @@ public:
     std::size_t ImportPonerData(const std::filesystem::path& legacy_json_path, std::string* error = nullptr);
     /** @brief Directory treated as the legacy Poner install root. */
     const std::filesystem::path& LegacyRoot() const { return legacy_root_; }
+    /** @brief App install directory used to expand %pr%/%cr% placeholders at launch. */
+    void SetAppDir(std::filesystem::path dir);
     /** @brief List backup files under backups/, newest first. */
     std::vector<BackupEntry> ListBackups() const;
     /** @brief Validate a backup file and restore it as the current dataset. */
@@ -192,6 +194,7 @@ private:
 
     LaunchExecutor* launch_executor_ = nullptr;
     ShortcutResolver* shortcut_resolver_ = nullptr;
+    std::filesystem::path app_dir_;
 
     LauncherData data_;
     Settings settings_;

@@ -134,7 +134,14 @@ AppWindow::AppWindow(std::filesystem::path legacy_root)
             list_controller_(*this),
             search_controller_(*this),
             dialog_manager_(*this) {
+    backend_.SetAppDir(GetExeDir());
     m_vctStaticName.push_back(_T("apptitlebar"));
+}
+
+std::filesystem::path AppWindow::GetExeDir() const {
+    wchar_t buffer[MAX_PATH]{};
+    ::GetModuleFileNameW(nullptr, buffer, MAX_PATH);
+    return std::filesystem::path(buffer).parent_path();
 }
 
 std::string AppWindow::BasenameNoExt(const std::string& path) {
@@ -737,7 +744,7 @@ void AppWindow::ShowMainContextMenu(const POINT& screen_point) {
 void AppWindow::ExecuteMainCommand(UINT command_id) {
     switch (command_id) {
     case launcher::constants::command::kMainNewCustom:
-        AddItemFromFile();
+        OpenItemDialog(false);
         return;
     case launcher::constants::command::kMainSortByName:
         status_.Warn("sort by name is not implemented yet");
@@ -819,11 +826,11 @@ void AppWindow::ExecuteItemCommand(UINT command_id) {
         return;
     }
     if (command_id == launcher::constants::command::kItemAdd) {
-        AddItemFromFile();
+        OpenItemDialog(false);
         return;
     }
     if (command_id == launcher::constants::command::kItemEdit) {
-        EditSelectedItem();
+        OpenItemDialog(true);
         return;
     }
     if (command_id == launcher::constants::command::kItemDelete) {
@@ -840,21 +847,6 @@ void AppWindow::ExecuteItemCommand(UINT command_id) {
     }
 }
 
-std::wstring AppWindow::PickExecutablePath() const {
-    wchar_t file_path[MAX_PATH] = {0};
-    OPENFILENAMEW ofn{};
-    ofn.lStructSize = sizeof(ofn);
-    ofn.hwndOwner = m_hWnd;
-    ofn.lpstrFilter = L"Executable Files (*.exe)\0*.exe\0All Files (*.*)\0*.*\0";
-    ofn.lpstrFile = file_path;
-    ofn.nMaxFile = MAX_PATH;
-    ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_EXPLORER;
-    if (!GetOpenFileNameW(&ofn)) {
-        return {};
-    }
-    return file_path;
-}
-
 std::wstring AppWindow::PickJsonFilePath() const {
     wchar_t file_path[MAX_PATH] = {0};
     OPENFILENAMEW ofn{};
@@ -868,6 +860,35 @@ std::wstring AppWindow::PickJsonFilePath() const {
         return {};
     }
     return file_path;
+}
+
+void AppWindow::OpenItemDialog(bool edit_mode) {
+    if (edit_mode) {
+        const std::string group_id = !selected_item_group_id_.empty() ? selected_item_group_id_ : active_group_id_;
+        if (group_id.empty() || selected_item_id_.empty()) {
+            status_.Warn("select an item first");
+            return;
+        }
+        dialog_manager_.OpenItemDialog(true, group_id, selected_item_id_);
+    } else {
+        if (active_group_id_.empty()) {
+            status_.Warn("select a group first");
+            return;
+        }
+        if (backend_.IsRecycleBinId(active_group_id_)) {
+            status_.Warn("cannot add items to recycle bin");
+            return;
+        }
+        dialog_manager_.OpenItemDialog(false, active_group_id_, std::string());
+    }
+}
+
+void AppWindow::CloseItemDialog() {
+    dialog_manager_.CloseItemDialog();
+}
+
+std::string AppWindow::IconSourceForItem(const core::LaunchItem& item) const {
+    return icon_manager_.ParseItemIconSource(item);
 }
 
 bool AppWindow::ImportPonerFile(const std::filesystem::path& path) {
@@ -889,71 +910,6 @@ bool AppWindow::ImportPonerFile(const std::filesystem::path& path) {
     } else {
         status_.Info("imported " + std::to_string(merged) + " items from " + path.filename().string());
     }
-    return true;
-}
-
-bool AppWindow::AddItemFromFile() {
-    if (active_group_id_.empty()) {
-        status_.Warn("select a group first");
-        return false;
-    }
-
-    const std::wstring file_path = PickExecutablePath();
-    if (file_path.empty()) {
-        status_.Warn("add item canceled");
-        return false;
-    }
-
-    core::ItemInput input;
-    input.item_type = std::string("app");
-    input.name = BasenameNoExt(launcher::util::WideToUtf8(file_path));
-    input.target_path = launcher::util::WideToUtf8(file_path);
-    input.icon_location = input.target_path;
-    input.arguments.clear();
-    input.enabled = true;
-
-    std::string error;
-    if (!backend_.UpsertItem(active_group_id_, input, &error)) {
-        status_.Error("add item failed: " + error);
-        return false;
-    }
-
-    RenderItems();
-    status_.Info("item added");
-    return true;
-}
-
-bool AppWindow::EditSelectedItem() {
-    const core::LaunchItem* item = FindSelectedItem();
-    if (item == nullptr) {
-        status_.Warn("select an item first");
-        return false;
-    }
-
-    const std::wstring file_path = PickExecutablePath();
-    if (file_path.empty()) {
-        status_.Warn("edit item canceled");
-        return false;
-    }
-
-    core::ItemInput input;
-    input.id = item->id;
-    input.item_type = item->item_type;
-    input.name = BasenameNoExt(launcher::util::WideToUtf8(file_path));
-    input.target_path = launcher::util::WideToUtf8(file_path);
-    input.icon_location = input.target_path;
-    input.arguments = item->arguments;
-    input.enabled = item->enabled;
-
-    std::string error;
-    const std::string group_id = !selected_item_group_id_.empty() ? selected_item_group_id_ : active_group_id_;
-    if (!backend_.UpsertItem(group_id, input, &error)) {
-        status_.Error("edit item failed: " + error);
-        return false;
-    }
-
-    RenderItems();
-    status_.Info("item updated");
     return true;
 }
 

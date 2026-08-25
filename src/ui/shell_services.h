@@ -1,6 +1,10 @@
 #pragma once
 
+#include <Windows.h>
+
+#include <optional>
 #include <string>
+#include <utility>
 
 #include "launcher_core.h"
 
@@ -17,5 +21,8 @@ class ShellShortcutResolver : public ShortcutResolver {
 public:
     std::optional<std::pair<std::string, std::string>> Resolve(const std::string& shortcut_path) override;
 };
+
+/** @brief Modal open-file dialog; returns wide path or empty on cancel. */
+std::wstring PickOpenPath(HWND owner_window, const wchar_t* filter);
 
 } // namespace core

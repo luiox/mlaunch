@@ -653,3 +653,43 @@ TEST(BackendTest, ImportPonerDataUpdatesCountAndAppendsNew) {
     }
     EXPECT_GT(backups, 0u);
 }
+
+TEST(BackendTest, LaunchExpandsPlaceholdersAndEnvVars) {
+    const auto legacy = MakeTempDir("legacy_placeholder");
+    const auto base = MakeTempDir("base_placeholder");
+
+    FakeLaunchExecutor executor;
+    core::LauncherBackend b(base, legacy, &executor, nullptr);
+    std::string error;
+    ASSERT_TRUE(b.Load(&error)) << error;
+    b.SetAppDir("D:\\Apps\\mlaunch");
+
+    const auto gid = b.AddGroup("Tools", &error);
+    ASSERT_FALSE(gid.empty()) << error;
+
+    core::ItemInput input;
+    input.name = "Tool";
+    input.target_path = "%pr%\\tools\\tool.exe";
+    input.icon_location = "%pr%\\tools\\tool.exe";
+    input.arguments = "--root %cr%data --user %USERNAME%";
+    ASSERT_TRUE(b.UpsertItem(gid, input, &error)) << error;
+
+    std::string item_id;
+    for (const auto& g : b.Data().groups) {
+        if (g.id == gid && !g.items.empty()) {
+            item_id = g.items[0].id;
+        }
+    }
+    ASSERT_FALSE(item_id.empty());
+
+    const auto result = b.Launch(gid, item_id, &error);
+    ASSERT_TRUE(result.ok) << error;
+    ASSERT_EQ(executor.launched.size(), 1u);
+    EXPECT_EQ(executor.launched[0].first, "D:\\Apps\\mlaunch\\tools\\tool.exe");
+    EXPECT_NE(executor.launched[0].second.find("--root D:\\data"), std::string::npos);
+    EXPECT_NE(executor.launched[0].second.find("--user "), std::string::npos);
+    // %USERNAME% 应被展开为非空值（不再包含百分号）
+    const auto& args = executor.launched[0].second;
+    const auto user_pos = args.find("--user ");
+    EXPECT_EQ(args.find('%', user_pos), std::string::npos) << args;
+}

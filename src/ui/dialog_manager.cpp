@@ -4,6 +4,8 @@
 #include <cctype>
 
 #include "app_window.h"
+#include "item_edit_window.h"
+#include "logger.h"
 #include "utils/string_util.h"
 
 using namespace DuiLib;
@@ -96,4 +98,79 @@ void DialogManager::ConfirmGroupDialog() {
             break;
         }
     }
+}
+
+
+void DialogManager::OpenItemDialog(bool edit_mode, const std::string& group_id, const std::string& item_id) {
+    if (item_edit_window_ != nullptr) {
+        // 已打开则置前，避免多份编辑窗。
+        ::SetForegroundWindow(*item_edit_window_);
+        return;
+    }
+
+    core::LaunchItem initial;
+    if (edit_mode) {
+        const core::LaunchItem* found = nullptr;
+        for (const auto& g : owner_.backend_.Data().groups) {
+            if (g.id != group_id) continue;
+            for (const auto& i : g.items) {
+                if (i.id == item_id) { found = &i; break; }
+            }
+            if (found != nullptr) break;
+        }
+        if (found == nullptr) {
+            owner_.status_.Warn("item not found");
+            return;
+        }
+        initial = *found;
+    }
+
+    const std::string group_id_copy = group_id;
+    const std::string item_id_copy = item_id;
+    item_edit_window_ = new ItemEditWindow(
+        owner_, edit_mode, group_id_copy, item_id_copy,
+        edit_mode ? &initial : nullptr,
+        [this, group_id_copy, item_id_copy](bool confirmed, const std::string& item_id,
+                                            const std::string& name, const std::string& target,
+                                            const std::string& args, const std::string& icon) {
+            OnItemEditDone(group_id_copy, confirmed, item_id, name, target, args, icon);
+        });
+    item_edit_window_->CreateAndShow(owner_.m_hWnd);
+}
+
+void DialogManager::CloseItemDialog() {
+    if (item_edit_window_ != nullptr) {
+        item_edit_window_->Close();
+        // Close 触发销毁链，OnFinalMessage 中自删除；此处不触碰指针内容。
+        item_edit_window_ = nullptr;
+    }
+}
+
+void DialogManager::OnItemEditDone(const std::string& group_id, bool confirmed, const std::string& item_id,
+                                   const std::string& name, const std::string& target,
+                                   const std::string& args, const std::string& icon_location) {
+    item_edit_window_ = nullptr;
+    if (!confirmed) {
+        return;
+    }
+
+    core::ItemInput input;
+    if (!item_id.empty()) {
+        input.id = item_id;
+    }
+    input.name = name;
+    input.target_path = target;
+    input.arguments = args;
+    input.icon_location = icon_location;
+    input.item_type = std::string("app");
+    input.enabled = true;
+
+    std::string error;
+    if (!owner_.backend_.UpsertItem(group_id, input, &error)) {
+        owner_.status_.Error("save item failed: " + error);
+        return;
+    }
+
+    owner_.RenderItems();
+    owner_.status_.Info(item_id.empty() ? "item added" : "item updated");
 }

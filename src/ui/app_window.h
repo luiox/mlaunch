@@ -32,6 +32,7 @@ public:
     DuiLib::CDuiString GetSkinFolder() { return _T(""); }
     bool HasRestoredWindowPlacement() const { return has_restored_window_; }
     bool ShouldStartMaximized() const { return start_maximized_; }
+    std::string IconSourceForItem(const core::LaunchItem& item) const;
 
     void Notify(DuiLib::TNotifyUI& msg) override;
     LRESULT MessageHandler(UINT uMsg, WPARAM wParam, LPARAM lParam, bool& bHandled) override;
@@ -81,8 +82,6 @@ private:
     void ExecuteBackupCommand(UINT command_id);
     bool IsActiveGroupRecycleBin() const;
 
-    bool AddItemFromFile();
-    bool EditSelectedItem();
     bool DeleteActiveGroup();
     bool MoveSelectedItemToGroup(const std::string& target_group_id);
     bool RunSelectedItemAsAdmin();
@@ -91,7 +90,10 @@ private:
     bool CopySelectedItemPath();
     bool ImportPonerFile(const std::filesystem::path& path);
 
-    std::wstring PickExecutablePath() const;
+    void OpenItemDialog(bool edit_mode);
+    void CloseItemDialog();
+    std::filesystem::path GetExeDir() const;
+
     std::wstring PickJsonFilePath() const;
     std::string GenerateNewGroupName() const;
     const core::Group* FindActiveGroup() const;

@@ -7,6 +7,7 @@
 #include <ShObjIdl.h>
 #include <Shlwapi.h>
 #include <shellapi.h>
+#include <commdlg.h>
 #include <atlbase.h>
 
 #include <utility>
@@ -71,6 +72,21 @@ std::optional<std::pair<std::string, std::string>> ShellShortcutResolver::Resolv
     }
 
     return std::make_pair(launcher::util::WideToUtf8(target_w), launcher::util::WideToUtf8(args));
+}
+
+std::wstring PickOpenPath(HWND owner_window, const wchar_t* filter) {
+    wchar_t file_path[MAX_PATH] = {0};
+    OPENFILENAMEW ofn{};
+    ofn.lStructSize = sizeof(ofn);
+    ofn.hwndOwner = owner_window;
+    ofn.lpstrFilter = filter;
+    ofn.lpstrFile = file_path;
+    ofn.nMaxFile = MAX_PATH;
+    ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_EXPLORER;
+    if (!GetOpenFileNameW(&ofn)) {
+        return {};
+    }
+    return file_path;
 }
 
 } // namespace core

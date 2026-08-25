@@ -79,7 +79,7 @@ target("mlaunch")
         add_deps("libicon_core_embed")
     end
 
-    add_defines("UNICODE", "_UNICODE", "WIN32", "_WINDOWS")
+    add_defines("UNICODE", "_UNICODE", "WIN32", "_WINDOWS", "UILIB_STATIC")
     add_includedirs("src/ui", {public = true})
 
     add_files("src/ui/*.cpp")

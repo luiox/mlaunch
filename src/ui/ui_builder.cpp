@@ -1,6 +1,7 @@
 #include "ui_builder.h"
 
 #include "app_window.h"
+#include "file_icon_control.h"
 #include "icon_manager.h"
 #include "ui_controls.h"
 

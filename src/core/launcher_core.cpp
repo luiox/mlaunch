@@ -36,6 +36,27 @@ std::string ToStdString(const ca::str::Utf8StringRef& ref) {
     return std::string(reinterpret_cast<const char*>(ref.data()), ref.byte_length());
 }
 
+void ReplaceAllInPlace(std::string* text, const std::string& from, const std::string& to) {
+    if (from.empty() || text == nullptr) {
+        return;
+    }
+    std::size_t pos = 0;
+    while ((pos = text->find(from, pos)) != std::string::npos) {
+        text->replace(pos, from.size(), to);
+        pos += to.size();
+    }
+}
+
+std::string ExpandEnvUtf8(const std::string& text) {
+    std::wstring wide = launcher::util::Utf8ToWide(text);
+    wchar_t buffer[32768]{};
+    const DWORD size = ::ExpandEnvironmentStringsW(wide.c_str(), buffer, 32768);
+    if (size == 0 || size > 32768) {
+        return text;
+    }
+    return launcher::util::WideToUtf8(buffer);
+}
+
 const ca::json::JsonValue* FindField(const ca::json::JsonValue& object, const char* key) {
     return object.find(ca::str::Utf8StringRef::from_cstr(key));
 }
@@ -351,6 +372,10 @@ LauncherBackend::LauncherBackend(std::filesystem::path base_dir,
       settings_path_(base_dir_ / "nassistant.settings.json"),
       launch_executor_(launch_executor),
       shortcut_resolver_(shortcut_resolver) {}
+
+void LauncherBackend::SetAppDir(std::filesystem::path dir) {
+    app_dir_ = std::move(dir);
+}
 
 std::string LauncherBackend::Trim(const std::string& value) {
     const auto begin = std::find_if_not(value.begin(), value.end(), [](unsigned char ch) { return std::isspace(ch); });
@@ -1458,8 +1483,22 @@ LaunchResult LauncherBackend::Launch(const std::string& group_id, const std::str
         return result;
     }
 
+    // 占位符与环境变量展开（对齐 VB6 Poner：%pr%=程序目录，%cr%=所在盘根目录）。
+    std::string launch_target = it->target_path;
+    std::string launch_args = it->arguments;
+    if (!app_dir_.empty()) {
+        const auto app_dir_text = app_dir_.string();
+        const auto drive_root_text = app_dir_.root_path().string();
+        ReplaceAllInPlace(&launch_target, "%pr%", app_dir_text);
+        ReplaceAllInPlace(&launch_target, "%cr%", drive_root_text);
+        ReplaceAllInPlace(&launch_args, "%pr%", app_dir_text);
+        ReplaceAllInPlace(&launch_args, "%cr%", drive_root_text);
+    }
+    launch_target = ExpandEnvUtf8(launch_target);
+    launch_args = ExpandEnvUtf8(launch_args);
+
     std::string launch_error;
-    if (!launch_executor_->Launch(it->target_path, it->arguments, &launch_error)) {
+    if (!launch_executor_->Launch(launch_target, launch_args, &launch_error)) {
         SetError(error, launch_error.empty() ? "launch failed" : launch_error);
         result.message = "launch failed";
         return result;
