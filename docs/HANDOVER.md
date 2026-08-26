@@ -72,6 +72,13 @@ xmake build core_tests; xmake run core_tests   # 22 个用例
   3. **CheckBoxUI::Activate 先通知后翻转**：ButtonUI::Activate 同步发 CLICK 通知时 IsChecked 还是旧值，宿主保存拿到旧状态。修法与其它字段对齐：Confirm() 统一读控件状态，CLICK 分支不写 draft。
 - 自动化坑（新）：**后台应用会抢前台**（calibre 定时任务弹窗），et 发键前必须 activate→校验 fg→再发，必要时重试一次；PrintWindow 对刚失焦再激活的窗可能给陈旧帧，拿不准就用整屏 CopyFromScreen 对照。
 
+## 五-c、开源/合流状态（2026-08-26 第六次会话末）
+
+- `feature/dev-plan-abc` 已 fast-forward 合入 **main** 并推送（commit 至 ci 修正共 13 个），分支已删。**main 即最终态，可直接开源**；尚缺 LICENSE（需用户选定，建议 MIT）。
+- 新增 `.github/workflows/build.yml`（windows release/debug 矩阵 + core_tests + exe 产物）。注意：GitHub 上 xmake 的 action 现名 `xmake-io/github-action-setup-xmake`，已按完整 commit SHA（3a1a5dd）引用。
+- **CI 平台侧异常待办**：mlaunch 仓库的 run 反复卡在 queued 不分配 runner、甚至出现"run 已失败但 job 零执行"的僵尸态；同 YAML 在 duilib fork 双矩阵 2.5 分钟全绿可证配置无误。恢复手段：网页 Actions 页对 `ci: 触发 workflow 运行`(5dd7997) 点 Re-run，或任意新 push。
+- **DuiLib fork**（luiox/DuiLib_DuiEditor）：修复+构建两个提交经 `fix/mlaunch-backports-and-build` 走 PR review（[#1](https://github.com/luiox/DuiLib_DuiEditor/pull/1)，CI 双矩阵绿，MERGEABLE）；origin/master 已回退到合并前基点 34cf1e3，**用户点 merge 后 master 精确回到 26d4686**（mlaunch submodule 引用的正是它）。第三方库提取已建 issue [#2](https://github.com/luiox/DuiLib_DuiEditor/issues/2)（含旧 refactor 分支盘点与步骤建议）；fork 的 Issues 开关已打开。
+
 ## 五-a、批次 C + P1.3 收尾（2026-08-26 第五次会话）摘要
 
 - **批次 C 拆分重构完成**：C1 `launcher_core` 拆为 persistence/launch 编译单元 + `launcher_core_internal.h`（JSON 读写/原子写/MD5/时间戳等内部共享辅助，全 inline）；C2 `app_window` 拆出 menus（菜单与命令执行）/lifecycle（ui_state+热键+显隐）+ `app_window_internal.h`。纯机械搬移，声明-定义全量核对无遗漏。e8f0d69 / f86744b。
