@@ -75,8 +75,7 @@ xmake build core_tests; xmake run core_tests   # 22 个用例
 ## 五-c、开源/合流状态（2026-08-26 第六次会话末）
 
 - `feature/dev-plan-abc` 已 fast-forward 合入 **main** 并推送（commit 至 ci 修正共 13 个），分支已删。**main 即最终态，可直接开源**；尚缺 LICENSE（需用户选定，建议 MIT）。
-- 新增 `.github/workflows/build.yml`（windows release/debug 矩阵 + core_tests + exe 产物）。注意：GitHub 上 xmake 的 action 现名 `xmake-io/github-action-setup-xmake`，已按完整 commit SHA（3a1a5dd）引用。
-- **CI 平台侧异常待办**：mlaunch 仓库的 run 反复卡在 queued 不分配 runner、甚至出现"run 已失败但 job 零执行"的僵尸态；同 YAML 在 duilib fork 双矩阵 2.5 分钟全绿可证配置无误。恢复手段：网页 Actions 页对 `ci: 触发 workflow 运行`(5dd7997) 点 Re-run，或任意新 push。
+- 新增 `.github/workflows/build.yml`（windows release/debug 矩阵 + core_tests + exe 产物），**已全绿**（run 33023183400）。排障记录：GitHub 上 xmake 的 action 现名 `xmake-io/github-action-setup-xmake`（按完整 commit SHA 3a1a5dd 引用，tag 引用会触发启动失败）；`actions/checkout` 的 `submodules: true/recursive` 都会递归进嵌套 submodule，而 DuiLib fork 的 `3rd/SDL_ttf/external/` 下有 4 个无 .gitmodules 登记的死 gitlink，宿主仓库递归检出必炸——已在 duilib PR #1 里移除（ffb032c），mlaunch 的 submodule 也改为钉 fix 分支头，PR 合并后 master 即该提交。
 - **DuiLib fork**（luiox/DuiLib_DuiEditor）：修复+构建两个提交经 `fix/mlaunch-backports-and-build` 走 PR review（[#1](https://github.com/luiox/DuiLib_DuiEditor/pull/1)，CI 双矩阵绿，MERGEABLE）；origin/master 已回退到合并前基点 34cf1e3，**用户点 merge 后 master 精确回到 26d4686**（mlaunch submodule 引用的正是它）。第三方库提取已建 issue [#2](https://github.com/luiox/DuiLib_DuiEditor/issues/2)（含旧 refactor 分支盘点与步骤建议）；fork 的 Issues 开关已打开。
 
 ## 五-a、批次 C + P1.3 收尾（2026-08-26 第五次会话）摘要
