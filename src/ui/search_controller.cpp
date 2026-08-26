@@ -4,6 +4,7 @@
 #include <cctype>
 
 #include "app_window.h"
+#include "logger.h"
 #include "utils/string_util.h"
 
 SearchController::SearchController(AppWindow& owner)
@@ -38,9 +39,9 @@ void SearchController::UpdateSearchUi() {
     }
     owner_.m_pm.NeedUpdate();
     if (owner_.search_mode_ && owner_.search_input_ != nullptr) {
-        owner_.search_input_->SetFocus();
-        const int text_len = owner_.search_input_->GetText().GetLength();
-        owner_.search_input_->SetSel(text_len, text_len);
+        // 此刻布局尚未执行（控件 rect 仍为 0,0,0,0），同步 SetFocus 会以
+        // 0 尺寸创建原生 EDIT 且之后不再跟随重排；延迟到布局完成后聚焦。
+        ::PostMessage(owner_.m_pm.GetPaintWindow(), launcher::constants::kFocusSearchMsg, 0, 0);
     }
 }
 

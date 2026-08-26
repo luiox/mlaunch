@@ -47,6 +47,10 @@ constexpr UINT kBackupStartFresh = 4900;
 /// @brief Global hotkey id used with RegisterHotKey on the main window.
 constexpr int kAppHotkeyId = 0xA001;
 
+/// @brief 搜索模式延迟聚焦：UpdateSearchUi 时布局尚未跑（rect 仍为 0），
+/// 同步 SetFocus 会以 0 尺寸创建原生 EDIT；PostMessage 到布局完成后再聚焦。
+constexpr UINT kFocusSearchMsg = WM_APP + 0x1B;
+
 namespace timer {
 constexpr UINT_PTR kUiStateSave = 0x4E53;
 constexpr UINT_PTR kListDragPoll = 0x4E54;

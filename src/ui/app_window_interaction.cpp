@@ -204,6 +204,21 @@ LRESULT AppWindow::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, 
         return 0;
     }
 
+    if (uMsg == launcher::constants::kFocusSearchMsg) {
+        // 布局完成后再聚焦搜索输入框（见 kFocusSearchMsg 注释）。
+        // PostMessage 排在 WM_PAINT 之前被处理（WM_PAINT 优先级最低），
+        // 到这里 rect 可能仍是 0,0,0,0——先 UpdateWindow 同步走一次
+        // OnPaint 全量重排（root 已被 NeedUpdate 标记），再创建原生 EDIT。
+        ::UpdateWindow(m_hWnd);
+        if (search_input_ != nullptr) {
+            search_input_->SetFocus();
+            const int text_len = search_input_->GetText().GetLength();
+            search_input_->SetSel(text_len, text_len);
+        }
+        bHandled = TRUE;
+        return 0;
+    }
+
     if (uMsg == WM_GETMINMAXINFO) {
         auto* info = reinterpret_cast<MINMAXINFO*>(lParam);
         if (info != nullptr) {

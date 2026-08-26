@@ -58,11 +58,22 @@ xmake build core_tests; xmake run core_tests   # 22 个用例
 ## 五、剩余工作
 
 **计划内项目全部完成。** 可选打磨（未排期）：
-- 搜索区输入框微调：更接近 VB6 的灰底容器 + 白输入区感受（对照 `docs/poner_ui_reference.png`）。
 - 设置窗"执行后最小化"开关改 CCheckBoxUI（视觉态依赖图片资源，现为按钮开/关）。
 - 热键输入改为按键捕获（现为文本框输入 `Alt+1` 式文本）。
-- 清空分组确认对话框复用主窗内嵌 overlay，样式与弹出窗不统一（功能已验证）。
 - 新建分组 overlay 宽 360 > 窗口 331 时居中会贴左（低优先）。
+- fork 部分更新绘制在合成条件下可能残留脏帧（见第六-a PrintWindow 坑），真实使用（鼠标 hover 持续产生失效区域）未观察到。
+
+## 五-a、批次 C + P1.3 收尾（2026-08-26 第五次会话）摘要
+
+- **批次 C 拆分重构完成**：C1 `launcher_core` 拆为 persistence/launch 编译单元 + `launcher_core_internal.h`（JSON 读写/原子写/MD5/时间戳等内部共享辅助，全 inline）；C2 `app_window` 拆出 menus（菜单与命令执行）/lifecycle（ui_state+热键+显隐）+ `app_window_internal.h`。纯机械搬移，声明-定义全量核对无遗漏。e8f0d69 / f86744b。
+- **C3 回归**：干净重编 + core_tests 22/22（B2 删 ClearGroup 后 23→22）+ 主窗/设置窗/编辑窗截图走查通过。
+- **P1.3 搜索区视觉（本次）**：`search_bar` 灰底容器 D2D2D2 + inset 4,2,4,2，`SearchBoxUI` 改白底（对齐 VB6 Search.UserControl 灰底 + Text1 白输入区层次）。
+- **搜索输入聚焦时序修复（本次）**：原 `UpdateSearchUi` 在 toggle 内同步 `SetFocus`，此刻布局未跑（rect=0,0,0,0），原生 EDIT 以 0 尺寸创建。修复：`kFocusSearchMsg`（constants.h，WM_APP+0x1B）PostMessage 延迟 + 处理器里先 `::UpdateWindow` 强制同步走 OnPaint 全量重排（PostMessage 排在 WM_PAINT 之前，仅延迟不够），再 SetFocus。实测 EDIT 落位 (12,43)-(625,60) 精确等于控件 rect 减 textpadding。
+- **自动化关键坑（新，血泪）**：
+  - **PrintWindow 对离屏窗口不可信**：窗口挪到屏幕外（x=-350 躲终端遮挡）后，`shot.ps1`（PrintWindow）对离屏区域渲染出黑块或陈旧像素（"Common 行变白框"实为伪影）。**验证真实视觉必须用屏幕截取**（CopyFromScreen）：窗放 x=0，左侧 0-230 条带不被终端遮挡（分组面板宽 86 恰好全在条带内），"挪到 -350 点击 → 挪回 0 截屏"是可靠流程。
+  - **搜狗输入法拦截 et keyboard 单键**：字母键进入 IME 组词（弹候选窗），表现为"键发了没反应/列表没过滤"。先发一次 `shift` 切英文模式再打字。
+  - **et window find 输出解析**：`ConvertFrom-Json` 取 `.data.handle` 在窗口未变时可行；主窗类名 `NAssistantMainFrame`，用 `et window list --pid <pid>` 过滤 class_name 更稳。
+  - pwsh 里 rg 的 glob 参数（`src/ui/*.cpp`）不展开会报错，用 `--glob "app_window*.cpp"` 代替。
 
 ## 六、本次会话（2026-08-25 第四次）改动摘要
 

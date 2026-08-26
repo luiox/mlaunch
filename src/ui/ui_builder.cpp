@@ -60,7 +60,8 @@ CControlUI* UiBuilder::BuildRootUi() const {
     searchBar->SetName(_T("search_bar"));
     searchBar->SetVisible(false);
     searchBar->SetFixedHeight(0);
-    searchBar->SetAttribute(_T("inset"), _T("0,0,0,0"));
+    // VB6 搜索区：灰底 UserControl 容器 + 内缩的白底输入区（34 = 2+30+2）。
+    searchBar->SetAttribute(_T("inset"), _T("4,2,4,2"));
     searchBar->SetAttribute(_T("childpadding"), _T("0"));
     searchBar->SetAttribute(_T("bkcolor"), _T("0xFFD2D2D2"));
 
