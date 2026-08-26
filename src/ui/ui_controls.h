@@ -33,6 +33,8 @@ class ButtonUI : public DuiLib::CButtonUI {
 public:
     LPCTSTR GetClass() const override { return _T("AppButton"); }
     void SetStateColors(DWORD normal, DWORD hot, DWORD pushed);
+    // 粘滞按下态（如搜索模式下的放大镜）：激活期间恒显示 pushed 色，直到再次关闭。
+    void SetActive(bool active);
 
 protected:
     void PaintStatusImage(DuiLib::UIRender* pRender) override;
@@ -41,6 +43,7 @@ private:
     DWORD normal_color_ = 0x00000000;
     DWORD hot_color_ = 0x00000000;
     DWORD pushed_color_ = 0x00000000;
+    bool active_ = false;
 };
 
 // 主体系文本按钮：E6E6E6 常态 / D5D5D5 悬停按下，无边框，高 28。

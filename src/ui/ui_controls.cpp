@@ -15,9 +15,19 @@ void ButtonUI::SetStateColors(DWORD normal, DWORD hot, DWORD pushed) {
     pushed_color_ = pushed;
 }
 
+void ButtonUI::SetActive(bool active) {
+    if (active_ == active) {
+        return;
+    }
+    active_ = active;
+    Invalidate();
+}
+
 void ButtonUI::PaintStatusImage(DuiLib::UIRender* pRender) {
     DWORD color = normal_color_;
-    if (IsPushedState() && pushed_color_ != 0) {
+    if (active_ && pushed_color_ != 0) {
+        color = pushed_color_;
+    } else if (IsPushedState() && pushed_color_ != 0) {
         color = pushed_color_;
     } else if (IsHotState() && hot_color_ != 0) {
         color = hot_color_;

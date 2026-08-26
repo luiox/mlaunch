@@ -27,6 +27,10 @@ void SearchController::UpdateSearchUi() {
     if (owner_.search_input_ != nullptr) {
         owner_.search_input_->SetVisible(owner_.search_mode_);
     }
+    // 放大镜按钮粘滞按下态：搜索模式期间恒显示 pushed 底色。
+    if (owner_.search_button_ != nullptr) {
+        owner_.search_button_->SetActive(owner_.search_mode_);
+    }
     // 此 fork OnPaint 只在 root 自身被标记时才全量重排（否则走单控件部分更新，
     // 会在旧位置叠加绘制），显式标记 root 强制整窗重排。
     if (owner_.m_pm.GetRoot() != nullptr) {

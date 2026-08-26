@@ -16,7 +16,6 @@ public:
     explicit DialogManager(AppWindow& owner);
 
     void OpenGroupDialog(bool rename_mode, const std::string& group_id);
-    void OpenClearGroupDialog(const std::string& group_id, std::size_t expected_count);
     void CloseGroupDialog();
     void ConfirmGroupDialog();
 

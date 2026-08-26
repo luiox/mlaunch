@@ -21,7 +21,6 @@ namespace command {
 constexpr UINT kGroupAdd = 1001;
 constexpr UINT kGroupRename = 1002;
 constexpr UINT kGroupDelete = 1003;
-constexpr UINT kGroupClear = 1004;
 
 constexpr UINT kItemAdd = 1101;
 constexpr UINT kItemEdit = 1102;
@@ -37,7 +36,7 @@ constexpr UINT kMainSortByName = 3002;
 constexpr UINT kMainImportData = 3003;
 constexpr UINT kMainExportData = 3004;
 constexpr UINT kMainSettings = 3005;
-constexpr UINT kMainWebSite = 3006;
+
 constexpr UINT kMainExit = 3007;
 
 constexpr UINT kBackupRestoreBase = 4000;

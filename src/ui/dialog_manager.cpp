@@ -22,7 +22,6 @@ void DialogManager::OpenGroupDialog(bool rename_mode, const std::string& group_i
 
     owner_.group_dialog_rename_mode_ = rename_mode;
     owner_.group_dialog_group_id_ = group_id;
-    owner_.group_dialog_clear_count_ = 0;
 
     if (rename_mode) {
         const core::Group* group = nullptr;
@@ -48,24 +47,6 @@ void DialogManager::OpenGroupDialog(bool rename_mode, const std::string& group_i
     owner_.m_pm.NeedUpdate();
 }
 
-void DialogManager::OpenClearGroupDialog(const std::string& group_id, std::size_t expected_count) {
-    if (owner_.group_dialog_ == nullptr || owner_.group_dialog_input_ == nullptr || owner_.group_dialog_title_ == nullptr) {
-        owner_.status_.Error("分组对话框不可用");
-        return;
-    }
-
-    owner_.group_dialog_rename_mode_ = false;
-    owner_.group_dialog_group_id_ = group_id;
-    owner_.group_dialog_clear_count_ = expected_count;
-
-    owner_.group_dialog_title_->SetText(
-        (std::wstring(L"清空分组：输入 ") + std::to_wstring(expected_count) + L" 确认").c_str());
-    owner_.group_dialog_input_->SetText(_T(""));
-    owner_.group_dialog_->SetVisible(true);
-    owner_.group_dialog_input_->SetFocus();
-    owner_.m_pm.NeedUpdate();
-}
-
 void DialogManager::CloseGroupDialog() {
     if (owner_.group_dialog_ == nullptr) {
         return;
@@ -73,7 +54,6 @@ void DialogManager::CloseGroupDialog() {
     owner_.group_dialog_->SetVisible(false);
     owner_.group_dialog_group_id_.clear();
     owner_.group_dialog_rename_mode_ = false;
-    owner_.group_dialog_clear_count_ = 0;
     owner_.m_pm.NeedUpdate();
 }
 
@@ -83,40 +63,6 @@ void DialogManager::ConfirmGroupDialog() {
     }
 
     const std::string raw_input = launcher::util::WideToUtf8(owner_.group_dialog_input_->GetText().GetData());
-
-    // 清空分组确认模式：必须输入将被删除的条目数量，强迫看清后果。
-    if (owner_.group_dialog_clear_count_ > 0) {
-        std::string trimmed = raw_input;
-        trimmed.erase(trimmed.begin(), std::find_if(trimmed.begin(), trimmed.end(), [](unsigned char ch) { return !std::isspace(ch); }));
-        while (!trimmed.empty() && std::isspace(static_cast<unsigned char>(trimmed.back()))) {
-            trimmed.pop_back();
-        }
-        bool numeric = !trimmed.empty() && trimmed.find_first_not_of("0123456789") == std::string::npos;
-        if (!numeric || std::stoull(trimmed) != owner_.group_dialog_clear_count_) {
-            owner_.status_.Warn("数量不符，已取消清空");
-            return;
-        }
-
-        std::string error;
-        const auto cleared = owner_.backend_.ClearGroup(owner_.group_dialog_group_id_, &error);
-        if (error.empty() && cleared == 0) {
-            owner_.status_.Warn("分组已为空");
-            CloseGroupDialog();
-            return;
-        }
-        if (cleared == 0) {
-            owner_.status_.Error("清空分组失败：" + error);
-            return;
-        }
-
-        owner_.selected_item_id_.clear();
-        owner_.selected_item_group_id_.clear();
-        CloseGroupDialog();
-        owner_.RenderGroups();
-        owner_.RenderItems();
-        owner_.status_.Info("已清空 " + std::to_string(cleared) + " 条 · Ctrl+Z 撤销最后一条");
-        return;
-    }
 
     std::string name = raw_input;
     std::string trimmed = name;

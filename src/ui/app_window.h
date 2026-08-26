@@ -14,6 +14,7 @@
 #include "shell_services.h"
 #include "status_presenter.h"
 #include "ui_builder.h"
+#include "ui_controls.h"
 
 class UiBuilder;
 class ListController;
@@ -71,13 +72,12 @@ private:
 
     void ShowGroupContextMenu(const POINT& screen_point);
     void ShowItemContextMenu(const POINT& screen_point);
-    void ShowMainContextMenu(const POINT& screen_point);
+    void ShowMainContextMenu(const POINT& screen_point, bool right_align = false);
     void ExecuteMainCommand(UINT command_id);
     void ExecuteGroupCommand(UINT command_id);
     void ExecuteItemCommand(UINT command_id);
     void ExecuteSearchCommand(const std::string& item_id);
     void OpenGroupDialog(bool rename_mode, const std::string& group_id);
-    void OpenClearGroupDialog(const std::string& group_id, std::size_t expected_count);
     void CloseGroupDialog();
     void ConfirmGroupDialog();
 
@@ -146,6 +146,7 @@ private:
     DuiLib::CListUI* items_list_ = nullptr;
     DuiLib::CLabelUI* status_line_ = nullptr;
     DuiLib::CControlUI* search_bar_ = nullptr;
+    appui::IconButtonUI* search_button_ = nullptr;
     DuiLib::CVerticalLayoutUI* group_panel_ = nullptr;
     DuiLib::CControlUI* panel_splitter_ = nullptr;
     DuiLib::CEditUI* search_input_ = nullptr;
@@ -163,7 +164,6 @@ private:
     bool search_mode_ = false;
     bool group_dialog_rename_mode_ = false;
     std::string group_dialog_group_id_;
-    std::size_t group_dialog_clear_count_ = 0;
 
     bool splitter_dragging_ = false;
     int splitter_drag_start_x_ = 0;

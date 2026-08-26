@@ -397,7 +397,21 @@ LRESULT AppWindow::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, 
         DebugLog("capture changed while holding left button, keep dragging");
     }
 
-    if (uMsg == WM_EXITSIZEMOVE) {
+    // WM_ENTRYSIZEMOVE(0x0231)/WM_EXITSIZEMOVE(0x0232)：部分 SDK 头未暴露，用字面量。
+    if (uMsg == 0x0231) {
+        // 对齐原版：拖拽/缩放期间挂起重绘（DWM 显示旧帧），结束后统一重排去闪烁。
+        m_pm.LockUpdate(true);
+    }
+
+    if (uMsg == 0x0232) {
+        if (m_pm.IsLockUpdate()) {
+            m_pm.LockUpdate(false);
+            if (m_pm.GetRoot() != nullptr) {
+                m_pm.GetRoot()->NeedUpdate();
+            }
+            m_pm.NeedUpdate();
+            m_pm.Invalidate();
+        }
         MarkUiStateDirty();
     }
 

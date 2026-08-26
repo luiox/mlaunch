@@ -575,6 +575,7 @@ LRESULT AppWindow::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHand
     items_list_ = static_cast<CListUI*>(m_pm.FindControl(_T("items_list")));
     status_line_ = static_cast<CLabelUI*>(m_pm.FindControl(_T("status_line")));
     search_bar_ = m_pm.FindControl(_T("search_bar"));
+    search_button_ = static_cast<appui::IconButtonUI*>(m_pm.FindControl(_T("searchbtn")));
     group_panel_ = static_cast<CVerticalLayoutUI*>(m_pm.FindControl(_T("group_panel")));
     panel_splitter_ = m_pm.FindControl(_T("panel_splitter"));
     search_input_ = static_cast<CEditUI*>(m_pm.FindControl(_T("search_input")));
@@ -632,10 +633,15 @@ void AppWindow::Notify(TNotifyUI& msg) {
             return;
         }
         if (msg.pSender != nullptr && msg.pSender->GetName() == _T("menubtn")) {
-            RECT rc{};
-            ::GetWindowRect(m_hWnd, &rc);
-            POINT menu_point{rc.left + 12, rc.top + 35};
-            ShowMainContextMenu(menu_point);
+            // 对齐原版：菜单贴在 ☰ 按钮正下方（按钮右缘对齐），不弹到窗口左侧。
+            POINT menu_point{0, 0};
+            if (msg.pSender != nullptr) {
+                const RECT btn_rc = msg.pSender->GetPos();
+                POINT client_pt{btn_rc.right, btn_rc.bottom};
+                ::ClientToScreen(m_hWnd, &client_pt);
+                menu_point = client_pt;
+            }
+            ShowMainContextMenu(menu_point, true);
             return;
         }
     }
@@ -697,7 +703,6 @@ void AppWindow::ShowGroupContextMenu(const POINT& screen_point) {
     AppendMenuW(menu, MF_STRING, launcher::constants::command::kGroupAdd, L"新建分组");
     AppendMenuW(menu, MF_STRING, launcher::constants::command::kGroupRename, L"重命名分组");
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-    AppendMenuW(menu, MF_STRING, launcher::constants::command::kGroupClear, L"清空分组…");
     AppendMenuW(menu, MF_STRING, launcher::constants::command::kGroupDelete, L"删除分组");
 
     SetForegroundWindow(m_hWnd);
@@ -753,11 +758,11 @@ void AppWindow::ShowItemContextMenu(const POINT& screen_point) {
     }
 }
 
-void AppWindow::ShowMainContextMenu(const POINT& screen_point) {
+void AppWindow::ShowMainContextMenu(const POINT& screen_point, bool right_align) {
     HMENU menu = CreatePopupMenu();
     HMENU new_menu = CreatePopupMenu();
 
-    AppendMenuW(new_menu, MF_STRING, launcher::constants::command::kMainNewCustom, L"自定义项目");
+    AppendMenuW(new_menu, MF_STRING, launcher::constants::command::kMainNewCustom, L"自定义项目…");
     AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(new_menu), L"新建项目");
     AppendMenuW(menu, MF_STRING, launcher::constants::command::kMainSortByName, L"按名称排序");
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
@@ -765,11 +770,11 @@ void AppWindow::ShowMainContextMenu(const POINT& screen_point) {
     AppendMenuW(menu, MF_STRING, launcher::constants::command::kMainExportData, L"导出数据");
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(menu, MF_STRING, launcher::constants::command::kMainSettings, L"设置");
-    AppendMenuW(menu, MF_STRING, launcher::constants::command::kMainWebSite, L"官方网站");
     AppendMenuW(menu, MF_STRING, launcher::constants::command::kMainExit, L"退出");
 
     SetForegroundWindow(m_hWnd);
-    const UINT command_id = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_RIGHTBUTTON, screen_point.x, screen_point.y, 0, m_hWnd, nullptr);
+    const UINT flags = TPM_RETURNCMD | TPM_RIGHTBUTTON | (right_align ? TPM_RIGHTALIGN : 0);
+    const UINT command_id = TrackPopupMenu(menu, flags, screen_point.x, screen_point.y, 0, m_hWnd, nullptr);
     DestroyMenu(menu);
 
     if (command_id != 0) {
@@ -828,9 +833,6 @@ void AppWindow::ExecuteMainCommand(UINT command_id) {
     case launcher::constants::command::kMainSettings:
         OpenSettingsDialog();
         return;
-    case launcher::constants::command::kMainWebSite:
-        ShellExecuteW(nullptr, L"open", L"https://www.52pojie.cn/?Poner", nullptr, nullptr, SW_SHOWNORMAL);
-        return;
     case launcher::constants::command::kMainExit:
         ::PostMessage(m_hWnd, WM_CLOSE, 0, 0);
         return;
@@ -885,20 +887,6 @@ void AppWindow::ExecuteGroupCommand(UINT command_id) {
         return;
     }
 
-    if (command_id == launcher::constants::command::kGroupClear) {
-        const core::Group* group = FindActiveGroup();
-        if (group == nullptr) {
-            status_.Warn("请先选择分组");
-            return;
-        }
-        if (group->items.empty()) {
-            status_.Warn("分组已为空");
-            return;
-        }
-        OpenClearGroupDialog(group->id, group->items.size());
-        return;
-    }
-
     if (command_id == launcher::constants::command::kGroupDelete) {
         DeleteActiveGroup();
     }
@@ -906,10 +894,6 @@ void AppWindow::ExecuteGroupCommand(UINT command_id) {
 
 void AppWindow::OpenGroupDialog(bool rename_mode, const std::string& group_id) {
     dialog_manager_.OpenGroupDialog(rename_mode, group_id);
-}
-
-void AppWindow::OpenClearGroupDialog(const std::string& group_id, std::size_t expected_count) {
-    dialog_manager_.OpenClearGroupDialog(group_id, expected_count);
 }
 
 void AppWindow::CloseGroupDialog() {
