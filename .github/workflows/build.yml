@@ -16,7 +16,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
+          # 单层 submodule 即可（DuiLib + libca）；recursive 会递归进
+          # DuiLib 的 SDL_ttf externals（无 .gitmodules 的历史死链）。
+          submodules: true
 
       - uses: xmake-io/github-action-setup-xmake@3a1a5dddfc7fa625d9a698738334bf55655a861a
         with:
