@@ -60,7 +60,17 @@ xmake build core_tests; xmake run core_tests   # 22 个用例
 **计划内项目全部完成。** 可选打磨（未排期）：
 - 新建分组 overlay 宽 360 > 窗口 331 时居中会贴左（低优先）。
 - fork 部分更新绘制在合成条件下可能残留脏帧（见第六-a PrintWindow 坑），真实使用（鼠标 hover 持续产生失效区域）未观察到。
-- 设置窗两项打磨已完成未做交互走查：热键框点击进入捕获模式（录组合键，Esc 取消/Tab 跳走/仅按修饰键显示进度）、"执行后最小化"改自绘 CheckBoxUI（appui::CheckBoxUI，蓝底白勾，无需图片资源）。待人工验证：点热键框→按 Ctrl+Alt+X 式组合→Enter 确认→热键生效。
+- 开源收尾：仓库尚无 LICENSE，发布前需选定（如 MIT）并保留 DuiLib/libca 的上游声明。
+
+## 五-b、设置窗打磨收尾（2026-08-26 第六次会话）：热键捕获 + 自绘复选框
+
+- **热键捕获**：热键框改只读，点击进入捕获模式录制组合键（词表与 `ParseHotkeyString` 逐项核对一致）。Esc 取消 / Tab 取消并轮换 / 仅按修饰键显示进度 / 无修饰键提示拒绝。全流程 et 自动化实测通过，含真实按键的全局热键闭环（捕获 Alt+1 → Enter → 物理按下主窗显隐切换）。
+- **自绘 `appui::CheckBoxUI`**（ui_controls）：14px 边框盒+蓝底白勾，替换"执行后最小化"按钮式开关，规避 fork CCheckBoxUI 依赖图片资源的问题。
+- **自动化走查揪出三个真 bug（均已修）**：
+  1. **Tab 在捕获态收不到**：fork 的 MessageLoop 在派发前用 `PreMessageHandler` 吞掉 VK_TAB 做 SetNextTabControl（KNOWN_ISSUES #10 的真正机制在**消息循环层**，比文档写的更深）。修法：SettingsWindow 实现 fork 的 `ITranslateAccelerator` 并 AddTranslateAccelerator——这是唯一早于 PreMessageHandler 的扩展点。
+  2. **Tab 轮换后原生 EDIT 持焦拦截按键**：点击热键框进捕获后，宽度框的 EDIT 子窗口仍持有键盘焦点，KEYDOWN 全进子窗口。修法：StartHotkeyCapture 里 `::SetFocus(m_hWnd)` 收归顶层；同时废掉 kFocusEditMsg 对只读热键框的自动聚焦（WM_ACTIVATE 每次触发都会创建寄生 EDIT，把 Esc/点击也拦住）。
+  3. **CheckBoxUI::Activate 先通知后翻转**：ButtonUI::Activate 同步发 CLICK 通知时 IsChecked 还是旧值，宿主保存拿到旧状态。修法与其它字段对齐：Confirm() 统一读控件状态，CLICK 分支不写 draft。
+- 自动化坑（新）：**后台应用会抢前台**（calibre 定时任务弹窗），et 发键前必须 activate→校验 fg→再发，必要时重试一次；PrintWindow 对刚失焦再激活的窗可能给陈旧帧，拿不准就用整屏 CopyFromScreen 对照。
 
 ## 五-a、批次 C + P1.3 收尾（2026-08-26 第五次会话）摘要
 

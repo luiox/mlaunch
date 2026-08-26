@@ -14,7 +14,7 @@
  * 对齐 ItemEditWindow 的弹出窗模式：Esc 取消、Enter 确认、任意空白拖拽。
  * 字段：热键、执行后最小化、默认窗口宽高、分组栏宽度。
  */
-class SettingsWindow : public DuiLib::WindowImplBase {
+class SettingsWindow : public DuiLib::WindowImplBase, private DuiLib::ITranslateAccelerator {
 public:
     using DoneCallback = std::function<void(bool confirmed, const core::Settings& settings)>;
 
@@ -38,6 +38,11 @@ protected:
     /** @brief 热键捕获：点击输入框进入，录制下一个组合键。 */
     void StartHotkeyCapture();
     void CancelHotkeyCapture();
+
+private:
+    /** @brief 消息循环层加速键：捕获态拦截 VK_TAB（fork 的 PreMessageHandler
+     *  在窗口过程之前吞掉 Tab 做 SetNextTabControl，窗口层收不到）。 */
+    LRESULT TranslateAccelerator(MSG* pMsg) override;
 
 private:
     DoneCallback on_done_;

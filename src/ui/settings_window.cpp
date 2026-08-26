@@ -235,6 +235,7 @@ LRESULT SettingsWindow::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& 
 
     m_pm.AttachDialog(root);
     m_pm.AddNotifier(this);
+    m_pm.AddTranslateAccelerator(this);
 
     hotkey_input_->SetText(launcher::util::Utf8ToWide(draft_.hotkey).c_str());
     width_input_->SetText(std::to_wstring(static_cast<int>(draft_.main_window_width)).c_str());
@@ -275,6 +276,10 @@ bool SettingsWindow::PointOnEditableControl(POINT pt) const {
 void SettingsWindow::StartHotkeyCapture() {
     capturing_ = true;
     capture_prev_ = hotkey_input_->GetText();
+    // 焦点收归顶层窗口：Tab 轮换留下的原生 EDIT 子窗口仍持有键盘焦点时，
+    // 按键会进 EDIT 而非顶层消息链，捕获就收不到 KEYDOWN；置顶层焦点后
+    // 旧 EDIT 失焦自毁（fork 行为），不影响后续编辑（点击字段会重建）。
+    ::SetFocus(m_hWnd);
     hotkey_input_->SetAttribute(_T("bordercolor"), _T("0xFF1A73E8"));
     hotkey_input_->SetText(_T("按下组合键，Esc 取消"));
     m_pm.NeedUpdate();
@@ -297,6 +302,9 @@ void SettingsWindow::Confirm() {
 
     core::Settings next = draft_;
     next.hotkey = TrimCopy(launcher::util::WideToUtf8(hotkey_input_->GetText().GetData()));
+    // 控件状态在确认时统一读取；CheckBoxUI::Activate 先通知后翻转，
+    // CLICK 通知里读 IsChecked 拿到的是旧值（与其它字段同风格）。
+    next.execute_hide = hide_check_->IsChecked();
 
     const int width = ParseIntText(width_input_->GetText(), &ok);
     if (!ok || width < 320 || width > 3840) {
@@ -341,8 +349,9 @@ LRESULT SettingsWindow::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lPa
         ::PostMessage(m_hWnd, kFocusEditMsg, 0, 0);
     }
     if (uMsg == kFocusEditMsg) {
-        focus_index_ = 0;
-        appui::FocusNativeEdit(m_pm, hotkey_input_, m_hWnd);
+        // 热键框已改为只读+点击捕获式：不再自动聚焦它——那会给只读框创建
+        // 原生 EDIT 并持有键盘焦点，把捕获态的按键/点击全部拦截在子窗口层。
+        // 其余输入框不预聚焦，用户点击或 Tab 时按需创建。
         bHandled = TRUE;
         return 0;
     }
@@ -459,14 +468,23 @@ void SettingsWindow::Notify(TNotifyUI& msg) {
             Close();
             return;
         }
-        if (name == _T("settings_hide_check")) {
-            draft_.execute_hide = hide_check_->IsChecked();
-            return;
-        }
     }
 }
 
 void SettingsWindow::OnFinalMessage(HWND hWnd) {
+    m_pm.RemoveTranslateAccelerator(this);
     WindowImplBase::OnFinalMessage(hWnd);
     delete this;
+}
+
+LRESULT SettingsWindow::TranslateAccelerator(MSG* pMsg) {
+    // fork 的 MessageLoop 在派发前用 PreMessageHandler 吞掉 VK_TAB 做
+    // SetNextTabControl（UIManager.cpp），捕获态的"Tab 取消"必须在这层拦截，
+    // 否则焦点被挪到下一个输入框、后续按键漏进它的原生 EDIT。
+    if (capturing_ && pMsg != nullptr && pMsg->message == WM_KEYDOWN && pMsg->wParam == VK_TAB) {
+        CancelHotkeyCapture();
+        CycleInputFocus();
+        return S_OK;
+    }
+    return S_FALSE;
 }
