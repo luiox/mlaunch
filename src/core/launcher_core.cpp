@@ -1367,53 +1367,6 @@ bool LauncherBackend::DeleteItem(const std::string& group_id, const std::string&
     return SaveData(error);
 }
 
-std::size_t LauncherBackend::ClearGroup(const std::string& group_id, std::string* error) {
-    if (!EnsureLoaded(error)) {
-        return 0;
-    }
-    if (IsRecycleBinId(group_id)) {
-        SetError(error, "recycle bin is managed automatically");
-        return 0;
-    }
-
-    // EnsureRecycleBin 可能扩容 groups，先建回收站再取源分组指针。
-    auto* bin = EnsureRecycleBin();
-    auto* group = FindGroup(group_id);
-    if (group == nullptr) {
-        SetError(error, "group not found");
-        return 0;
-    }
-    if (group->hidden) {
-        SetError(error, "cannot modify hidden groups directly");
-        return 0;
-    }
-
-    const std::size_t count = group->items.size();
-    if (count == 0) {
-        SetError(error, "group is already empty");
-        return 0;
-    }
-
-    // 单次落盘；撤销快照取最后一条（Ctrl+Z 恢复最后删除的条目）。
-    for (auto it = group->items.begin(); it != group->items.end(); ++it) {
-        DeletedItemSnapshot snapshot;
-        snapshot.item = *it;
-        snapshot.from_group_id = group->id;
-        snapshot.from_group_name = group->name;
-        snapshot.index = static_cast<std::size_t>(std::distance(group->items.begin(), it));
-        bin->items.push_back(snapshot.item);
-        last_deleted_ = std::move(snapshot);
-        has_last_deleted_ = true;
-    }
-    group->items.clear();
-
-    AppendJournal("clear_group", "id=" + group->id + " name=" + group->name + " count=" + std::to_string(count));
-    if (!SaveData(error)) {
-        return 0;
-    }
-    return count;
-}
-
 bool LauncherBackend::MoveItem(const std::string& group_id, const std::string& item_id, const std::string& target_group_id, std::string* error) {
     if (!EnsureLoaded(error)) {
         return false;
