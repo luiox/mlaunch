@@ -27,6 +27,11 @@ void SearchController::UpdateSearchUi() {
     if (owner_.search_input_ != nullptr) {
         owner_.search_input_->SetVisible(owner_.search_mode_);
     }
+    // 此 fork OnPaint 只在 root 自身被标记时才全量重排（否则走单控件部分更新，
+    // 会在旧位置叠加绘制），显式标记 root 强制整窗重排。
+    if (owner_.m_pm.GetRoot() != nullptr) {
+        owner_.m_pm.GetRoot()->NeedUpdate();
+    }
     owner_.m_pm.NeedUpdate();
     if (owner_.search_mode_ && owner_.search_input_ != nullptr) {
         owner_.search_input_->SetFocus();
@@ -44,7 +49,7 @@ void SearchController::ToggleSearchMode() {
     }
     UpdateSearchUi();
     owner_.RenderItems();
-    owner_.status_.Info(owner_.search_mode_ ? "搜索模式：开" : "搜索模式：关");
+    // 对齐原版：切换搜索模式不弹 toast。
 }
 
 std::string SearchController::CommandIdToItemId(int cmd_id) {

@@ -556,12 +556,7 @@ LRESULT AppWindow::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, 
             return 0;
         }
         if (wParam == VK_ESCAPE && search_mode_) {
-            search_mode_ = false;
-            if (search_input_ != nullptr) {
-                search_input_->SetText(_T(""));
-            }
-            UpdateSearchUi();
-            RenderItems();
+            search_controller_.ToggleSearchMode();
             bHandled = TRUE;
             return 0;
         }

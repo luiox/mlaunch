@@ -106,7 +106,8 @@ SearchBoxUI::SearchBoxUI() {
     SetBkColor(0xFFD2D2D2);
     SetAttribute(_T("bordercolor"), _T("0xFFD2D2D2"));
     SetAttribute(_T("bordersize"), _T("0"));
-    SetAttribute(_T("nativebkcolor"), _T("0xFFD2D2D2"));
+    // 对齐 VB6 原版：Search.UserControl 底色 D2D2D2，Text1 为默认白底无边框 TextBox。
+    // 不设置 nativebkcolor——该路径的画刷会让原生 EDIT 背景变黑，且原文本框本就是白底。
     SetAttribute(_T("textpadding"), _T("8,4,8,4"));
 }
 

@@ -87,6 +87,44 @@ void ListController::RenderItems() {
 
         const int active_cmd = owner_.search_controller_.GetActiveCommand();
 
+        // 对齐原版：空输入不显示任何结果，改为三行居中提示。
+        if (keyword.empty() && active_cmd == launcher::constants::search_cmd::kNone) {
+            int list_height = owner_.items_list_->GetPos().bottom - owner_.items_list_->GetPos().top;
+            int spacer = list_height / 2 - 60;
+            if (spacer < 0) {
+                spacer = 0;
+            }
+            auto* spacer_row = new CListContainerElementUI();
+            spacer_row->SetFixedHeight(spacer);
+            spacer_row->SetEnabled(false);
+            owner_.items_list_->Add(spacer_row);
+            owner_.item_ids_.push_back("");
+            owner_.item_group_ids_.push_back("");
+
+            const std::wstring hints[] = {
+                L"输入关键字开始搜索，ESC键退出搜索",
+                L"上下键选择，回车键运行",
+                L"如果你觉得 Poner 不错就介绍给朋友吧",
+            };
+            for (const auto& hint : hints) {
+                auto* row = new CListContainerElementUI();
+                row->SetFixedHeight(33);
+                row->SetEnabled(false);
+                row->SetAttribute(_T("inset"), _T("4,0,4,0"));
+
+                auto* label = new CLabelUI();
+                label->SetText(hint.c_str());
+                label->SetTextColor(0xFF808689);
+                label->SetTextStyle(DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+                row->Add(label);
+
+                owner_.items_list_->Add(row);
+                owner_.item_ids_.push_back("");
+                owner_.item_group_ids_.push_back("");
+            }
+            return;
+        }
+
         if (active_cmd != launcher::constants::search_cmd::kNone) {
             auto add_command_row = [&](const std::wstring& label, const std::wstring& desc, int cmd_id) {
                 auto* row = new CListContainerElementUI();

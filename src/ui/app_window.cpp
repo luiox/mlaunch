@@ -645,6 +645,22 @@ void AppWindow::Notify(TNotifyUI& msg) {
         return;
     }
 
+    // 搜索框持有焦点时，回车/ESC 由原生 EDIT 转成通知送到这里。
+    if (msg.pSender != nullptr && msg.pSender->GetName() == _T("search_input")) {
+        if (_tcscmp(msg.sType, DUI_MSGTYPE_RETURN) == 0) {
+            if (search_mode_) {
+                LaunchSelectedItem();
+            }
+            return;
+        }
+        if (_tcscmp(msg.sType, _T("escape")) == 0) {
+            if (search_mode_) {
+                search_controller_.ToggleSearchMode();
+            }
+            return;
+        }
+    }
+
     if (_tcscmp(msg.sType, DUI_MSGTYPE_ITEMCLICK) == 0 && msg.pSender != nullptr) {
         if (groups_list_ != nullptr && IsSenderFromList(msg.pSender, groups_list_)) {
             SelectGroupByIndex(groups_list_->GetCurSel());
