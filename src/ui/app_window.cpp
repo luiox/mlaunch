@@ -825,7 +825,37 @@ void AppWindow::ExecuteMainCommand(UINT command_id) {
 
 void AppWindow::ExecuteGroupCommand(UINT command_id) {
     if (command_id == launcher::constants::command::kGroupAdd) {
-        OpenGroupDialog(false, std::string());
+        // 对齐 VB6 原版：新建分组不弹窗，按当前可见分组数+1 直接创建“分组N”。
+        std::size_t visible_count = 0;
+        for (const auto& group : backend_.Data().groups) {
+            if (!group.hidden) {
+                ++visible_count;
+            }
+        }
+        std::string created_id;
+        std::string error;
+        std::string name;
+        for (std::size_t suffix = visible_count + 1; suffix <= visible_count + 64; ++suffix) {
+            name = "分组" + std::to_string(suffix);
+            created_id = backend_.AddGroup(name, &error);
+            if (!created_id.empty()) {
+                break;
+            }
+            error.clear();
+        }
+        if (created_id.empty()) {
+            status_.Error("新建分组失败：" + error);
+            return;
+        }
+        active_group_id_ = created_id;
+        RenderGroups();
+        for (int i = 0; i < static_cast<int>(group_ids_.size()); ++i) {
+            if (group_ids_[i] == created_id) {
+                SelectGroupByIndex(i);
+                break;
+            }
+        }
+        status_.Info("已创建分组 " + name);
         return;
     }
 
