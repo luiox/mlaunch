@@ -18,7 +18,7 @@ jobs:
         with:
           submodules: recursive
 
-      - uses: xmake-io/github-action-setup-xmake@v1.2.5
+      - uses: xmake-io/github-action-setup-xmake@3a1a5dddfc7fa625d9a698738334bf55655a861a
         with:
           xmake-version: latest
 
