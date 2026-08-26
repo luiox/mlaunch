@@ -36,6 +36,10 @@ target("DuiLibLite")
         duilib_dir .. "/Utils/unzip.cpp",
         duilib_dir .. "/Utils/UIDataExchange.cpp",
         duilib_dir .. "/**/**Gtk.cpp",
+        -- 新上游引入 SDL 后端（DUILIB_SDL 宏门控），其头文件在宏门外包含 SDL.h，
+        -- Win32 构建必须整组排除（与 fork 根 xmake.lua 的排除清单一致）。
+        duilib_dir .. "/**/*Sdl.cpp",
+        duilib_dir .. "/**/*SDL.cpp",
         duilib_dir .. "/Render/UIObject_Cairo.cpp",
         duilib_dir .. "/Render/UIRender_Cairo.cpp",
         duilib_dir .. "/Render/UIRender_CairoWin32.cpp",
