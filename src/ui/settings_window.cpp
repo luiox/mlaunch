@@ -75,6 +75,72 @@ int ParseIntText(const CDuiString& text, bool* ok) {
     return static_cast<int>(value);
 }
 
+// —— 热键捕获 ——
+
+bool IsModifierKey(WPARAM vk) {
+    return vk == VK_CONTROL || vk == VK_MENU || vk == VK_SHIFT || vk == VK_LWIN || vk == VK_RWIN;
+}
+
+UINT CollectModifiers() {
+    UINT mods = 0;
+    if ((::GetKeyState(VK_CONTROL) & 0x8000) != 0) mods |= MOD_CONTROL;
+    if ((::GetKeyState(VK_MENU) & 0x8000) != 0) mods |= MOD_ALT;
+    if ((::GetKeyState(VK_SHIFT) & 0x8000) != 0) mods |= MOD_SHIFT;
+    if (((::GetKeyState(VK_LWIN) & 0x8000) != 0) || ((::GetKeyState(VK_RWIN) & 0x8000) != 0)) mods |= MOD_WIN;
+    return mods;
+}
+
+std::wstring ModifierPrefix(UINT mods) {
+    std::wstring out;
+    if (mods & MOD_CONTROL) out += L"Ctrl+";
+    if (mods & MOD_SHIFT) out += L"Shift+";
+    if (mods & MOD_ALT) out += L"Alt+";
+    if (mods & MOD_WIN) out += L"Win+";
+    return out;
+}
+
+// 与 AppWindow::ParseHotkeyString 的词表保持一致（Ctrl/Alt/Shift/Win + 主键）。
+std::wstring VirtualKeyName(WPARAM vk) {
+    wchar_t buf[8] = {};
+    if ((vk >= 'A' && vk <= 'Z') || (vk >= '0' && vk <= '9')) {
+        return std::wstring(1, static_cast<wchar_t>(vk));
+    }
+    if (vk >= VK_F1 && vk <= VK_F24) {
+        swprintf_s(buf, L"F%d", static_cast<int>(vk - VK_F1 + 1));
+        return buf;
+    }
+    switch (vk) {
+    case VK_SPACE: return L"Space";
+    case VK_TAB: return L"Tab";
+    case VK_ESCAPE: return L"Esc";
+    case VK_RETURN: return L"Enter";
+    case VK_BACK: return L"Back";
+    case VK_PRIOR: return L"PgUp";
+    case VK_NEXT: return L"PgDn";
+    case VK_HOME: return L"Home";
+    case VK_END: return L"End";
+    case VK_INSERT: return L"Ins";
+    case VK_DELETE: return L"Del";
+    case VK_PAUSE: return L"Pause";
+    case VK_CAPITAL: return L"CapsLock";
+    case VK_NUMLOCK: return L"NumLock";
+    case VK_SCROLL: return L"ScrollLock";
+    case VK_SNAPSHOT: return L"PrintScreen";
+    case VK_OEM_3: return L"`";
+    case VK_OEM_MINUS: return L"-";
+    case VK_OEM_PLUS: return L"=";
+    case VK_OEM_4: return L"[";
+    case VK_OEM_6: return L"]";
+    case VK_OEM_5: return L"\\";
+    case VK_OEM_1: return L";";
+    case VK_OEM_7: return L"'";
+    case VK_OEM_COMMA: return L",";
+    case VK_OEM_PERIOD: return L".";
+    case VK_OEM_2: return L"/";
+    default: return L"";
+    }
+}
+
 } // namespace
 
 SettingsWindow::SettingsWindow(const core::Settings& initial, DoneCallback on_done)
@@ -104,25 +170,28 @@ LRESULT SettingsWindow::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& 
     root->Add(title);
 
     // 统一栅格：标签列 78px，行高 26px，控件左缘对齐。
-    // 热键行
+    // 热键行：只读展示框，点击进入捕获模式录制组合键。
     auto* hotkey_row = new CHorizontalLayoutUI();
     hotkey_row->SetFixedHeight(26);
     hotkey_row->SetAttribute(_T("childpadding"), _T("4"));
     hotkey_row->Add(MakeFieldLabel(_T("全局热键"), 92));
     hotkey_input_ = MakeInput(_T("settings_hotkey_input"));
+    hotkey_input_->SetReadOnly(true);
     hotkey_row->Add(hotkey_input_);
     root->Add(hotkey_row);
-    root->Add(MakeHint(_T("示例 Alt+1、Ctrl+Alt+S；留空禁用。修改后立即生效")));
+    root->Add(MakeHint(_T("点击输入框后按下组合键（需含 Ctrl/Alt/Shift/Win）；留空禁用")));
 
     // 执行后最小化（对齐 VB6 原版：启动条目后窗口最小化到任务栏）
     auto* hide_row = new CHorizontalLayoutUI();
     hide_row->SetFixedHeight(26);
     hide_row->SetAttribute(_T("childpadding"), _T("4"));
     hide_row->Add(MakeFieldLabel(_T("执行后最小化"), 92));
-    hide_toggle_ = MakeTextButton(_T("settings_hide_toggle"), draft_.execute_hide ? _T("开") : _T("关"), 56);
-    hide_toggle_->SetFixedHeight(26);
-    hide_toggle_->SetTextColor(draft_.execute_hide ? 0xFF1A73E8 : 0xFF909090);
-    hide_row->Add(hide_toggle_);
+    hide_check_ = new appui::CheckBoxUI();
+    hide_check_->SetName(_T("settings_hide_check"));
+    hide_check_->SetText(_T("启用"));
+    hide_check_->SetFixedWidth(70);
+    hide_check_->SetChecked(draft_.execute_hide);
+    hide_row->Add(hide_check_);
     root->Add(hide_row);
 
     // 默认窗口宽高
@@ -197,14 +266,34 @@ bool SettingsWindow::PointOnEditableControl(POINT pt) const {
     const CDuiString name = control->GetName();
     if (name == _T("settings_hotkey_input") || name == _T("settings_width_input") ||
         name == _T("settings_height_input") || name == _T("settings_panel_input") ||
-        name == _T("settings_hide_toggle")) {
+        name == _T("settings_hide_check")) {
         return true;
     }
     return control->GetInterface(_T("ButtonUI")) != nullptr;
 }
 
+void SettingsWindow::StartHotkeyCapture() {
+    capturing_ = true;
+    capture_prev_ = hotkey_input_->GetText();
+    hotkey_input_->SetAttribute(_T("bordercolor"), _T("0xFF1A73E8"));
+    hotkey_input_->SetText(_T("按下组合键，Esc 取消"));
+    m_pm.NeedUpdate();
+}
+
+void SettingsWindow::CancelHotkeyCapture() {
+    capturing_ = false;
+    hotkey_input_->SetAttribute(_T("bordercolor"), _T("0xFFD2D2D2"));
+    hotkey_input_->SetText(capture_prev_.GetData());
+    m_pm.NeedUpdate();
+}
+
 void SettingsWindow::Confirm() {
     bool ok = false;
+
+    // 捕获未完成就点确定：放弃录制，恢复原文本。
+    if (capturing_) {
+        CancelHotkeyCapture();
+    }
 
     core::Settings next = draft_;
     next.hotkey = TrimCopy(launcher::util::WideToUtf8(hotkey_input_->GetText().GetData()));
@@ -262,6 +351,39 @@ LRESULT SettingsWindow::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lPa
         bHandled = TRUE;
         return 0;
     }
+
+    // 热键捕获模式：拦截全部键盘消息用于录制组合键。
+    if (capturing_ && (uMsg == WM_KEYDOWN || uMsg == WM_SYSKEYDOWN)) {
+        const WPARAM vk = wParam;
+        if (vk == VK_ESCAPE) {
+            CancelHotkeyCapture();
+        } else if (vk == VK_TAB) {
+            CancelHotkeyCapture();
+            CycleInputFocus();
+        } else if (IsModifierKey(vk)) {
+            // 只按了修饰键：显示进度提示，继续等待主键。
+            hotkey_input_->SetText((ModifierPrefix(CollectModifiers()) + L"…").c_str());
+        } else {
+            const UINT mods = CollectModifiers();
+            const std::wstring key = VirtualKeyName(vk);
+            if (mods == 0 || key.empty()) {
+                hotkey_input_->SetText(L"需包含 Ctrl/Alt/Shift/Win 修饰键");
+            } else {
+                hotkey_input_->SetAttribute(_T("bordercolor"), _T("0xFFD2D2D2"));
+                hotkey_input_->SetText((ModifierPrefix(mods) + key).c_str());
+                capturing_ = false;
+            }
+        }
+        m_pm.NeedUpdate();
+        bHandled = TRUE;
+        return 0;
+    }
+    if (capturing_ && (uMsg == WM_CHAR || uMsg == WM_SYSCHAR)) {
+        // 组合键由 KEYDOWN 路径录制，字符消息全部吞掉（含 Alt+字母的系统菜单路径）。
+        bHandled = TRUE;
+        return 0;
+    }
+
     if (uMsg == WM_CHAR && wParam != VK_RETURN && wParam != VK_ESCAPE) {
         HWND native_edit = appui::FocusNativeEdit(m_pm, hotkey_input_, m_hWnd);
         if (native_edit != nullptr) {
@@ -292,6 +414,21 @@ LRESULT SettingsWindow::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lPa
     }
     if (uMsg == WM_LBUTTONDOWN) {
         const POINT pt{GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
+        CControlUI* hit = m_pm.FindControl(pt);
+        const bool on_hotkey = (hit != nullptr && hit->GetName() == _T("settings_hotkey_input"));
+        if (on_hotkey && !capturing_) {
+            StartHotkeyCapture();
+            bHandled = TRUE;
+            return 0;
+        }
+        if (capturing_) {
+            CancelHotkeyCapture();
+            if (on_hotkey) {
+                bHandled = TRUE;
+                return 0;
+            }
+            // 点到别处：取消捕获后继续默认处理（可编辑聚焦 / 空白拖拽）。
+        }
         if (!PointOnEditableControl(pt)) {
             ::ReleaseCapture();
             ::PostMessage(m_hWnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
@@ -322,11 +459,8 @@ void SettingsWindow::Notify(TNotifyUI& msg) {
             Close();
             return;
         }
-        if (name == _T("settings_hide_toggle")) {
-            draft_.execute_hide = !draft_.execute_hide;
-            hide_toggle_->SetText(draft_.execute_hide ? _T("开") : _T("关"));
-            hide_toggle_->SetTextColor(draft_.execute_hide ? 0xFF1A73E8 : 0xFF909090);
-            m_pm.NeedUpdate();
+        if (name == _T("settings_hide_check")) {
+            draft_.execute_hide = hide_check_->IsChecked();
             return;
         }
     }

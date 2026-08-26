@@ -49,6 +49,23 @@ private:
 // 主体系文本按钮：E6E6E6 常态 / D5D5D5 悬停按下，无边框，高 28。
 DuiLib::CButtonUI* MakeTextButton(LPCTSTR name, LPCTSTR text, int width = 0);
 
+// 自绘复选框：此 fork 的 CCheckBoxUI 勾选态依赖图片资源，无资源时不可见。
+// 14px 边框盒 + 勾选蓝底白对勾；点击自切换并发 CLICK 通知（宿主读 IsChecked）。
+class CheckBoxUI : public ButtonUI {
+public:
+    CheckBoxUI();
+    LPCTSTR GetClass() const override { return _T("AppCheckBox"); }
+    void SetChecked(bool checked);
+    bool IsChecked() const { return checked_; }
+
+protected:
+    bool Activate() override;
+    void PaintStatusImage(DuiLib::UIRender* pRender) override;
+
+private:
+    bool checked_ = false;
+};
+
 class IconButtonUI : public ButtonUI {
 public:
     IconButtonUI();

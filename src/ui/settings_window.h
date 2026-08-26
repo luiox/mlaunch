@@ -6,6 +6,7 @@
 #include <string>
 
 #include "launcher_core.h"
+#include "ui_controls.h"
 
 /**
  * @brief Borderless popup window editing launcher settings (MVP).
@@ -32,8 +33,11 @@ public:
 protected:
     void Confirm();
     bool PointOnEditableControl(POINT pt) const;
-    /** @brief Tab 焦点轮换：热键 → 宽 → 高 → 分组栏宽。 */
+    /** @brief Tab 轮换：热键 → 宽 → 高 → 分组栏宽度。 */
     void CycleInputFocus();
+    /** @brief 热键捕获：点击输入框进入，录制下一个组合键。 */
+    void StartHotkeyCapture();
+    void CancelHotkeyCapture();
 
 private:
     DoneCallback on_done_;
@@ -41,8 +45,12 @@ private:
     int focus_index_ = 0;
 
     DuiLib::CEditUI* hotkey_input_ = nullptr;
-    DuiLib::CButtonUI* hide_toggle_ = nullptr;
+    appui::CheckBoxUI* hide_check_ = nullptr;
     DuiLib::CEditUI* width_input_ = nullptr;
     DuiLib::CEditUI* height_input_ = nullptr;
     DuiLib::CEditUI* panel_input_ = nullptr;
+
+    /** @brief 热键捕获进行中：键盘事件被拦截用于录制组合键。 */
+    bool capturing_ = false;
+    DuiLib::CDuiString capture_prev_;
 };

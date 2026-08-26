@@ -54,6 +54,49 @@ CButtonUI* MakeTextButton(LPCTSTR name, LPCTSTR text, int width) {
     return button;
 }
 
+CheckBoxUI::CheckBoxUI() {
+    SetFixedHeight(26);
+    SetTextColor(0xFF1A1A1A);
+    SetStateColors(0x00000000, 0x00000000, 0x00000000);
+    SetAttribute(_T("bordercolor"), _T("0x00000000"));
+    SetAttribute(_T("bordersize"), _T("0"));
+    // 文本让位勾选盒（盒 14px + 8px 间距）。
+    SetAttribute(_T("textpadding"), _T("22,0,4,0"));
+}
+
+void CheckBoxUI::SetChecked(bool checked) {
+    if (checked_ == checked) {
+        return;
+    }
+    checked_ = checked;
+    Invalidate();
+}
+
+bool CheckBoxUI::Activate() {
+    if (!ButtonUI::Activate()) {
+        return false;
+    }
+    checked_ = !checked_;
+    Invalidate();
+    return true;
+}
+
+void CheckBoxUI::PaintStatusImage(DuiLib::UIRender* pRender) {
+    ButtonUI::PaintStatusImage(pRender);
+
+    constexpr int kBox = 14;
+    const int cy = (m_rcItem.top + m_rcItem.bottom) / 2;
+    const DuiLib::CDuiRect box{m_rcItem.left, cy - kBox / 2, m_rcItem.left + kBox, cy + kBox / 2};
+    const bool hot = IsHotState() || IsPushedState();
+    pRender->DrawColor(box, DuiLib::CDuiSize(0, 0), checked_ ? 0xFF1A73E8 : 0xFFFFFFFF);
+    pRender->DrawRect(box, 1, checked_ ? 0xFF1A73E8 : (hot ? 0xFF8A8A8A : 0xFFB8B8B8));
+    if (checked_) {
+        // 白色对勾（两段线，短撇 + 长捺）。
+        pRender->DrawLine(box.left + 3, cy + 1, box.left + 6, box.bottom - 4, 2, 0xFFFFFFFF);
+        pRender->DrawLine(box.left + 6, box.bottom - 4, box.left + 11, box.top + 3, 2, 0xFFFFFFFF);
+    }
+}
+
 IconButtonUI::IconButtonUI() {
     const Theme& theme = GetTheme();
     SetText(_T(""));
