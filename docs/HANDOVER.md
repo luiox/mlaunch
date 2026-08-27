@@ -89,6 +89,35 @@ xmake build core_tests; xmake run core_tests   # 22 个用例
   2. **xmake 的 vstudio 探测缓存**：装完组件后 `xmake f -c`（项目级）**清不掉**，必须删 `%LOCALAPPDATA%\.xmake\cache\detect` 全局缓存重配。**不要跑 `xmake g --clean`**——会清掉全局 xmake.conf 里用户的 proxy/pkg_searchdirs 配置。
 - mlaunch 本机全量重编 + core_tests 22/22 恢复通过（886870a）。
 
+## 五-e、ESC 定性修正：库改法回退，宿主层拦截（2026-08-27 第七次会话续）
+
+用户复核 KNOWN_ISSUES 后质疑：把"原生 EDIT 吞 ESC"当库问题是把 mlaunch 的业务
+混进库了。复查**结论成立**，已按此重构（mlaunch 9c92eee / fork b10eba0 / PR #1
+描述已更新）：
+
+- **定性**：单行 EDIT 的 ESC 在 Win32 下本无默认行为，"EDIT 持焦点时键盘消息只到
+  子窗口"是消息路由机制而非 bug；键位→业务动作（ESC 退出搜索模式）属宿主职责。
+  库内 `SendNotify(owner, _T("escape"))` 的私有事件名会成为上游合并偏移点，也给
+  其他宿主注入未知通知 → PR #1 已回退（KNOWN_ISSUES #6 改标[非库问题]）。
+- **宿主解法（已实测等价）**：`AppWindow` 实现 fork 的 `ITranslateAccelerator`，
+  OnCreate `m_pm.AddTranslateAccelerator(this)`、OnClose Remove（防悬垂）。
+  fork 的 `CPaintManagerUI::TranslateMessage`（MessageLoop 派发前）对**子窗口消息**
+  也先调它 → 可拦发往原生 EDIT 的 ESC。UI 自动化全链路验证：posted 点击放大镜 →
+  EditWnd 创建 → WM_CHAR 注入 'a' → ESC 经循环到达宿主（vk=27 child=1）→ 搜索
+  模式退出。
+- **关键约定坑（实测踩出）**：`ITranslateAccelerator::TranslateAccelerator` 的
+  返回值约定看聚合器 `CPaintManagerUI::TranslateAccelerator`：**`lResult == S_OK`
+  才吞掉，`S_FALSE`=放行**（不是"非零吞掉"）。该回调对循环内**所有**消息（含鼠标）
+  触发——曾有中间版本放行分支误 `return 0`（==S_OK），主窗整窗输入被吞、所有点击
+  失效；SettingsWindow 原来的 S_OK/S_FALSE 本来就是对的，勿再"修正"。
+- **UI 自动化测试坑（双屏 2K + DPI）**：mlaunch 是 DPI-unaware 但 fork 布局按
+  物理 2x 缩放，**posted 消息 lParam 用物理像素**（放大镜在 (1930,34)，逻辑
+  (965,17) 会被 normalize 减半命中标题）；fork 原生 EDIT 窗口类名是 **`EditWnd`**
+  不是 `Edit`，枚举子窗口按后者过滤会漏；EditWnd 创建依赖 OS 焦点，后台 posted
+  点击不建 EDIT，需 AttachThreadInput+SetFocus 先把焦点就位；真实鼠标输入会和
+  用户抢前台（NetUIHWND 等 overlay + 用户在用 Excel），posted 消息最稳。
+- 测试实例已清理，mlaunch 干净构建 + core_tests 22/22 通过。
+
 ## 五-a、批次 C + P1.3 收尾（2026-08-26 第五次会话）摘要
 
 - **批次 C 拆分重构完成**：C1 `launcher_core` 拆为 persistence/launch 编译单元 + `launcher_core_internal.h`（JSON 读写/原子写/MD5/时间戳等内部共享辅助，全 inline）；C2 `app_window` 拆出 menus（菜单与命令执行）/lifecycle（ui_state+热键+显隐）+ `app_window_internal.h`。纯机械搬移，声明-定义全量核对无遗漏。e8f0d69 / f86744b。
