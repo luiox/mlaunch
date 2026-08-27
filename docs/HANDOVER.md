@@ -117,6 +117,13 @@ xmake build core_tests; xmake run core_tests   # 22 个用例
   点击不建 EDIT，需 AttachThreadInput+SetFocus 先把焦点就位；真实鼠标输入会和
   用户抢前台（NetUIHWND 等 overlay + 用户在用 Excel），posted 消息最稳。
 - 测试实例已清理，mlaunch 干净构建 + core_tests 22/22 通过。
+- **续（同日）：画刷补丁也是误诊，一并回退（fork b6ed066 / mlaunch 11020e8）**。
+  "EDIT 缓存 CTLCOLOREDIT 句柄→用已删除句柄→黑块"机制不成立（CTLCOLOREDIT
+  每次 erase 同步询问同步使用）；且 create-once 让 `SetNativeEditBkColor` 运行时
+  换色永不生效。`UIEditWndWin32.cpp` 已恢复与上游零 diff。黑块根因未定位，
+  KNOWN_ISSUES #5 改[待修]记录误诊结论与候选根因。**教训：PR 里剩余库源码修改
+  复审后，真正必要的只有 UIManagerWin32.cpp 两处渲染修复（#1 重排整窗重绘、
+  #2 LockUpdate 校验-only）**；构建面(xmake/CI/gitlink/pugixml)核验扎实保留。
 
 ## 五-a、批次 C + P1.3 收尾（2026-08-26 第五次会话）摘要
 
