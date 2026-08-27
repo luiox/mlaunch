@@ -78,6 +78,17 @@ xmake build core_tests; xmake run core_tests   # 22 个用例
 - 新增 `.github/workflows/build.yml`（windows release/debug 矩阵 + core_tests + exe 产物），**已全绿**（run 33023183400）。排障记录：GitHub 上 xmake 的 action 现名 `xmake-io/github-action-setup-xmake`（按完整 commit SHA 3a1a5dd 引用，tag 引用会触发启动失败）；`actions/checkout` 的 `submodules: true/recursive` 都会递归进嵌套 submodule，而 DuiLib fork 的 `3rd/SDL_ttf/external/` 下有 4 个无 .gitmodules 登记的死 gitlink，宿主仓库递归检出必炸——已在 duilib PR #1 里移除（ffb032c），mlaunch 的 submodule 也改为钉 fix 分支头，PR 合并后 master 即该提交。
 - **DuiLib fork**（luiox/DuiLib_DuiEditor）：修复+构建两个提交经 `fix/mlaunch-backports-and-build` 走 PR review（[#1](https://github.com/luiox/DuiLib_DuiEditor/pull/1)，CI 双矩阵绿，MERGEABLE）；origin/master 已回退到合并前基点 34cf1e3，**用户点 merge 后 master 精确回到 26d4686**（mlaunch submodule 引用的正是它）。第三方库提取已建 issue [#2](https://github.com/luiox/DuiLib_DuiEditor/issues/2)（含旧 refactor 分支盘点与步骤建议）；fork 的 Issues 开关已打开。
 
+## 五-d、PR #1 审查补丁（2026-08-27 第七次会话）
+
+- **PR #1 增补 587cd48**（已推送，submodule 已同步）：审查时实测发现两个"没改好"——
+  1. **pugixml.cpp 独立 TU 与 StdAfx 冲突**：fork 的 `StdAfx.h:82` 无条件 `#define PUGIXML_HEADER_ONLY`，所有含 StdAfx.h 的 TU 内联一份 pugi 实现（inline COMDAT）；`Utils/pugixml/pugixml.cpp` 被 glob 编进来时无此宏、产出强符号 → **shared 构建链接必 LNK2005/LNK1169**（本机稳定复现），static 是冗余但侥幸能链。修法：fork 根 xmake.lua 与 mlaunch DuiLibLite 的排除清单各加一行，**不动库源码**（用户要求少改）。
+  2. **shared 路径无 CI 覆盖**：README 宣称 `--kind=shared` 但 CI 只测 static。build.yml matrix 加 kind 维度（static/shared × release/debug，4 job）。shell32 等 API 经实测不加也能链（SDK 兜底），syslinks 保持原样未动。
+- **KNOWN_ISSUES 增补**：#19（pugixml 冲突，已修）、#20（VS ATL 组件依赖，规避）、#10 补准机制（TAB 在 **MessageLoop 派发前**被 PreMessageHandler 拦截，宿主唯一早于它的扩展点是 `ITranslateAccelerator`+`AddTranslateAccelerator`，见五-b 第 1 条）、#5 补 bitmap 画刷路径（半透明背景色）同源黑块风险 [待修]。PR 描述同步更新（原"合并后回到 26d4686"已过时，现为 587cd48）。
+- **本机构建环境两坑（血泪，务必记住）**：
+  1. **VS ATL 组件**：`UIImageBoxEx.h`（经 UIlib.h 无条件包含）→ atlimage.h，VS2022 默认不装 ATL，本机全量重编必 C1083（CI 的 runner 自带 ATL 所以一直绿）。用户已装"适用于最新 v143 生成工具的 C++ ATL"（14.44 atlmfc）。
+  2. **xmake 的 vstudio 探测缓存**：装完组件后 `xmake f -c`（项目级）**清不掉**，必须删 `%LOCALAPPDATA%\.xmake\cache\detect` 全局缓存重配。**不要跑 `xmake g --clean`**——会清掉全局 xmake.conf 里用户的 proxy/pkg_searchdirs 配置。
+- mlaunch 本机全量重编 + core_tests 22/22 恢复通过（886870a）。
+
 ## 五-a、批次 C + P1.3 收尾（2026-08-26 第五次会话）摘要
 
 - **批次 C 拆分重构完成**：C1 `launcher_core` 拆为 persistence/launch 编译单元 + `launcher_core_internal.h`（JSON 读写/原子写/MD5/时间戳等内部共享辅助，全 inline）；C2 `app_window` 拆出 menus（菜单与命令执行）/lifecycle（ui_state+热键+显隐）+ `app_window_internal.h`。纯机械搬移，声明-定义全量核对无遗漏。e8f0d69 / f86744b。
