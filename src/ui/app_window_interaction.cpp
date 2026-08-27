@@ -602,6 +602,7 @@ LRESULT AppWindow::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, 
 }
 
 LRESULT AppWindow::OnClose(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled) {
+    m_pm.RemoveTranslateAccelerator(this);
     if (splitter_dragging_) {
         splitter_dragging_ = false;
         ReleaseCapture();

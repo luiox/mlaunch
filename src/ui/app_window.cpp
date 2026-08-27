@@ -228,6 +228,8 @@ LRESULT AppWindow::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHand
     ::SetWindowLong(*this, GWL_STYLE, styleValue | WS_CLIPSIBLINGS | WS_CLIPCHILDREN);
 
     m_pm.Init(m_hWnd, GetManagerName(), this);
+    // 原生 EDIT 子窗口内的键盘消息（如搜索框 ESC）在这层拦截（见 TranslateAccelerator）。
+    m_pm.AddTranslateAccelerator(this);
     // 对齐 VB6 frmMain：微软雅黑 9.75pt 常规（96DPI 下约 13px）。
     // 默认字体覆盖所有未显式设置字体的控件；字体 1 供搜索框/辅助文字使用。
     m_pm.SetDefaultFont(_T("微软雅黑"), 14, false, false, false, false);
@@ -291,6 +293,19 @@ LRESULT AppWindow::MessageHandler(UINT uMsg, WPARAM wParam, LPARAM lParam, bool&
     return WindowImplBase::MessageHandler(uMsg, wParam, lParam, bHandled);
 }
 
+LRESULT AppWindow::TranslateAccelerator(MSG* pMsg) {
+    // 搜索框的原生 EDIT 持有焦点时 WM_KEYDOWN 只到 EDIT 子窗口（Win32 机制），
+    // 在 fork 消息循环派发前拦截 ESC 退出搜索模式；键位→业务动作属宿主职责，
+    // 不下沉进 DuiLib。返回约定见头文件：S_OK 吞掉、S_FALSE 放行。
+    if (search_mode_ && pMsg != nullptr && pMsg->message == WM_KEYDOWN
+        && pMsg->wParam == VK_ESCAPE && pMsg->hwnd != nullptr && pMsg->hwnd != m_hWnd
+        && ::GetAncestor(pMsg->hwnd, GA_ROOT) == m_hWnd) {
+        search_controller_.ToggleSearchMode();
+        return S_OK;
+    }
+    return S_FALSE;
+}
+
 void AppWindow::Notify(TNotifyUI& msg) {
     if (_tcscmp(msg.sType, DUI_MSGTYPE_CLICK) == 0) {
         if (msg.pSender != nullptr && msg.pSender->GetName() == _T("group_dialog_ok")) {
@@ -328,17 +343,11 @@ void AppWindow::Notify(TNotifyUI& msg) {
         return;
     }
 
-    // 搜索框持有焦点时，回车/ESC 由原生 EDIT 转成通知送到这里。
+    // 搜索框持有焦点时，回车由原生 EDIT 转成通知送到这里（fork 基线行为）。
     if (msg.pSender != nullptr && msg.pSender->GetName() == _T("search_input")) {
         if (_tcscmp(msg.sType, DUI_MSGTYPE_RETURN) == 0) {
             if (search_mode_) {
                 LaunchSelectedItem();
-            }
-            return;
-        }
-        if (_tcscmp(msg.sType, _T("escape")) == 0) {
-            if (search_mode_) {
-                search_controller_.ToggleSearchMode();
             }
             return;
         }

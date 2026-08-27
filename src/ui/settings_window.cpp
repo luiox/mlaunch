@@ -481,6 +481,8 @@ LRESULT SettingsWindow::TranslateAccelerator(MSG* pMsg) {
     // fork 的 MessageLoop 在派发前用 PreMessageHandler 吞掉 VK_TAB 做
     // SetNextTabControl（UIManager.cpp），捕获态的"Tab 取消"必须在这层拦截，
     // 否则焦点被挪到下一个输入框、后续按键漏进它的原生 EDIT。
+    // 返回值约定（fork UIManager 聚合器：lResult == S_OK 即吞掉）：
+    // S_OK=吞掉该消息、S_FALSE=放行。
     if (capturing_ && pMsg != nullptr && pMsg->message == WM_KEYDOWN && pMsg->wParam == VK_TAB) {
         CancelHotkeyCapture();
         CycleInputFocus();

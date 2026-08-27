@@ -21,7 +21,7 @@ class ListController;
 class SearchController;
 class DialogManager;
 
-class AppWindow : public DuiLib::WindowImplBase {
+class AppWindow : public DuiLib::WindowImplBase, private DuiLib::ITranslateAccelerator {
 public:
     /**
      * @brief Construct the main launcher window.
@@ -43,6 +43,10 @@ public:
     LRESULT OnClose(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled) override;
     LRESULT OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled) override;
     LRESULT HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled) override;
+    // fork 的 ITranslateAccelerator 在消息循环派发前回调（含发往原生 EDIT 子窗口的
+    // 键盘/鼠标消息）。约定（fork UIManager：聚合器 lResult == S_OK 即吞掉）：
+    // 返回 S_OK 吞掉该消息、S_FALSE 放行。用于在宿主层响应"EDIT 内按 ESC"这类业务交互。
+    LRESULT TranslateAccelerator(MSG* pMsg) override;
 
 protected:
     DuiLib::CControlUI* CreateControl(LPCTSTR pstrClass) override { return nullptr; }
