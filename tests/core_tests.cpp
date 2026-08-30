@@ -798,3 +798,96 @@ TEST(BackendTest, UpdateSettingsPersistsAndClamps) {
     EXPECT_DOUBLE_EQ(b2.CurrentSettings().main_window_width, 1200.0);
 }
 
+TEST(BackendTest, SettingsLockedAndAutoHidePersist) {
+    const auto legacy = MakeTempDir("legacy_lock");
+    const auto base = MakeTempDir("base_lock");
+
+    core::LauncherBackend b(base, legacy, nullptr, nullptr);
+    std::string error;
+    ASSERT_TRUE(b.Load(&error)) << error;
+
+    core::Settings next = b.CurrentSettings();
+    next.locked = true;
+    next.auto_hide = true;
+    ASSERT_TRUE(b.UpdateSettings(next, &error)) << error;
+
+    core::LauncherBackend b2(base, legacy, nullptr, nullptr);
+    std::string error2;
+    ASSERT_TRUE(b2.Load(&error2)) << error2;
+    EXPECT_TRUE(b2.CurrentSettings().locked);
+    EXPECT_TRUE(b2.CurrentSettings().auto_hide);
+}
+
+TEST(BackendTest, ConvertItemPathsRoundTripAndIdempotent) {
+    const auto legacy = MakeTempDir("legacy_convert");
+    const auto base = MakeTempDir("base_convert");
+
+    core::LauncherBackend b(base, legacy, nullptr, nullptr);
+    std::string error;
+    ASSERT_TRUE(b.Load(&error)) << error;
+    b.SetAppDir("D:\\Apps\\mlaunch");
+
+    const auto gid = b.AddGroup("Tools", &error);
+    ASSERT_FALSE(gid.empty()) << error;
+
+    struct Case {
+        const char* name;
+        std::string target;
+        std::string expected_relative;
+    };
+    const Case cases[] = {
+        {"in-app-dir", "D:\\Apps\\mlaunch\\tools\\tool.exe", "%pr%\\tools\\tool.exe"},
+        {"app-dir-root", "D:\\Apps\\mlaunch\\portable.exe", "%pr%\\portable.exe"},
+        {"same-drive", "D:\\Utils\\helper.exe", "%cr%Utils\\helper.exe"},
+        {"other-drive", "C:\\Windows\\notepad.exe", "C:\\Windows\\notepad.exe"}, // 不同盘不动
+        {"already-relative", "%pr%\\x.exe", "%pr%\\x.exe"},                     // 幂等
+    };
+    for (const auto& c : cases) {
+        core::ItemInput input;
+        input.name = c.name;
+        input.target_path = c.target;
+        ASSERT_TRUE(b.UpsertItem(gid, input, &error)) << c.name << ": " << error;
+    }
+
+    // 绝对 → 相对：三个条目变化（不同盘/已是相对的不动）。
+    EXPECT_EQ(b.ConvertItemPaths(true, &error), 3) << error;
+    const auto* tools = FindGroupById(b, gid);
+    ASSERT_NE(tools, nullptr);
+    for (const auto& i : tools->items) {
+        for (const auto& c : cases) {
+            if (i.name == c.name) {
+                EXPECT_EQ(i.target_path, c.expected_relative) << c.name;
+            }
+        }
+    }
+
+    // 再跑一遍仍是 0（幂等）。
+    EXPECT_EQ(b.ConvertItemPaths(true, &error), 0) << error;
+
+    // 相对 → 绝对：四个条目回到绝对形式（含 already-relative 也展开回来）。
+    EXPECT_EQ(b.ConvertItemPaths(false, &error), 4) << error;
+    const auto* tools_abs = FindGroupById(b, gid);
+    ASSERT_NE(tools_abs, nullptr);
+    for (const auto& i : tools_abs->items) {
+        if (i.name == "in-app-dir") EXPECT_EQ(i.target_path, "D:\\Apps\\mlaunch\\tools\\tool.exe");
+        if (i.name == "app-dir-root") EXPECT_EQ(i.target_path, "D:\\Apps\\mlaunch\\portable.exe");
+        if (i.name == "same-drive") EXPECT_EQ(i.target_path, "D:\\Utils\\helper.exe");
+        if (i.name == "other-drive") EXPECT_EQ(i.target_path, "C:\\Windows\\notepad.exe");
+    }
+
+    // icon_location 同样参与转换（前四个条目转回相对 + IconCase 新增 = 5）。
+    core::ItemInput icon_item;
+    icon_item.name = "IconCase";
+    icon_item.target_path = "D:\\Apps\\mlaunch\\app.exe";
+    icon_item.icon_location = "D:\\Apps\\mlaunch\\icons\\app.ico";
+    ASSERT_TRUE(b.UpsertItem(gid, icon_item, &error)) << error;
+    EXPECT_EQ(b.ConvertItemPaths(true, &error), 5) << error;
+    const auto* tools_icon = FindGroupById(b, gid);
+    ASSERT_NE(tools_icon, nullptr);
+    for (const auto& i : tools_icon->items) {
+        if (i.name == "IconCase") {
+            EXPECT_EQ(i.target_path, "%pr%\\app.exe");
+            EXPECT_EQ(i.icon_location, "%pr%\\icons\\app.ico");
+        }
+    }
+}

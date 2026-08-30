@@ -158,6 +158,131 @@ bool LauncherBackend::SortGroupItemsByName(const std::string& group_id, std::str
     return SaveData(error);
 }
 
+namespace {
+
+constexpr const char* kPrToken = "%pr%";
+constexpr const char* kCrToken = "%cr%";
+
+bool StartsWithNoCase(const std::string& text, const std::string& prefix) {
+    if (text.size() < prefix.size()) {
+        return false;
+    }
+    return ::_strnicmp(text.c_str(), prefix.c_str(), prefix.size()) == 0;
+}
+
+bool IsDosAbsolutePath(const std::string& path) {
+    return path.size() >= 3 && path[1] == ':' && (path[2] == '\\' || path[2] == '/');
+}
+
+bool SameDriveNoCase(const std::string& lhs, const std::string& rhs) {
+    return lhs.size() >= 2 && rhs.size() >= 2 && lhs[1] == ':' && rhs[1] == ':'
+        && std::tolower(static_cast<unsigned char>(lhs[0])) == std::tolower(static_cast<unsigned char>(rhs[0]));
+}
+
+/// 单个路径字段的转换；返回 true 表示该字段发生了变化并写出新值。
+bool ConvertOnePath(const std::string& path, bool to_relative, const std::string& app_dir,
+                    const std::string& drive_root, std::string* out) {
+    if (path.empty()) {
+        return false;
+    }
+    if (to_relative) {
+        if (!IsDosAbsolutePath(path) || StartsWithNoCase(path, kPrToken) || StartsWithNoCase(path, kCrToken)) {
+            return false; // 已是占位符形式 / 非绝对路径，幂等跳过
+        }
+        if (StartsWithNoCase(path, app_dir)) {
+            const std::string rest = path.substr(app_dir.size());
+            if (rest.empty()) {
+                *out = kPrToken;
+                return true;
+            }
+            if (rest.front() == '\\' || rest.front() == '/') {
+                *out = std::string(kPrToken) + "\\" + rest.substr(1);
+                return true;
+            }
+            return false; // 程序目录的兄弟路径（前缀恰好同名），不动
+        }
+        if (SameDriveNoCase(path, app_dir)) {
+            const std::string rest = path.substr(2); // 保留 "\xxx" 形式，%cr% 展开即盘根
+            *out = std::string(kCrToken) + (rest.front() == '\\' || rest.front() == '/' ? rest.substr(1) : rest);
+            return true;
+        }
+        return false; // 不同盘，转换无收益
+    }
+
+    if (StartsWithNoCase(path, kPrToken)) {
+        const std::string rest = path.substr(4);
+        if (rest.empty()) {
+            *out = app_dir;
+            return true;
+        }
+        if (rest.front() == '\\' || rest.front() == '/') {
+            *out = app_dir + "\\" + rest.substr(1);
+            return true;
+        }
+    } else if (StartsWithNoCase(path, kCrToken)) {
+        const std::string rest = path.substr(4);
+        if (rest.empty()) {
+            *out = drive_root;
+            return true;
+        }
+        // 存储形式无前导分隔符（%cr% 展开=盘根，自带结尾分隔符）。
+        *out = drive_root + ((rest.front() == '\\' || rest.front() == '/') ? rest.substr(1) : rest);
+        return true;
+    }
+    return false;
+}
+
+} // namespace
+
+int LauncherBackend::ConvertItemPaths(bool to_relative, std::string* error) {
+    if (!EnsureLoaded(error)) {
+        return -1;
+    }
+    if (app_dir_.empty()) {
+        SetError(error, "app dir unknown");
+        return -1;
+    }
+
+    std::error_code ec;
+    const std::string app_dir_text = std::filesystem::absolute(app_dir_, ec).string();
+    const std::string drive_root_text = std::filesystem::absolute(app_dir_, ec).root_path().string();
+    if (app_dir_text.empty() || drive_root_text.empty()) {
+        SetError(error, "app dir resolve failed");
+        return -1;
+    }
+
+    int converted_items = 0;
+    for (auto& group : data_.groups) {
+        for (auto& item : group.items) {
+            if (item.item_type == "separator") {
+                continue;
+            }
+            bool changed = false;
+            std::string next;
+            if (ConvertOnePath(item.target_path, to_relative, app_dir_text, drive_root_text, &next)) {
+                item.target_path = next;
+                changed = true;
+            }
+            if (ConvertOnePath(item.icon_location, to_relative, app_dir_text, drive_root_text, &next)) {
+                item.icon_location = next;
+                changed = true;
+            }
+            if (changed) {
+                ++converted_items;
+            }
+        }
+    }
+
+    if (converted_items > 0) {
+        AppendJournal("convert_paths",
+            "to=" + std::string(to_relative ? "relative" : "absolute") + " count=" + std::to_string(converted_items));
+        if (!SaveData(error)) {
+            return -1;
+        }
+    }
+    return converted_items;
+}
+
 std::string LauncherBackend::AddGroup(const std::string& name, std::string* error) {
     if (!EnsureLoaded(error)) {
         return {};
