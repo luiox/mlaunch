@@ -172,12 +172,35 @@ xmake build core_tests; xmake run core_tests   # 22 个用例
 - **全量中文化**：三个菜单/Toast/MessageBox/文件对话框过滤器/搜索命令行标签/回收站显示名（数据内旧英文名在显示层覆盖为"回收站"）。
 - 已知小账：设置窗"执行后隐藏"开关是按钮式（开/关换色），CCheckBoxUI 视觉态依赖图片资源故未用；分组栏宽度显示原始值（86），保存时才钳制到 80-600。
 
+## 六-c、本次会话（2026-08-30）改动摘要（分支 feature/vb6-feature-gaps）
+
+- **MIT LICENSE**：已直接推 main（ec8c204）。
+- **新建项目系统条目子菜单**（app_window_menus.cpp）：自定义项目…/空项目/计算机/控制面板/回收站/注销/关机/重启；
+  系统条目 `shell:::{CLSID}` 目标，关机类走 `shutdown.exe` 参数；`AddPresetSystemItem` 统一落地（journal `add_item`）。
+- **锁定**：`AppWindow::OnNcHitTest` 覆盖——锁定时把 HTCAPTION/HT 边缘改判 HTCLIENT；
+  列表拖拽准备与分隔条拖拽加 `layout_locked_` 守卫；菜单 `MF_CHECKED`；`settings.locked` 持久化。
+- **自动隐藏**：WM_ACTIVATE 失焦（WA_INACTIVE、激活方属其他线程、非最小化）时 SW_HIDE；热键恢复；`settings.autoHide` 持久化。
+- **路径转换**：core `ConvertItemPaths(bool to_relative, std::string*)`（%pr%=程序目录/%cr%=盘根；
+  幂等、跨盘跳过、target_path+icon_location 一并转、journal `convert_paths`、SaveData 自动备份）；
+  UI 子菜单两项 + YESNO 确认。测试 22→24（含往返+幂等+边界）。
+- **et 走查全部通过**：shell::: 计算机 条目经搜索过滤单击启动打开"此电脑"；锁定开→拖不动/关→可拖；
+  自动隐藏开→激活他窗即隐→Alt+1 恢复→关；路径转换弹窗取消不落地（数据 MD5 不变）。
+- **走查工具**：`tools/` 新增 click.ps1（SendInput 单击）/ drag.ps1（拖拽）/ region_shot.ps1 / find_icons.ps1（顶栏图标定位）/
+  uia_click.ps1（UIA 枚举）/ wfp.ps1（WindowFromPoint）。经验：**et 合成单击对 DuiLib 自绘按钮不可靠（用 click.ps1）**；
+  菜单导航用键盘（Ctrl+M 在顶栏空白处 → Down×N+Enter，无预高亮，Down1=第0项）；MB_YESNO 的 Esc 关不掉（无 Cancel 按钮）是系统行为。
+- **发现（未解决，见未实现清单一）**：200% DPI 下窗口表面黑帧（100% 正常），输入交互不受影响；疑似 fork GDI 后端 DPI 缩放问题。
+- **数据说明**：走查期间误触 VariCAD 双击启动 ×2（journal 09:32:48 两条 launch）与一次 Common 组误排序（10:06:04），
+  结束后已用当日备份 `launcher.v2.20260830-093216.json` 整体恢复到当日测试前状态；journal 为 append-only 保留原始记录。
+  settings.json 新增 `locked:false`/`autoHide:false` 两个键（schema 扩展，默认安全）。
+
 ## 七、快速自检清单（新会话开始时）
 
 ```powershell
 cd D:\WorkSpace\mlaunch
-git log --oneline -3          # 应看到本次清空分组/Explorer 菜单提交
+git log --oneline -3          # 应看到功能差距补全提交
 xmake build mlaunch           # 应 build ok（先关掉在跑的 mlaunch）
-xmake run core_tests          # 应 23 tests PASSED
+xmake run core_tests          # 应 24 tests PASSED
 ```
-UI 验证：运行 mlaunch → Ctrl+M 开主菜单 → Down×5+Enter 打开设置窗 → Tab 应在四个输入框间轮换且进入时全选 → Ctrl+A 重写热键 → Esc 取消。分组列表上 Ctrl+M → Down×3+Enter 打开"清空分组：输入 N 确认"，输错数量应拒绝。
+UI 验证：运行 mlaunch → Ctrl+M 开主菜单 → Down×5+Right+Enter 触发路径转换确认框 → 按 N 取消（数据应不变）。
+锁定：Down×3+Enter 后拖标题栏窗口应不动，settings.json 应见 `"locked": true`，再 Down×3+Enter 恢复。
+自动隐藏：Down×4+Enter 后点其他窗口主窗应消失，Alt+1 恢复。
