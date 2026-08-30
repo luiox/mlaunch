@@ -9,7 +9,7 @@ constexpr const char* kThemeColor = "rgb(128,128,128)";
 }
 
 IconManager::IconManager(std::filesystem::path base_dir)
-    : cache_dir_(std::move(base_dir) / "libicon_core_cache" / "theme_128_128_128") {
+    : cache_dir_(std::move(base_dir) / "micon_cache" / "theme_128_128_128") {
     std::error_code ec;
     std::filesystem::create_directories(cache_dir_, ec);
 }
@@ -102,7 +102,7 @@ std::filesystem::path IconManager::GetEmbeddedIconPath(icon::Icon icon) const {
 }
 
 std::filesystem::path IconManager::ResolveIconPath(icon::Icon icon) const {
-#if LIBICON_CORE_ENABLE_EMBED
+#if MICON_ENABLE_EMBED
     return GetEmbeddedIconPath(icon);
 #else
     return GetDynamicIconPath(icon);
