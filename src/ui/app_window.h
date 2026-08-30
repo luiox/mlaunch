@@ -70,6 +70,8 @@ private:
     void RenderGroups();
     void RenderItems();
     void SelectGroupByIndex(int index);
+    /** @brief 按列表行号选中条目（同步 selected_item_id_ 并滚动可见；占位行忽略）。 */
+    void SelectItemByIndex(int index);
     void LaunchSelectedItem();
     void DeleteSelectedItem();
     void HandleFileDrop(HDROP drop_handle);

@@ -14,6 +14,8 @@ public:
     void UpdateSearchUi();
     void ToggleSearchMode();
     void HandleInputChanged();
+    /** @brief 搜索结果列表按行移动选择（delta=+1/-1，跳过提示占位行，不环绕）。 */
+    void MoveSearchSelection(int delta);
 
     int GetActiveCommand() const { return active_command_; }
     const std::string& GetBaiduKeyword() const { return baidu_keyword_; }

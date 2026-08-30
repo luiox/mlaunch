@@ -122,3 +122,28 @@ void SearchController::HandleInputChanged() {
 
     owner_.RenderItems();
 }
+
+void SearchController::MoveSearchSelection(int delta) {
+    if (owner_.items_list_ == nullptr || delta == 0) {
+        return;
+    }
+    const int count = owner_.items_list_->GetCount();
+    const int id_count = static_cast<int>(owner_.item_ids_.size());
+    if (count <= 0 || id_count <= 0) {
+        return;
+    }
+
+    // 从当前选中行向 delta 方向找下一个有效行（提示占位行 item_ids_ 为空，跳过）；
+    // 未选中时 GetCurSel()==-1，向下会落到第一个有效行。
+    int next = owner_.items_list_->GetCurSel();
+    while (true) {
+        next += delta;
+        if (next < 0 || next >= count) {
+            return; // 不环绕：到头/尾即停。
+        }
+        if (next < id_count && !owner_.item_ids_[next].empty()) {
+            break;
+        }
+    }
+    owner_.SelectItemByIndex(next);
+}
