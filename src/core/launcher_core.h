@@ -44,6 +44,10 @@ struct LauncherData {
 struct Settings {
     std::string hotkey = "Alt+1";
     bool execute_hide = true;
+    /// 锁定布局：禁用窗口拖动/缩放、分隔条与列表拖拽重排。
+    bool locked = false;
+    /// 失焦自动隐藏：窗口失去激活（且非自家弹窗获焦）时隐藏，热键唤回。
+    bool auto_hide = false;
     std::optional<std::string> current_group;
     double group_panel_width = 220.0;
     double main_window_width = 1040.0;
@@ -146,6 +150,16 @@ public:
     bool ExportData(const std::filesystem::path& target_path, std::string* error = nullptr);
     /** @brief Validate, apply and persist new settings (clamps sizes, trims hotkey). */
     bool UpdateSettings(const Settings& settings, std::string* error = nullptr);
+    /**
+     * @brief 在绝对路径与 %pr%/%cr% 占位符形式之间转换条目路径（便携模式）。
+     *
+     * 与 Launch 的占位符语义一致：%pr% = 程序目录，%cr% = 程序所在盘根。
+     * 转换范围为全部分组的条目 target_path 与 icon_location；分隔条目、
+     * 已是目标形式的路径、不同盘的绝对路径保持不变（幂等可重跑）。
+     * @param to_relative true=绝对→占位符；false=占位符→绝对。
+     * @return 发生变化的条目数；-1 表示失败（error 给出原因）。
+     */
+    int ConvertItemPaths(bool to_relative, std::string* error = nullptr);
     /** @brief Directory treated as the legacy Poner install root. */
     const std::filesystem::path& LegacyRoot() const { return legacy_root_; }
     /** @brief App install directory used to expand %pr%/%cr% placeholders at launch. */
