@@ -35,9 +35,7 @@ target("DuiLibLite")
     remove_files(
         duilib_dir .. "/Utils/unzip.cpp",
         duilib_dir .. "/Utils/UIDataExchange.cpp",
-        -- fork 的 StdAfx.h 无条件 #define PUGIXML_HEADER_ONLY，所有 TU 已内联 pugi
-        -- 实现；该 TU 独立编译无此宏产出强符号，与 COMDAT 冲突（shared 必炸，static 冗余）。
-        duilib_dir .. "/Utils/pugixml/pugixml.cpp",
+        -- pugixml 已随 PR#3 迁至 fork 3rd/（不在 DuiLib glob 内），无需排除。
         duilib_dir .. "/**/**Gtk.cpp",
         -- 新上游引入 SDL 后端（DUILIB_SDL 宏门控），其头文件在宏门外包含 SDL.h，
         -- Win32 构建必须整组排除（与 fork 根 xmake.lua 的排除清单一致）。
