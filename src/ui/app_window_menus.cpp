@@ -156,8 +156,25 @@ void AppWindow::ShowMainContextMenu(const POINT& screen_point, bool right_align)
     HMENU new_menu = CreatePopupMenu();
 
     AppendMenuW(new_menu, MF_STRING, launcher::constants::command::kMainNewCustom, L"自定义项目…");
+    AppendMenuW(new_menu, MF_SEPARATOR, 0, nullptr);
+    AppendMenuW(new_menu, MF_STRING, launcher::constants::command::kMainNewEmpty, L"空项目");
+    AppendMenuW(new_menu, MF_STRING, launcher::constants::command::kMainNewComputer, L"计算机");
+    AppendMenuW(new_menu, MF_STRING, launcher::constants::command::kMainNewControlPanel, L"控制面板");
+    AppendMenuW(new_menu, MF_STRING, launcher::constants::command::kMainNewRecycleBin, L"回收站");
+    AppendMenuW(new_menu, MF_SEPARATOR, 0, nullptr);
+    AppendMenuW(new_menu, MF_STRING, launcher::constants::command::kMainNewLogoff, L"注销");
+    AppendMenuW(new_menu, MF_STRING, launcher::constants::command::kMainNewShutdown, L"关机");
+    AppendMenuW(new_menu, MF_STRING, launcher::constants::command::kMainNewReboot, L"重启");
     AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(new_menu), L"新建项目");
     AppendMenuW(menu, MF_STRING, launcher::constants::command::kMainSortByName, L"按名称排序");
+    AppendMenuW(menu, MF_STRING | (layout_locked_ ? MF_CHECKED : 0), launcher::constants::command::kMainToggleLock, L"锁定");
+    AppendMenuW(menu, MF_STRING | (auto_hide_ ? MF_CHECKED : 0), launcher::constants::command::kMainToggleAutoHide, L"自动隐藏");
+
+    HMENU convert_menu = CreatePopupMenu();
+    AppendMenuW(convert_menu, MF_STRING, launcher::constants::command::kMainConvertRelative, L"转为相对路径（便携模式）…");
+    AppendMenuW(convert_menu, MF_STRING, launcher::constants::command::kMainConvertAbsolute, L"转为绝对路径…");
+    AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(convert_menu), L"路径转换");
+
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(menu, MF_STRING, launcher::constants::command::kMainImportData, L"导入数据");
     AppendMenuW(menu, MF_STRING, launcher::constants::command::kMainExportData, L"导出数据");
@@ -179,6 +196,27 @@ void AppWindow::ExecuteMainCommand(UINT command_id) {
     switch (command_id) {
     case launcher::constants::command::kMainNewCustom:
         OpenItemDialog(false);
+        return;
+    case launcher::constants::command::kMainNewEmpty:
+    case launcher::constants::command::kMainNewComputer:
+    case launcher::constants::command::kMainNewControlPanel:
+    case launcher::constants::command::kMainNewRecycleBin:
+    case launcher::constants::command::kMainNewLogoff:
+    case launcher::constants::command::kMainNewShutdown:
+    case launcher::constants::command::kMainNewReboot:
+        AddPresetSystemItem(command_id);
+        return;
+    case launcher::constants::command::kMainToggleLock:
+        ToggleLayoutLock();
+        return;
+    case launcher::constants::command::kMainToggleAutoHide:
+        ToggleAutoHide();
+        return;
+    case launcher::constants::command::kMainConvertRelative:
+        ConvertItemPathsMenu(true);
+        return;
+    case launcher::constants::command::kMainConvertAbsolute:
+        ConvertItemPathsMenu(false);
         return;
     case launcher::constants::command::kMainSortByName: {
         const core::Group* group = FindActiveGroup();
@@ -713,4 +751,105 @@ void AppWindow::ExecuteSearchCommand(const std::string& item_id) {
     default:
         break;
     }
+}
+
+void AppWindow::AddPresetSystemItem(UINT command_id) {
+    namespace cmd = launcher::constants::command;
+
+    core::ItemInput input;
+    switch (command_id) {
+    case cmd::kMainNewEmpty:
+        input.name = "新项目";
+        input.target_path = "";
+        break;
+    case cmd::kMainNewComputer:
+        input.name = "计算机";
+        input.target_path = "shell:::{20D04FE0-3AEA-1069-A2D8-08002B30309D}";
+        break;
+    case cmd::kMainNewControlPanel:
+        input.name = "控制面板";
+        input.target_path = "shell:::{26EE0668-A00A-44D7-9371-BEB064C98683}";
+        break;
+    case cmd::kMainNewRecycleBin:
+        input.name = "回收站";
+        input.target_path = "shell:::{645FF040-5081-101B-9F08-00AA002F954E}";
+        break;
+    case cmd::kMainNewLogoff:
+        input.name = "注销";
+        input.target_path = "shutdown";
+        input.arguments = "/l";
+        break;
+    case cmd::kMainNewShutdown:
+        input.name = "关机";
+        input.target_path = "shutdown";
+        input.arguments = "/s /t 0";
+        break;
+    case cmd::kMainNewReboot:
+        input.name = "重启";
+        input.target_path = "shutdown";
+        input.arguments = "/r /t 0";
+        break;
+    default:
+        return;
+    }
+
+    const core::Group* group = FindActiveGroup();
+    if (group == nullptr) {
+        status_.Warn("请先选择分组");
+        return;
+    }
+    std::string error;
+    if (!backend_.UpsertItem(group->id, input, &error)) {
+        status_.Error("创建失败：" + error);
+        return;
+    }
+    RenderItems();
+    status_.Info(std::string("已创建「") + input.name + "」");
+}
+
+void AppWindow::ToggleLayoutLock() {
+    core::Settings next = backend_.CurrentSettings();
+    next.locked = !next.locked;
+    std::string error;
+    if (!backend_.UpdateSettings(next, &error)) {
+        status_.Error("保存设置失败：" + error);
+        return;
+    }
+    layout_locked_ = next.locked;
+    status_.Info(layout_locked_ ? "已锁定布局（拖动/缩放/重排已禁用）" : "已解除锁定");
+}
+
+void AppWindow::ToggleAutoHide() {
+    core::Settings next = backend_.CurrentSettings();
+    next.auto_hide = !next.auto_hide;
+    std::string error;
+    if (!backend_.UpdateSettings(next, &error)) {
+        status_.Error("保存设置失败：" + error);
+        return;
+    }
+    auto_hide_ = next.auto_hide;
+    status_.Info(auto_hide_ ? "自动隐藏已开启（失焦隐藏，热键唤回）" : "自动隐藏已关闭");
+}
+
+void AppWindow::ConvertItemPathsMenu(bool to_relative) {
+    const wchar_t* question = to_relative
+        ? L"将扫描全部条目，把位于程序目录/同盘的路径转换为 %pr%/%cr% 占位符（便携模式）。\n转换前自动创建备份。继续吗？"
+        : L"将扫描全部条目，把 %pr%/%cr% 占位符路径还原为绝对路径。\n转换前自动创建备份。继续吗？";
+    if (MessageBoxW(m_hWnd, question, L"路径转换", MB_ICONQUESTION | MB_YESNO) != IDYES) {
+        return;
+    }
+
+    std::string error;
+    const int converted = backend_.ConvertItemPaths(to_relative, &error);
+    if (converted < 0) {
+        status_.Error("路径转换失败：" + error);
+        return;
+    }
+    if (converted == 0) {
+        status_.Info("没有可转换的路径");
+        return;
+    }
+    RenderItems();
+    status_.Info("已转换 " + std::to_string(converted) + " 条路径"
+        + (to_relative ? "（便携模式）" : "（绝对路径）"));
 }

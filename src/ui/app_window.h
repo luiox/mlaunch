@@ -42,6 +42,8 @@ public:
     LRESULT MessageHandler(UINT uMsg, WPARAM wParam, LPARAM lParam, bool& bHandled) override;
     LRESULT OnClose(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled) override;
     LRESULT OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled) override;
+    // 锁定布局时把 caption/缩放边框命中改为 HTCLIENT（禁拖动/缩放）。
+    LRESULT OnNcHitTest(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled) override;
     LRESULT HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled) override;
     // fork 的 ITranslateAccelerator 在消息循环派发前回调（含发往原生 EDIT 子窗口的
     // 键盘/鼠标消息）。约定（fork UIManager：聚合器 lResult == S_OK 即吞掉）：
@@ -102,6 +104,14 @@ private:
     void CloseItemDialog();
     void OpenSettingsDialog();
     void CloseSettingsDialog();
+    /** @brief 主菜单"新建项目"的系统条目预设（计算机/控制面板/回收站/注销/关机/重启/空项目）。 */
+    void AddPresetSystemItem(UINT command_id);
+    /** @brief 切换锁定布局（禁窗口拖动/缩放/拖拽重排），立即生效并持久化。 */
+    void ToggleLayoutLock();
+    /** @brief 切换失焦自动隐藏（热键唤回），立即生效并持久化。 */
+    void ToggleAutoHide();
+    /** @brief 全量条目路径在绝对与 %pr%/%cr% 占位符间转换（便携模式）。 */
+    void ConvertItemPathsMenu(bool to_relative);
     std::filesystem::path GetExeDir() const;
 
     /** @brief Re-apply persisted settings: global hotkey, live group panel width. */
@@ -168,6 +178,10 @@ private:
     bool search_mode_ = false;
     bool group_dialog_rename_mode_ = false;
     std::string group_dialog_group_id_;
+
+    // 设置镜像（ApplySettings 从 backend 刷新）：锁定布局 / 失焦自动隐藏。
+    bool layout_locked_ = false;
+    bool auto_hide_ = false;
 
     bool splitter_dragging_ = false;
     int splitter_drag_start_x_ = 0;

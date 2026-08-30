@@ -39,6 +39,21 @@ constexpr UINT kMainSettings = 3005;
 
 constexpr UINT kMainExit = 3007;
 
+// 新建项目的系统条目预设。
+constexpr UINT kMainNewEmpty = 3008;
+constexpr UINT kMainNewComputer = 3009;
+constexpr UINT kMainNewControlPanel = 3010;
+constexpr UINT kMainNewRecycleBin = 3011;
+constexpr UINT kMainNewLogoff = 3012;
+constexpr UINT kMainNewShutdown = 3013;
+constexpr UINT kMainNewReboot = 3014;
+
+// 锁定 / 自动隐藏 / 路径转换。
+constexpr UINT kMainToggleLock = 3015;
+constexpr UINT kMainToggleAutoHide = 3016;
+constexpr UINT kMainConvertRelative = 3017;
+constexpr UINT kMainConvertAbsolute = 3018;
+
 constexpr UINT kBackupRestoreBase = 4000;
 constexpr UINT kBackupRestoreMax = 9;
 constexpr UINT kBackupStartFresh = 4900;
