@@ -298,15 +298,36 @@ LRESULT AppWindow::MessageHandler(UINT uMsg, WPARAM wParam, LPARAM lParam, bool&
 
 LRESULT AppWindow::TranslateAccelerator(MSG* pMsg) {
     // 搜索框的原生 EDIT 持有焦点时 WM_KEYDOWN 只到 EDIT 子窗口（Win32 机制），
-    // 在 fork 消息循环派发前拦截 ESC 退出搜索模式；键位→业务动作属宿主职责，
-    // 不下沉进 DuiLib。返回约定见头文件：S_OK 吞掉、S_FALSE 放行。
+    // 在 fork 消息循环派发前拦截 ESC 退出搜索模式与上/下方向键移动搜索结果选择；
+    // 键位→业务动作属宿主职责，不下沉进 DuiLib。返回约定见头文件：S_OK 吞掉、S_FALSE 放行。
     if (search_mode_ && pMsg != nullptr && pMsg->message == WM_KEYDOWN
-        && pMsg->wParam == VK_ESCAPE && pMsg->hwnd != nullptr && pMsg->hwnd != m_hWnd
+        && pMsg->hwnd != nullptr && pMsg->hwnd != m_hWnd
         && ::GetAncestor(pMsg->hwnd, GA_ROOT) == m_hWnd) {
-        search_controller_.ToggleSearchMode();
-        return S_OK;
+        if (pMsg->wParam == VK_ESCAPE) {
+            search_controller_.ToggleSearchMode();
+            return S_OK;
+        }
+        if (pMsg->wParam == VK_UP || pMsg->wParam == VK_DOWN) {
+            search_controller_.MoveSearchSelection(pMsg->wParam == VK_UP ? -1 : 1);
+            return S_OK;
+        }
     }
     return S_FALSE;
+}
+
+void AppWindow::SelectItemByIndex(int index) {
+    if (items_list_ == nullptr || index < 0 || index >= items_list_->GetCount()) {
+        return;
+    }
+    if (index >= static_cast<int>(item_ids_.size()) || item_ids_[index].empty()) {
+        return; // 搜索空输入的提示占位行不可选。
+    }
+    selected_item_id_ = item_ids_[index];
+    selected_item_group_id_ = index < static_cast<int>(item_group_ids_.size())
+                                  ? item_group_ids_[index]
+                                  : std::string();
+    items_list_->SelectItem(index, false);
+    items_list_->EnsureVisible(index);
 }
 
 void AppWindow::Notify(TNotifyUI& msg) {

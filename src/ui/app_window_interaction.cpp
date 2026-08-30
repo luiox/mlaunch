@@ -603,6 +603,12 @@ LRESULT AppWindow::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, 
             bHandled = TRUE;
             return 0;
         }
+        // 主窗自身持焦时的搜索导航（EDIT 持焦路径走 TranslateAccelerator 拦截）。
+        if (search_mode_ && (wParam == VK_UP || wParam == VK_DOWN)) {
+            search_controller_.MoveSearchSelection(wParam == VK_UP ? -1 : 1);
+            bHandled = TRUE;
+            return 0;
+        }
     }
 
     if (uMsg == WM_DROPFILES) {

@@ -186,6 +186,8 @@ void ListController::RenderItems() {
                 add_command_row(L"百度搜索", launcher::util::Utf8ToWide(owner_.search_controller_.GetBaiduKeyword()), active_cmd);
                 break;
             }
+            // 命令行即唯一结果：自动选中，回车直接执行。
+            owner_.SelectItemByIndex(0);
             return;
         }
 
@@ -222,6 +224,14 @@ void ListController::RenderItems() {
                 owner_.items_list_->Add(row);
                 owner_.item_ids_.push_back(item.id);
                 owner_.item_group_ids_.push_back(group.id);
+            }
+        }
+        // 对齐提示文案"上下键选择，回车键运行"：过滤结果自动选中第一个，
+        // 方向键自此起算（EDIT 持焦时经宿主 TranslateAccelerator 转发）。
+        for (int i = 0; i < static_cast<int>(owner_.item_ids_.size()); ++i) {
+            if (!owner_.item_ids_[i].empty()) {
+                owner_.SelectItemByIndex(i);
+                break;
             }
         }
         return;
