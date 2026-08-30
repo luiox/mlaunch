@@ -4,3 +4,6 @@
 [submodule "third_party/libca"]
 	path = third_party/libca
 	url = https://github.com/luiox/libca.git
+[submodule "third_party/micon"]
+	path = third_party/micon
+	url = https://github.com/luiox/micon.git

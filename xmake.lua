@@ -13,7 +13,7 @@ set_config("with_demo", false)
 set_config("with_tests", false)
 
 includes("third_party/libca")
-includes("libicon-core")
+includes("third_party/micon")
 
 -- directory where the DuiLib source submodule is checked out
 local duilib_dir = "third_party/DuiLib_DuiEditor/DuiLib"
@@ -78,10 +78,10 @@ target("mlaunch")
     if is_mode("debug") then
         set_symbols("debug")
         set_optimize("none")
-        add_deps("libicon_core_dynamic")
+        add_deps("micon_dynamic")
     else
         set_optimize("faster")
-        add_deps("libicon_core_embed")
+        add_deps("micon_embed")
     end
 
     add_defines("UNICODE", "_UNICODE", "WIN32", "_WINDOWS", "UILIB_STATIC")
@@ -97,7 +97,7 @@ target("mlaunch")
 
     after_build(function (target)
         if is_mode("debug") then
-            os.cp(path.join(os.scriptdir(), "libicon-core", "icons"), path.join(target:targetdir(), "icons"))
+            os.cp(path.join(os.scriptdir(), "third_party", "micon", "icons"), path.join(target:targetdir(), "icons"))
         end
     end)
 
