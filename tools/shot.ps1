@@ -4,7 +4,9 @@
 #   pwsh -File tools/shot.ps1 -ProcessName poner       # 指定进程名
 #   pwsh -File tools/shot.ps1 -TitlePattern "Poner"    # 按窗口标题匹配
 #   pwsh -File tools/shot.ps1 -OutPath shot1.png       # 指定输出
-# 行为: 优先 PrintWindow(PW_RENDERFULLCONTENT)，全黑/全白时自动退回屏幕拷贝。
+# 行为: 优先 PrintWindow(PW_RENDERFULLCONTENT)，全黑/全白或大片黑区时自动退回屏幕拷贝。
+# 注意: 高 DPI(如 200%)下 DPI-unaware 窗口的 PrintWindow 结果是 1:1 未拉伸的原始表面
+#       （内容只占左上角、其余黑），属截图伪影而非真实渲染问题；暗区占比检测会触发屏幕拷贝。
 param(
     [string]$ProcessName = "mlaunch",
     [string]$TitlePattern = "",
@@ -92,21 +94,29 @@ function Capture-PrintWindow([IntPtr]$hwnd, [int]$w, [int]$h) {
     $g.ReleaseHdc($hdc); $g.Dispose()
     return $bmp
 }
-function Test-Blank([System.Drawing.Bitmap]$bmp) {
-    # 采样判断全黑/全白
-    $sum = 0.0; $n = 0; $step = [Math]::Max(1, [int](($bmp.Width * $bmp.Height) / 500))
+function Test-Suspect([System.Drawing.Bitmap]$bmp) {
+    # 采样返回 (是否可疑, 平均亮度, 暗像素占比)。
+    # 可疑 = 全黑/全白，或暗像素占比 >15%（高 DPI PrintWindow 伪影：大面积黑区）。
+    $dark = 0L; $sum = 0.0; $n = 0
+    $step = [Math]::Max(1, [int](($bmp.Width * $bmp.Height) / 500))
     for ($i = 0; $i -lt $bmp.Width * $bmp.Height; $i += $step) {
         $x = $i % $bmp.Width; $y = [Math]::Min($bmp.Height - 1, [int]($i / $bmp.Width))
-        $c = $bmp.GetPixel($x, $y); $sum += ($c.R + $c.G + $c.B) / 3.0; $n++
+        $c = $bmp.GetPixel($x, $y)
+        $b = ($c.R + $c.G + $c.B) / 3.0
+        $sum += $b; $n++
+        if ($b -lt 10) { $dark++ }
     }
     $avg = $sum / [Math]::Max(1, $n)
-    return ($avg -lt 2 -or $avg -gt 254.5), $avg
+    $darkRatio = $dark / [Math]::Max(1, $n)
+    $blank = ($avg -lt 2 -or $avg -gt 254.5)
+    $bad = ($blank -or $darkRatio -gt 0.15)
+    return $bad, $avg, $darkRatio
 }
 
 $bmp = Capture-PrintWindow $target.Hwnd $w $h
-$blank, $avg = Test-Blank $bmp
-if ($blank) {
-    Write-Output "PrintWindow blank (avg=$avg), fallback to screen copy"
+$bad, $avg, $darkRatio = Test-Suspect $bmp
+if ($bad) {
+    Write-Output "PrintWindow suspect (avg=$([Math]::Round($avg,1)) dark=$([Math]::Round($darkRatio*100))%), fallback to screen copy"
     $bmp.Dispose()
     [MLaunchShot]::ShowWindow($target.Hwnd, 9) | Out-Null
     [MLaunchShot]::SetForegroundWindow($target.Hwnd) | Out-Null
