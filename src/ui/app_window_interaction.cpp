@@ -198,6 +198,17 @@ LRESULT AppWindow::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, 
         shadow_window_.Sync();
     }
 
+    if (uMsg == WM_ACTIVATE && LOWORD(wParam) == WA_INACTIVE && auto_hide_
+        && ::IsWindowVisible(m_hWnd) && !::IsIconic(m_hWnd)) {
+        // 失焦自动隐藏：新激活窗口属于本线程（设置/编辑弹窗、确认框、
+        // 原生菜单、文件对话框）时不隐藏，否则交给热键唤回。
+        const HWND activating = reinterpret_cast<HWND>(lParam);
+        const DWORD activating_tid = activating != nullptr ? ::GetWindowThreadProcessId(activating, nullptr) : 0;
+        if (activating_tid != ::GetCurrentThreadId()) {
+            ::ShowWindow(m_hWnd, SW_HIDE);
+        }
+    }
+
     if (uMsg == WM_HOTKEY && wParam == launcher::constants::kAppHotkeyId) {
         ToggleMainWindowVisibility();
         bHandled = TRUE;
@@ -240,34 +251,37 @@ LRESULT AppWindow::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, 
 
         // 先初始化拖拽状态，再根据鼠标命中区域决定是否进入列表拖拽准备态。
         ResetListDragState();
-        const int group_index = HitTestListIndex(groups_list_, pt);
-        if (group_index >= 0) {
-            drag_list_kind_ = DragListKind::Groups;
-            list_drag_prepared_ = true;
-            list_drag_down_point_ = pt;
-            list_drag_from_index_ = group_index;
-            list_drag_hover_index_ = group_index;
-            SetCapture(m_hWnd);
-            ::SetTimer(m_hWnd, launcher::constants::timer::kListDragPoll, 16, nullptr);
-            list_drag_polling_ = true;
-        } else {
-            const int item_index = HitTestListIndex(items_list_, pt);
-            if (item_index >= 0 && !search_mode_) {
-                drag_list_kind_ = DragListKind::Items;
+        // 锁定布局：禁用列表拖拽重排（分组/条目）。
+        if (!layout_locked_) {
+            const int group_index = HitTestListIndex(groups_list_, pt);
+            if (group_index >= 0) {
+                drag_list_kind_ = DragListKind::Groups;
                 list_drag_prepared_ = true;
                 list_drag_down_point_ = pt;
-                list_drag_from_index_ = item_index;
-                list_drag_hover_index_ = item_index;
+                list_drag_from_index_ = group_index;
+                list_drag_hover_index_ = group_index;
                 SetCapture(m_hWnd);
                 ::SetTimer(m_hWnd, launcher::constants::timer::kListDragPoll, 16, nullptr);
                 list_drag_polling_ = true;
+            } else {
+                const int item_index = HitTestListIndex(items_list_, pt);
+                if (item_index >= 0 && !search_mode_) {
+                    drag_list_kind_ = DragListKind::Items;
+                    list_drag_prepared_ = true;
+                    list_drag_down_point_ = pt;
+                    list_drag_from_index_ = item_index;
+                    list_drag_hover_index_ = item_index;
+                    SetCapture(m_hWnd);
+                    ::SetTimer(m_hWnd, launcher::constants::timer::kListDragPoll, 16, nullptr);
+                    list_drag_polling_ = true;
+                }
             }
         }
 
-        DebugLog("down g=" + std::to_string(group_index) + " i=" + std::to_string(HitTestListIndex(items_list_, pt)));
+        DebugLog("down g=" + std::to_string(HitTestListIndex(groups_list_, pt)) + " i=" + std::to_string(HitTestListIndex(items_list_, pt)));
 
-        // 优先命中分隔条，避免与列表拖拽冲突。
-        if (panel_splitter_ != nullptr && group_panel_ != nullptr) {
+        // 优先命中分隔条，避免与列表拖拽冲突；锁定布局时禁用分隔条拖动。
+        if (!layout_locked_ && panel_splitter_ != nullptr && group_panel_ != nullptr) {
             RECT rc = panel_splitter_->GetPos();
             rc.left -= 3;
             rc.right += 3;

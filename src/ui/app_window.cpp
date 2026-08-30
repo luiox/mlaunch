@@ -269,6 +269,9 @@ LRESULT AppWindow::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHand
     LoadBackendData();
     RestoreUiState();
     RegisterConfiguredHotkey();
+    // 锁定/自动隐藏等行为开关随设置生效。
+    layout_locked_ = backend_.CurrentSettings().locked;
+    auto_hide_ = backend_.CurrentSettings().auto_hide;
 
     // 复刻 VB6 frmShadow：关掉 DWM 软阴影，改用主窗后方的硬边偏移剪影。
     {
@@ -427,12 +430,38 @@ void AppWindow::CloseItemDialog() {
 void AppWindow::ApplySettings() {
     RegisterConfiguredHotkey();
 
+    layout_locked_ = backend_.CurrentSettings().locked;
+    auto_hide_ = backend_.CurrentSettings().auto_hide;
+
     if (group_panel_ != nullptr) {
         int panel_width = static_cast<int>(backend_.CurrentSettings().group_panel_width);
         panel_width = std::clamp(panel_width, 80, 600);
         group_panel_->SetFixedWidth(panel_width);
     }
     m_pm.NeedUpdate();
+}
+
+LRESULT AppWindow::OnNcHitTest(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled) {
+    const LRESULT hit = WindowImplBase::OnNcHitTest(uMsg, wParam, lParam, bHandled);
+    if (!layout_locked_ || !bHandled) {
+        return hit;
+    }
+    // 锁定布局：吞掉 caption 拖动与四边/四角缩放命中，其余（关闭按钮等客户区）不受影响。
+    switch (hit) {
+    case HTCAPTION:
+    case HTLEFT:
+    case HTRIGHT:
+    case HTTOP:
+    case HTTOPLEFT:
+    case HTTOPRIGHT:
+    case HTBOTTOM:
+    case HTBOTTOMLEFT:
+    case HTBOTTOMRIGHT:
+        bHandled = TRUE;
+        return HTCLIENT;
+    default:
+        return hit;
+    }
 }
 
 void AppWindow::ApplyDefaultWindowSize() {
