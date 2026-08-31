@@ -193,14 +193,55 @@ xmake build core_tests; xmake run core_tests   # 22 个用例
   结束后已用当日备份 `launcher.v2.20260830-093216.json` 整体恢复到当日测试前状态；journal 为 append-only 保留原始记录。
   settings.json 新增 `locked:false`/`autoHide:false` 两个键（schema 扩展，默认安全）。
 
+## 六-d、本次会话（2026-08-31）改动摘要（分支 feature/vb6-feature-gaps，接六-c）
+
+- **高 DPI“黑帧”结案（定性反转，重要）**：不存在用户可见渲染 bug。屏幕实拍
+  （CopyFromScreen）证实 200% 下窗口完整正常；进程内一切度量均为逻辑坐标
+  （GetDpiForWindow=96 / GetClientRect=482x645 / fork SetDPI(96) 不缩放 / 非 layered），
+  物理窗口由系统虚拟化拉伸。“黑帧”是 **PrintWindow 伪影**：高 DPI 感知进程调
+  PrintWindow 不做 DWM 虚拟化拉伸，逻辑表面 1:1 放进物理位图 → 内容只占左上角其余黑。
+  修复 `tools/shot.ps1`：暗区占比 >15% 回退 CopyFromScreen。**教训：验证 DPI-unaware
+  窗口的真实视觉必须屏幕实拍，PrintWindow 结果不可信。**
+- **搜索键盘选择**：EDIT 持焦时方向键经 `TranslateAccelerator` 拦截转发列表
+  （与 ESC 同路径复用）；`SelectItemByIndex` 统一“行号→选中态”；过滤/命令行自动
+  选中首个有效行；回车启动选中项。et 实测：高亮随 Up/Down 移动、cmd 命令回车拉起 cmd.exe。
+- **单实例 + 开机自启**：main.cpp CreateMutex 守卫（双开 exit 0 + 原窗前置，实测）；
+  Settings.autorun + 设置窗复选框；`ApplyAutorunRegistry` 写/删 HKCU Run 键，
+  OnCreate 与 ApplySettings 双点同步。实测 autorun=true 启动即写键、false 启动即删。
+- **工作目录字段**：`LaunchItem.working_dir` 全链路（编辑窗“起始位置”行 + IFileDialog
+  浏览、JSON workingDir、Launch→lpDirectory、占位符展开、路径转换纳入）。
+- **禁用/启用 + 频率排序**：`SetItemEnabled`（幂等+journal）、`SortGroupItemsByLaunchCount`
+  （降序稳定）；条目菜单开关项、主菜单“按使用频率排序”、禁用项置灰渲染；Launch 拦截禁用项。
+- **ui_state err=2**：预创建目录/空文件 + flush 日志降级 Debug（首启仍可能一条缓存误报，数据完整）。
+- 测试 24 → 26 全绿；新增 `tools/scan_windows.ps1`（进程窗口枚举）、`tools/uia_menu.ps1`
+  （原生菜单 UIA 确定性选择）。
+- **自动化新坑（血泪）**：
+  1. **菜单键盘 Down 计数不稳**：本次实测两次“Down×7+Enter”都误触（一次导出对话框、
+     一次锁定切换），首键疑似被菜单弹出期吞掉。**原生菜单一律用 `uia_menu.ps1`**
+     （UIA InvokePattern，实测可靠；MenuItem 无 SelectionItemPattern 但有 Invoke）。
+  2. **模态文件对话框会阻塞主窗消息循环**：期间对主窗的点击/截图判断全部失效；
+     点击坐标若落在对话框上会误触其按钮（本次误把数据导出到 Documents\setting.json，
+     已删）。对话框残留时必须先 activate 对话框句柄 + Esc 关闭再继续。
+  3. **搜狗 IME 中文态吃 Enter**（组词确认）：键盘走查输入文本/回车一律用剪贴板
+     ctrl+v 粘贴，不要逐键打字。
+  4. **et window list / tasklist 输出经 bash 管道会被 ANSI 清屏序列搞乱**，误判
+     “进程消失”；判断进程/窗口状态以 `Get-Process` / et 原始 JSON 为准。
+  5. **git commit 中文信息偶发 GBK 乱码**：用 python 写 UTF-8 文件 +
+     `git -c i18n.commitEncoding=utf-8 commit -F <file>`，坏消息用 --amend 修。
+- **数据说明**：走查期间的 journal 新增记录（export_data 一次误触已恢复、cmd launch、
+  update_settings 若干）为 append-only 审计痕迹；settings.json 新增 `autorun:false`。
+  launcher.v2.json 未被修改（结束时 MD5 与会话开始一致）。
+
 ## 七、快速自检清单（新会话开始时）
 
 ```powershell
 cd D:\WorkSpace\mlaunch
 git log --oneline -3          # 应看到功能差距补全提交
 xmake build mlaunch           # 应 build ok（先关掉在跑的 mlaunch）
-xmake run core_tests          # 应 24 tests PASSED
+xmake run core_tests          # 应 26 tests PASSED
 ```
-UI 验证：运行 mlaunch → Ctrl+M 开主菜单 → Down×5+Right+Enter 触发路径转换确认框 → 按 N 取消（数据应不变）。
-锁定：Down×3+Enter 后拖标题栏窗口应不动，settings.json 应见 `"locked": true`，再 Down×3+Enter 恢复。
-自动隐藏：Down×4+Enter 后点其他窗口主窗应消失，Alt+1 恢复。
+UI 验证（菜单操作用 tools/uia_menu.ps1，勿依赖键盘 Down 计数）：
+搜索：点放大镜 → 粘贴字母 → 首行高亮 → Down/Up 移动 → 回车启动选中项。
+单实例：双开 mlaunch，第二个应立即退出且原窗被前置。
+开机自启：设置窗勾选“开机自启”确定 → `reg query HKCU\...\Run /v mlaunch` 应有值；取消勾选后应消失。
+禁用：条目右键 → 禁用条目 → 列表置灰、双击启动被拦截报错。
