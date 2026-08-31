@@ -52,6 +52,15 @@ struct Settings {
     bool auto_hide = false;
     /// 开机自启：HKCU Run 键注册表项的镜像（注册表写放在 UI 层完成）。
     bool autorun = false;
+    /// 启动时不显示主窗（热键唤出；配合开机自启）。
+    bool start_hidden = false;
+    /// 关闭按钮 = 最小化而非退出（退出走主菜单）。
+    bool close_minimize = false;
+    /// 双击启动模式：单击仅选中、双击启动（默认单击启动，对齐 VB6）。
+    bool double_click_launch = false;
+    /// 备份保留：滚动快照份数（2-20）与每日快照天数（3-90）。
+    int backup_rolling_count = 5;
+    int backup_daily_days = 30;
     std::optional<std::string> current_group;
     double group_panel_width = 220.0;
     double main_window_width = 1040.0;
@@ -174,6 +183,8 @@ public:
     const std::filesystem::path& LegacyRoot() const { return legacy_root_; }
     /** @brief App install directory used to expand %pr%/%cr% placeholders at launch. */
     void SetAppDir(std::filesystem::path dir);
+    /** @brief Current app dir (empty if never set). */
+    const std::filesystem::path& AppDir() const { return app_dir_; }
     /** @brief List backup files under backups/, newest first. */
     std::vector<BackupEntry> ListBackups() const;
     /** @brief Validate a backup file and restore it as the current dataset. */

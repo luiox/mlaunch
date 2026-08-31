@@ -335,6 +335,27 @@ LRESULT AppWindow::TranslateAccelerator(MSG* pMsg) {
             return S_OK;
         }
     }
+
+    // 分组面板/分隔条上的滚轮 = 调整分组栏宽度（80-600 钳制，ui_state 持久化）。
+    // 必须在消息循环层拦截：fork 的 OnMouseWheel 会先把事件发给命中控件
+    // （分组列表滚走），HandleCustomMessage 阶段已无法撤回。锁定布局时禁用。
+    if (pMsg != nullptr && pMsg->message == WM_MOUSEWHEEL && pMsg->hwnd == m_hWnd
+        && !layout_locked_ && !search_mode_
+        && group_panel_ != nullptr && panel_splitter_ != nullptr) {
+        POINT client{GET_X_LPARAM(pMsg->lParam), GET_Y_LPARAM(pMsg->lParam)};
+        ::ScreenToClient(m_hWnd, &client);
+        const RECT panel_rect = group_panel_->GetPos();
+        const RECT splitter_rect = panel_splitter_->GetPos();
+        if (::PtInRect(&panel_rect, client) || ::PtInRect(&splitter_rect, client)) {
+            const int delta = (static_cast<short>(HIWORD(pMsg->wParam)) > 0) ? 8 : -8;
+            int width = group_panel_->GetFixedWidth() + delta;
+            width = std::clamp(width, 80, 600);
+            group_panel_->SetFixedWidth(width);
+            m_pm.NeedUpdate();
+            MarkUiStateDirty();
+            return S_OK;
+        }
+    }
     return S_FALSE;
 }
 
@@ -364,7 +385,12 @@ void AppWindow::Notify(TNotifyUI& msg) {
             return;
         }
         if (msg.pSender != nullptr && msg.pSender->GetName() == _T("closebtn")) {
-            ::PostMessage(m_hWnd, WM_CLOSE, 0, 0);
+            // 关闭即最小化模式：关闭按钮只收进任务栏，退出走主菜单。
+            if (backend_.CurrentSettings().close_minimize) {
+                ::ShowWindow(m_hWnd, SW_MINIMIZE);
+            } else {
+                ::PostMessage(m_hWnd, WM_CLOSE, 0, 0);
+            }
             return;
         }
         if (msg.pSender != nullptr && msg.pSender->GetName() == _T("searchbtn")) {
@@ -412,7 +438,20 @@ void AppWindow::Notify(TNotifyUI& msg) {
                 if (index < static_cast<int>(item_group_ids_.size())) {
                     selected_item_group_id_ = item_group_ids_[index];
                 }
-                // 对齐 VB6 行为：左键单击即启动（拖拽重排不会触发 ITEMCLICK）。
+                // 对齐 VB6 行为：左键单击即启动（拖拽重排不会触发 ITEMCLICK）；
+                // 双击启动模式下单击仅选中，启动走 ITEMACTIVATE。
+                if (!backend_.CurrentSettings().double_click_launch) {
+                    LaunchSelectedItem();
+                }
+            }
+            return;
+        }
+    }
+
+    // 双击启动模式：列表条目双击（ITEMACTIVATE）才触发启动。
+    if (_tcscmp(msg.sType, DUI_MSGTYPE_ITEMACTIVATE) == 0 && msg.pSender != nullptr) {
+        if (items_list_ != nullptr && appwin::IsSenderFromList(msg.pSender, items_list_)) {
+            if (backend_.CurrentSettings().double_click_launch) {
                 LaunchSelectedItem();
             }
             return;
@@ -536,6 +575,10 @@ LRESULT AppWindow::OnNcHitTest(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bH
     default:
         return hit;
     }
+}
+
+bool AppWindow::ShouldStartHidden() const {
+    return backend_.CurrentSettings().start_hidden;
 }
 
 void AppWindow::ApplyDefaultWindowSize() {

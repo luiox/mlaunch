@@ -214,6 +214,11 @@ bool LauncherBackend::Load(std::string* error) {
             settings_.locked = GetBool(root, "locked", false);
             settings_.auto_hide = GetBool(root, "autoHide", false);
             settings_.autorun = GetBool(root, "autorun", false);
+            settings_.start_hidden = GetBool(root, "startHidden", false);
+            settings_.close_minimize = GetBool(root, "closeMinimize", false);
+            settings_.double_click_launch = GetBool(root, "doubleClickLaunch", false);
+            settings_.backup_rolling_count = static_cast<int>(GetInt(root, "backupRollingCount", 5));
+            settings_.backup_daily_days = static_cast<int>(GetInt(root, "backupDailyDays", 30));
             if (const auto* cg = FindField(root, "currentGroup"); cg != nullptr && cg->is_string()) {
                 settings_.current_group = ToStdString(cg->as_string());
             }
@@ -285,6 +290,11 @@ bool LauncherBackend::SaveSettings(std::string* error) const {
     SetBool(root, arena, "locked", settings_.locked);
     SetBool(root, arena, "autoHide", settings_.auto_hide);
     SetBool(root, arena, "autorun", settings_.autorun);
+    SetBool(root, arena, "startHidden", settings_.start_hidden);
+    SetBool(root, arena, "closeMinimize", settings_.close_minimize);
+    SetBool(root, arena, "doubleClickLaunch", settings_.double_click_launch);
+    SetF64(root, arena, "backupRollingCount", static_cast<double>(settings_.backup_rolling_count));
+    SetF64(root, arena, "backupDailyDays", static_cast<double>(settings_.backup_daily_days));
     if (settings_.current_group.has_value()) {
         SetStr(root, arena, "currentGroup", *settings_.current_group);
     } else {
@@ -329,7 +339,9 @@ void LauncherBackend::RotateBackupsBeforeSave() const {
     copy_backup("launcher.v2." + FormatFileStamp(now) + ".json");
     copy_backup("launcher.v2." + FormatDateStamp(now) + ".json");
 
-    PruneBackups(backup_dir);
+    PruneBackups(backup_dir,
+                 static_cast<std::size_t>(settings_.backup_rolling_count),
+                 static_cast<std::size_t>(settings_.backup_daily_days));
 }
 
 void LauncherBackend::AppendJournal(const std::string& action, const std::string& detail) const {
@@ -502,6 +514,8 @@ bool LauncherBackend::UpdateSettings(const Settings& settings, std::string* erro
     next.group_panel_width = std::clamp(next.group_panel_width, 80.0, 600.0);
     next.main_window_width = std::max(next.main_window_width, 320.0);
     next.main_window_height = std::max(next.main_window_height, 220.0);
+    next.backup_rolling_count = std::clamp(next.backup_rolling_count, 2, 20);
+    next.backup_daily_days = std::clamp(next.backup_daily_days, 3, 90);
 
     settings_ = std::move(next);
 
@@ -511,6 +525,10 @@ bool LauncherBackend::UpdateSettings(const Settings& settings, std::string* erro
         " locked=" + (settings_.locked ? "1" : "0") +
         " auto_hide=" + (settings_.auto_hide ? "1" : "0") +
         " autorun=" + (settings_.autorun ? "1" : "0") +
+        " start_hidden=" + (settings_.start_hidden ? "1" : "0") +
+        " close_minimize=" + (settings_.close_minimize ? "1" : "0") +
+        " double_click=" + (settings_.double_click_launch ? "1" : "0") +
+        " backups=" + std::to_string(settings_.backup_rolling_count) + "/" + std::to_string(settings_.backup_daily_days) +
         " panel_width=" + std::to_string(static_cast<int>(settings_.group_panel_width)));
     return SaveSettings(error);
 }
