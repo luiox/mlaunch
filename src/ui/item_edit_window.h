@@ -23,7 +23,8 @@ public:
                                             const std::string& name,
                                             const std::string& target_path,
                                             const std::string& arguments,
-                                            const std::string& icon_location)>;
+                                            const std::string& icon_location,
+                                            const std::string& working_dir)>;
 
     ItemEditWindow(AppWindow& owner,
                    bool edit_mode,
@@ -58,10 +59,12 @@ private:
     std::string initial_name_;
     std::string initial_target_;
     std::string initial_args_;
+    std::string initial_workdir_;
     std::string icon_location_;
 
     DuiLib::CEditUI* name_input_ = nullptr;
     DuiLib::CEditUI* target_input_ = nullptr;
     DuiLib::CEditUI* args_input_ = nullptr;
+    DuiLib::CEditUI* workdir_input_ = nullptr;
     FileIconControl* icon_preview_ = nullptr;
 };

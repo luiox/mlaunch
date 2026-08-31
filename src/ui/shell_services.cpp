@@ -16,7 +16,8 @@
 
 namespace core {
 
-bool ShellLaunchExecutor::Launch(const std::string& target_path, const std::string& arguments, std::string* error) {
+bool ShellLaunchExecutor::Launch(const std::string& target_path, const std::string& arguments,
+                                 const std::string& working_dir, std::string* error) {
     SHELLEXECUTEINFOW sei{};
     sei.cbSize = sizeof(sei);
     sei.fMask = SEE_MASK_NOCLOSEPROCESS;
@@ -24,8 +25,10 @@ bool ShellLaunchExecutor::Launch(const std::string& target_path, const std::stri
 
     std::wstring target_w = launcher::util::Utf8ToWide(target_path);
     std::wstring args_w = launcher::util::Utf8ToWide(arguments);
+    std::wstring workdir_w = launcher::util::Utf8ToWide(working_dir);
     sei.lpFile = target_w.c_str();
     sei.lpParameters = args_w.empty() ? nullptr : args_w.c_str();
+    sei.lpDirectory = workdir_w.empty() ? nullptr : workdir_w.c_str();
     sei.nShow = SW_SHOWNORMAL;
 
     if (!ShellExecuteExW(&sei)) {
@@ -72,6 +75,31 @@ std::optional<std::pair<std::string, std::string>> ShellShortcutResolver::Resolv
     }
 
     return std::make_pair(launcher::util::WideToUtf8(target_w), launcher::util::WideToUtf8(args));
+}
+
+std::wstring PickFolderPath(HWND owner_window) {
+    CComPtr<IFileDialog> dialog;
+    if (FAILED(CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER, IID_IFileDialog,
+                                reinterpret_cast<void**>(&dialog)))) {
+        return {};
+    }
+    DWORD options = 0;
+    dialog->GetOptions(&options);
+    dialog->SetOptions(options | FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM);
+    if (FAILED(dialog->Show(owner_window))) {
+        return {};
+    }
+    CComPtr<IShellItem> chosen;
+    if (FAILED(dialog->GetResult(&chosen)) || chosen == nullptr) {
+        return {};
+    }
+    PWSTR path = nullptr;
+    if (FAILED(chosen->GetDisplayName(SIGDN_FILESYSPATH, &path)) || path == nullptr) {
+        return {};
+    }
+    std::wstring out(path);
+    CoTaskMemFree(path);
+    return out;
 }
 
 std::wstring PickOpenPath(HWND owner_window, const wchar_t* filter) {

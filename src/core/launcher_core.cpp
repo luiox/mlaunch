@@ -267,6 +267,10 @@ int LauncherBackend::ConvertItemPaths(bool to_relative, std::string* error) {
                 item.icon_location = next;
                 changed = true;
             }
+            if (ConvertOnePath(item.working_dir, to_relative, app_dir_text, drive_root_text, &next)) {
+                item.working_dir = next;
+                changed = true;
+            }
             if (changed) {
                 ++converted_items;
             }
@@ -435,6 +439,7 @@ bool LauncherBackend::UpsertItem(const std::string& group_id, const ItemInput& i
     const auto target = Trim(input.target_path);
     const auto icon = (item_type == "app" && Trim(input.icon_location).empty()) ? target : Trim(input.icon_location);
     const auto args = Trim(input.arguments);
+    const auto working_dir = Trim(input.working_dir);
     const auto name = Trim(input.name);
     const auto enabled = input.enabled.value_or(true);
 
@@ -446,6 +451,7 @@ bool LauncherBackend::UpsertItem(const std::string& group_id, const ItemInput& i
             it->target_path = target;
             it->icon_location = icon;
             it->arguments = args;
+            it->working_dir = working_dir;
             it->enabled = enabled;
             AppendJournal("update_item", "id=" + it->id + " name=" + name + " group=" + group->name);
         } else {
@@ -456,6 +462,7 @@ bool LauncherBackend::UpsertItem(const std::string& group_id, const ItemInput& i
             item.target_path = target;
             item.icon_location = icon;
             item.arguments = args;
+            item.working_dir = working_dir;
             item.enabled = enabled;
             AppendJournal("add_item", "id=" + item.id + " name=" + name + " group=" + group->name);
             group->items.push_back(std::move(item));
@@ -468,6 +475,7 @@ bool LauncherBackend::UpsertItem(const std::string& group_id, const ItemInput& i
         item.target_path = target;
         item.icon_location = icon;
         item.arguments = args;
+        item.working_dir = working_dir;
         item.enabled = enabled;
         AppendJournal("add_item", "id=" + item.id + " name=" + name + " group=" + group->name);
         group->items.push_back(std::move(item));

@@ -28,7 +28,8 @@ public:
 private:
     void OnItemEditDone(const std::string& group_id, bool confirmed, const std::string& item_id,
                         const std::string& name, const std::string& target,
-                        const std::string& args, const std::string& icon_location);
+                        const std::string& args, const std::string& icon_location,
+                        const std::string& working_dir);
     void OnSettingsDone(bool confirmed, const core::Settings& settings);
 
     AppWindow& owner_;

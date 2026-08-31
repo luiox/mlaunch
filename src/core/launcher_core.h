@@ -21,6 +21,8 @@ struct LaunchItem {
     std::string target_path;
     std::string icon_location;
     std::string arguments;
+    /// 工作目录（起始位置）；空 = 不指定（沿用目标所在目录的 ShellExecute 默认）。
+    std::string working_dir;
     std::uint64_t launch_count = 0;
     bool enabled = true;
 };
@@ -64,6 +66,7 @@ struct ItemInput {
     std::string target_path;
     std::string icon_location;
     std::string arguments;
+    std::string working_dir;
     std::optional<bool> enabled;
 };
 
@@ -88,7 +91,8 @@ struct ItemInput {
 class LaunchExecutor {
 public:
     virtual ~LaunchExecutor() = default;
-    virtual bool Launch(const std::string& target_path, const std::string& arguments, std::string* error) = 0;
+    virtual bool Launch(const std::string& target_path, const std::string& arguments,
+                         const std::string& working_dir, std::string* error) = 0;
 };
 
 /**
