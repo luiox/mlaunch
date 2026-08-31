@@ -232,13 +232,38 @@ xmake build core_tests; xmake run core_tests   # 22 个用例
   update_settings 若干）为 append-only 审计痕迹；settings.json 新增 `autorun:false`。
   launcher.v2.json 未被修改（结束时 MD5 与会话开始一致）。
 
+## 六-e、第二批功能会话（2026-08-31 续）
+
+- **Explorer 菜单补全**：`ExpandItemTargetPath`（%pr%/%cr%/环境变量展开，
+  与 core Launch 同规则；AppWindow 新增只读 `backend()` 访问器）；
+  `ShellMenuMsgHook`（WH_MSGFILTER，TrackPopupMenu 期间把
+  WM_INITMENUPOPUP/WM_MEASUREITEM/WM_DRAWITEM 转给 IContextMenu3/2——
+  自绘动词与“打开方式”动态子菜单必需）。
+- **滚轮调宽分组栏**：必须在 `TranslateAccelerator` 拦截——fork 的
+  OnMouseWheel 在窗口过程里先把事件发给命中控件（分组列表已滚走），
+  HandleCustomMessage 阶段无法撤回。锁定布局/搜索模式下禁用。
+- **设置页全量扩充**：5 个新 Settings 字段（start_hidden/close_minimize/
+  double_click_launch/backup_rolling_count/backup_daily_days）；
+  PruneBackups 参数化；设置窗分组重构（440x566，checkbox 行带完整说明文字，
+  `make_check_row`/`make_num_row`/`make_section` 工厂）；
+  `ValidateRangeInput` 越界红框（#D5303A）实时校验。
+- **行为接线要点**：close_minimize 只分流 closebtn 点击（菜单退出/WM_CLOSE
+  不受影响）；double_click 下 ITEMCLICK 仅选中、ITEMACTIVATE 启动
+  （DUI_MSGTYPE_ITEMACTIVATE）。
+- **实测**：启动隐藏（startHidden=true 启动后 MainWindowHandle 无标题窗、
+  Alt+1 唤出 visible=true）；关闭最小化（点击后进程存活 + IsIconic=True）；
+  红框校验双向（999→736 红像素，220→0）；设置窗布局走查（四组全部字段）。
+- **测试坑（新）**：备份保留测试不能靠连续保存计数——rolling 时间戳秒级，
+  同秒保存同名覆盖；用预置不同日期假快照隔离验证轮转。
+- 测试 26 → 28 全绿；走查后已把 startHidden/closeMinimize 还原为 false。
+
 ## 七、快速自检清单（新会话开始时）
 
 ```powershell
 cd D:\WorkSpace\mlaunch
 git log --oneline -3          # 应看到功能差距补全提交
 xmake build mlaunch           # 应 build ok（先关掉在跑的 mlaunch）
-xmake run core_tests          # 应 26 tests PASSED
+xmake run core_tests          # 应 28 tests PASSED
 ```
 UI 验证（菜单操作用 tools/uia_menu.ps1，勿依赖键盘 Down 计数）：
 搜索：点放大镜 → 粘贴字母 → 首行高亮 → Down/Up 移动 → 回车启动选中项。
