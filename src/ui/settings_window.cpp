@@ -1,5 +1,7 @@
 #include "settings_window.h"
 
+#include "dpi_helper.h"
+
 #include <windowsx.h>
 
 #include <algorithm>
@@ -16,7 +18,7 @@ using namespace DuiLib;
 namespace {
 
 constexpr int kWindowWidth = 440;
-constexpr int kWindowHeight = 566;
+constexpr int kWindowHeight = 640;
 constexpr UINT kFocusEditMsg = WM_APP + 0x1B;
 
 std::string TrimCopy(const std::string& value) {
@@ -247,7 +249,7 @@ LRESULT SettingsWindow::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& 
         auto* row = new CHorizontalLayoutUI();
         row->SetFixedHeight(24);
         row->SetAttribute(_T("childpadding"), _T("4"));
-        row->Add(MakeFieldLabel(_T("默认宽高 (320-3840/220-2160)"), 140));
+        row->Add(MakeFieldLabel(_T("默认宽高"), 140));
         width_input_ = MakeInput(_T("settings_width_input"));
         width_input_->SetFixedWidth(60);
         width_input_->SetNumberOnly(true);
@@ -258,13 +260,14 @@ LRESULT SettingsWindow::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& 
         row->Add(height_input_);
         root->Add(row);
     }
-    make_num_row(_T("分组栏宽度 (80-600)"), panel_input_, _T("settings_panel_input"));
+    make_num_row(_T("分组栏宽度"), panel_input_, _T("settings_panel_input"));
+    root->Add(MakeHint(_T("窗口尺寸范围 320-3840 / 220-2160；分组栏宽度 80-600")));
 
     // —— 数据备份 ——
     make_section(_T("数据备份"));
-    make_num_row(_T("滚动快照保留份数 (2-20)"), backup_rolling_input_, _T("settings_rolling_input"));
-    make_num_row(_T("每日快照保留天数 (3-90)"), backup_daily_input_, _T("settings_daily_input"));
-    root->Add(MakeHint(_T("保存于数据目录 backups/；数值输入越界时边框变红，确定时钳制")));
+    make_num_row(_T("滚动快照保留份数"), backup_rolling_input_, _T("settings_rolling_input"));
+    make_num_row(_T("每日快照保留天数"), backup_daily_input_, _T("settings_daily_input"));
+    root->Add(MakeHint(_T("保留范围：滚动 2-20 份、每日 3-90 天，越界边框变红并在确定时钳制")));
 
     auto* spacer = new CControlUI();
     root->Add(spacer);
@@ -300,6 +303,8 @@ void SettingsWindow::CreateAndShow(HWND owner_hwnd) {
     const int x = owner_rect.left + (owner_cx > kWindowWidth ? (owner_cx - kWindowWidth) / 2 : 0);
     const int y = owner_rect.top + (owner_cy > kWindowHeight ? (owner_cy - kWindowHeight) / 2 : 0);
     Create(nullptr, _T("MLaunchSettings"), WS_POPUP | WS_CLIPCHILDREN, WS_EX_TOOLWINDOW, x, y, kWindowWidth, kWindowHeight);
+    // 窗口按逻辑尺寸创建；对齐真实 DPI 的同时按比例放大并重新居中。
+    appui::ScaleDialogToWindowDpi(m_pm, m_hWnd, owner_hwnd);
     ::ShowWindow(m_hWnd, SW_SHOW);
     ::SetForegroundWindow(m_hWnd);
     appui::FocusNativeEdit(m_pm, hotkey_input_, m_hWnd);
@@ -317,7 +322,9 @@ bool SettingsWindow::PointOnEditableControl(POINT pt) const {
         _tcsstr(name, _T("_check")) != nullptr) {
         return true;
     }
-    return control->GetInterface(_T("ButtonUI")) != nullptr;
+    // fork 的 GetInterface 按 DUI_CTR_BUTTON="Button" 匹配，查 "ButtonUI" 永远为空，
+    // 会让按钮单击落进拖动分支（Enter/Esc 掩盖了这条路径）。
+    return control->GetInterface(_T("Button")) != nullptr;
 }
 
 void SettingsWindow::StartHotkeyCapture() {

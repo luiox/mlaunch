@@ -289,7 +289,9 @@ LRESULT AppWindow::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, 
                 ResetListDragState();
                 splitter_dragging_ = true;
                 splitter_drag_start_x_ = x;
-                splitter_start_width_ = group_panel_->GetFixedWidth();
+                // GetFixedWidth 是缩放后的物理值，反算回逻辑值再参与拖拽运算，
+                // SetFixedWidth 存逻辑值，直接混用会在非 100% 缩放下翻倍。
+                splitter_start_width_ = m_pm.GetDPIObj()->ScaleIntBack(group_panel_->GetFixedWidth());
                 splitter_pending_width_ = splitter_start_width_;
                 splitter_last_update_tick_ = ::GetTickCount();
                 SetCapture(m_hWnd);
@@ -341,11 +343,12 @@ LRESULT AppWindow::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, 
 
     if (uMsg == WM_MOUSEMOVE && splitter_dragging_ && group_panel_ != nullptr) {
         const int x = static_cast<short>(LOWORD(lParam));
-        int next_width = splitter_start_width_ + (x - splitter_drag_start_x_);
+        auto* dpi = m_pm.GetDPIObj();
+        int next_width = splitter_start_width_ + dpi->ScaleIntBack(x - splitter_drag_start_x_);
 
         RECT client{};
         ::GetClientRect(m_hWnd, &client);
-        const int total_width = client.right - client.left;
+        const int total_width = dpi->ScaleIntBack(client.right - client.left);
         const int min_group = 80;
         const int min_items = 220;
         const int max_group = (total_width - min_items - 12 > min_group) ? (total_width - min_items - 12) : min_group;
@@ -364,7 +367,7 @@ LRESULT AppWindow::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, 
         // 宽度更新做节流，减少高频拖动导致的重绘压力。
         const DWORD now = ::GetTickCount();
         const bool time_ready = (now - splitter_last_update_tick_) >= 12;
-        const int current_width = group_panel_->GetFixedWidth();
+        const int current_width = m_pm.GetDPIObj()->ScaleIntBack(group_panel_->GetFixedWidth());
         const bool delta_large = std::abs(current_width - splitter_pending_width_) >= 3;
         if ((time_ready || delta_large) && current_width != splitter_pending_width_) {
             group_panel_->SetFixedWidth(splitter_pending_width_);
@@ -378,7 +381,8 @@ LRESULT AppWindow::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, 
     if (uMsg == WM_LBUTTONUP && splitter_dragging_) {
         splitter_dragging_ = false;
         ReleaseCapture();
-        if (group_panel_ != nullptr && splitter_pending_width_ >= 0 && group_panel_->GetFixedWidth() != splitter_pending_width_) {
+        if (group_panel_ != nullptr && splitter_pending_width_ >= 0
+            && m_pm.GetDPIObj()->ScaleIntBack(group_panel_->GetFixedWidth()) != splitter_pending_width_) {
             group_panel_->SetFixedWidth(splitter_pending_width_);
             m_pm.NeedUpdate();
         }
@@ -403,7 +407,8 @@ LRESULT AppWindow::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, 
 
     if (uMsg == WM_CAPTURECHANGED && splitter_dragging_) {
         splitter_dragging_ = false;
-        if (group_panel_ != nullptr && splitter_pending_width_ >= 0 && group_panel_->GetFixedWidth() != splitter_pending_width_) {
+        if (group_panel_ != nullptr && splitter_pending_width_ >= 0
+            && m_pm.GetDPIObj()->ScaleIntBack(group_panel_->GetFixedWidth()) != splitter_pending_width_) {
             group_panel_->SetFixedWidth(splitter_pending_width_);
             m_pm.NeedUpdate();
         }

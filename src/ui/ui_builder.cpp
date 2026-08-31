@@ -93,7 +93,11 @@ CControlUI* UiBuilder::BuildRootUi() const {
 
     body->Add(groupPanel);
 
-    // 参考图分组区与条目区之间无分隔线（E6E6E6 直接过渡到 FFFFFF），不再放置 splitter。
+    // 参考图无可见分隔线，但滚轮调宽/拖拽调宽需要一个命中区，放一条 3px 透明条。
+    auto* panelSplitter = new CControlUI();
+    panelSplitter->SetName(_T("panel_splitter"));
+    panelSplitter->SetFixedWidth(3);
+    body->Add(panelSplitter);
 
     auto* itemPanel = new CVerticalLayoutUI();
     itemPanel->SetName(_T("item_panel"));

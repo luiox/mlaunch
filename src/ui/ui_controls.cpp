@@ -62,6 +62,7 @@ CheckBoxUI::CheckBoxUI() {
     SetAttribute(_T("bordersize"), _T("0"));
     // 文本让位勾选盒（盒 14px + 8px 间距）。
     SetAttribute(_T("textpadding"), _T("22,0,4,0"));
+    SetTextStyle(DT_LEFT | DT_VCENTER | DT_SINGLELINE);
 }
 
 void CheckBoxUI::SetChecked(bool checked) {

@@ -72,8 +72,11 @@ void ShadowWindow::Sync() {
     }
 
     // 插到主窗 Z 序正下方，随主窗显隐；SWP_NOACTIVATE 避免抢焦点。
+    // 偏移是 96 基准逻辑值，随主窗 DPI 换算，高缩放下剪影不会贴得太近。
+    const UINT dpi = ::GetDpiForWindow(main_);
+    const int offset = ::MulDiv(kOffsetPx, (dpi > 0 ? dpi : 96), 96);
     ::SetWindowPos(hwnd_, main_,
-                   rc.left + kOffsetPx, rc.top + kOffsetPx,
+                   rc.left + offset, rc.top + offset,
                    rc.right - rc.left, rc.bottom - rc.top,
                    SWP_NOACTIVATE);
     if (!::IsWindowVisible(hwnd_)) {

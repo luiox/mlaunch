@@ -15,6 +15,32 @@
 #include "logger.h"
 #include "utils/string_util.h"
 
+namespace {
+
+// 指定屏幕点的有效 DPI（Shcore 动态加载，失败回退 96）。
+int DpiOfPoint(POINT pt) {
+    const HMONITOR monitor = ::MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST);
+    if (monitor == nullptr) {
+        return 96;
+    }
+    // LoadLibrary 而非 GetModuleHandle：进程未必已加载 Shcore，取句柄失败会
+    // 错误地回退 96，恢复的窗口几何就会差一倍。
+    if (HMODULE shcore = ::LoadLibraryW(L"Shcore.dll")) {
+        using GetDpiForMonitorFn = HRESULT(WINAPI*)(HMONITOR, int, UINT*, UINT*);
+        if (auto get_dpi = reinterpret_cast<GetDpiForMonitorFn>(
+                ::GetProcAddress(shcore, "GetDpiForMonitor"))) {
+            UINT dpi_x = 96;
+            UINT dpi_y = 96;
+            if (SUCCEEDED(get_dpi(monitor, 0 /*MDT_EFFECTIVE_DPI*/, &dpi_x, &dpi_y)) && dpi_x > 0) {
+                return static_cast<int>(dpi_x);
+            }
+        }
+    }
+    return 96;
+}
+
+} // namespace
+
 using namespace DuiLib;
 
 void AppWindow::RestoreUiState() {
@@ -61,7 +87,18 @@ void AppWindow::RestoreUiState() {
     //    INI 的句柄，不释放的话，之后 SaveUiState 的原子替换将永远失败。
     ::WritePrivateProfileStringW(nullptr, nullptr, nullptr, ini_path.wstring().c_str());
 
-    // 3) 应用读取到的状态。
+    // 3) 应用读取到的状态。窗口几何换算：ini 恒存 96 基逻辑值，
+    //    DPI 感知进程看到的是物理像素，恢复时按当前窗口 DPI 放大。
+    //    （分组栏宽度不换算：fork 对 FixedWidth 在读取时自行 ScaleInt。）
+    // 换算 DPI 取“恢复目标位置所在显示器”：创建时 CW_USEDEFAULT 落在哪块屏
+    // 并不确定，若用移动前窗口的 DPI，多显示器缩放不同时几何会差一倍。
+    const POINT target_center{left + width / 2, top + height / 2};
+    const int restore_dpi = DpiOfPoint(target_center);
+    left = ::MulDiv(left, restore_dpi, 96);
+    top = ::MulDiv(top, restore_dpi, 96);
+    width = ::MulDiv(width, restore_dpi, 96);
+    height = ::MulDiv(height, restore_dpi, 96);
+
     if (has_splitter && group_panel_ != nullptr) {
         if (splitter_width < 80) {
             splitter_width = 80;
@@ -112,8 +149,11 @@ void AppWindow::SaveUiState() {
     appwin::UiStateSnapshot snapshot{};
 
     // 先从当前 UI 组装快照（内存为准），再一次性写盘。
+    // 窗口几何缩回 96 基逻辑值存储（与恢复侧对称；跨 DPI 迁移时尺寸语义稳定）。
+    const int save_dpi = static_cast<int>(::GetDpiForWindow(m_hWnd));
     if (group_panel_ != nullptr) {
-        int splitter_width = group_panel_->GetFixedWidth();
+        // GetFixedWidth 是缩放后的物理值，ui_state 统一存 96 基准逻辑值。
+        int splitter_width = m_pm.GetDPIObj()->ScaleIntBack(group_panel_->GetFixedWidth());
         if (splitter_width < 80) {
             splitter_width = 80;
         }
@@ -129,12 +169,12 @@ void AppWindow::SaveUiState() {
     // 使用 rcNormalPosition 记录“正常窗口”状态下的几何信息，
     // 这样从最大化退出后仍能恢复到用户期望的普通尺寸。
     const RECT rc = placement.rcNormalPosition;
-    snapshot.left = rc.left;
-    snapshot.top = rc.top;
-    snapshot.right = rc.right;
-    snapshot.bottom = rc.bottom;
-    snapshot.width = rc.right - rc.left;
-    snapshot.height = rc.bottom - rc.top;
+    snapshot.left = ::MulDiv(rc.left, 96, save_dpi);
+    snapshot.top = ::MulDiv(rc.top, 96, save_dpi);
+    snapshot.right = ::MulDiv(rc.right, 96, save_dpi);
+    snapshot.bottom = ::MulDiv(rc.bottom, 96, save_dpi);
+    snapshot.width = snapshot.right - snapshot.left;
+    snapshot.height = snapshot.bottom - snapshot.top;
     snapshot.maximized = placement.showCmd == SW_SHOWMAXIMIZED ? 1 : 0;
 
     // 事务性写入：先写临时文件，再原子替换正式配置，避免中途损坏。

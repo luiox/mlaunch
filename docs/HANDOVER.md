@@ -110,6 +110,12 @@ xmake build core_tests; xmake run core_tests   # 22 个用例
   才吞掉，`S_FALSE`=放行**（不是"非零吞掉"）。该回调对循环内**所有**消息（含鼠标）
   触发——曾有中间版本放行分支误 `return 0`（==S_OK），主窗整窗输入被吞、所有点击
   失效；SettingsWindow 原来的 S_OK/S_FALSE 本来就是对的，勿再"修正"。
+- **per-monitor DPI 已落地（2026-08-31）**：mlaunch 现为 PMv2 感知进程
+  （方案与陷阱全录见 `未实现功能清单.md` 结案节 + `已实现功能清单.md` 十四）。
+  自动化口径变化：**et/PowerShell 等非感知工具的坐标与截图都是虚拟化坐标
+  （=物理÷缩放），感知进程（ctypes 设 PMv2）才是物理像素**；跨口径对点前先声明。
+  另：fork `GetInterface` 按短名匹配（"Button" 不是 "ButtonUI"），对话框
+  "空白拖动 vs 按钮"判定必须走短名。
 - **UI 自动化测试坑（双屏 2K + DPI）**：mlaunch 是 DPI-unaware 但 fork 布局按
   物理 2x 缩放，**posted 消息 lParam 用物理像素**（放大镜在 (1930,34)，逻辑
   (965,17) 会被 normalize 减半命中标题）；fork 原生 EDIT 窗口类名是 **`EditWnd`**
