@@ -17,7 +17,7 @@ using namespace DuiLib;
 namespace {
 
 constexpr int kWindowWidth = 400;
-constexpr int kWindowHeight = 300;
+constexpr int kWindowHeight = 336;
 constexpr UINT kFocusEditMsg = WM_APP + 0x1A;
 
 std::string TrimCopy(const std::string& value) {
@@ -75,6 +75,7 @@ ItemEditWindow::ItemEditWindow(AppWindow& owner,
         initial_name_ = initial->name;
         initial_target_ = initial->target_path;
         initial_args_ = initial->arguments;
+        initial_workdir_ = initial->working_dir;
         icon_location_ = initial->icon_location;
     }
 }
@@ -143,6 +144,16 @@ LRESULT ItemEditWindow::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& 
     args_row->Add(args_input_);
     root->Add(args_row);
 
+    // 起始位置（工作目录）行；留空 = 不指定
+    auto* workdir_row = new CHorizontalLayoutUI();
+    workdir_row->SetFixedHeight(26);
+    workdir_row->SetAttribute(_T("childpadding"), _T("4"));
+    workdir_row->Add(MakeFieldLabel(_T("起始位置")));
+    workdir_input_ = MakeInput(_T("item_dialog_workdir_input"));
+    workdir_row->Add(workdir_input_);
+    workdir_row->Add(MakeTextButton(_T("item_dialog_workdir_browse"), _T("..."), 30));
+    root->Add(workdir_row);
+
     // 灰字提示
     auto* hint1 = new CLabelUI();
     hint1->SetText(_T("目标可以指向文件、文件夹、网址。支持相对路径与环境变量。"));
@@ -174,6 +185,7 @@ LRESULT ItemEditWindow::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& 
     name_input_->SetText(launcher::util::Utf8ToWide(initial_name_).c_str());
     target_input_->SetText(launcher::util::Utf8ToWide(initial_target_).c_str());
     args_input_->SetText(launcher::util::Utf8ToWide(initial_args_).c_str());
+    workdir_input_->SetText(launcher::util::Utf8ToWide(initial_workdir_).c_str());
     RefreshIcon();
     name_input_->SetFocus();
 
@@ -212,7 +224,8 @@ void ItemEditWindow::RefreshIcon() {
     }
     const CDuiString name = control->GetName();
     if (name == _T("item_dialog_name_input") || name == _T("item_dialog_target_input") ||
-        name == _T("item_dialog_args_input") || name == _T("item_dialog_icon_preview")) {
+        name == _T("item_dialog_args_input") || name == _T("item_dialog_workdir_input") ||
+        name == _T("item_dialog_icon_preview")) {
         return true;
     }
     return control->GetInterface(_T("ButtonUI")) != nullptr;
@@ -222,6 +235,7 @@ void ItemEditWindow::Confirm() {
     const std::string name = TrimCopy(launcher::util::WideToUtf8(name_input_->GetText().GetData()));
     const std::string target = TrimCopy(launcher::util::WideToUtf8(target_input_->GetText().GetData()));
     const std::string args = launcher::util::WideToUtf8(args_input_->GetText().GetData());
+    const std::string workdir = TrimCopy(launcher::util::WideToUtf8(workdir_input_->GetText().GetData()));
 
     if (name.empty()) {
         ::MessageBoxW(m_hWnd, L"名称不能为空", L"MLaunch", MB_ICONWARNING);
@@ -233,7 +247,7 @@ void ItemEditWindow::Confirm() {
     }
 
     if (on_done_) {
-        on_done_(true, item_id_, name, target, args, icon_location_);
+        on_done_(true, item_id_, name, target, args, icon_location_, workdir);
     }
     Close();
 }
@@ -241,8 +255,8 @@ void ItemEditWindow::Confirm() {
 void ItemEditWindow::CycleInputFocus() {
     // 不依赖 manager 的 m_pFocus（PreMessageHandler 会抢先 SetNextTabControl），
     // 用窗口内索引确定性轮换：名称 → 目标 → 参数。
-    DuiLib::CEditUI* order[] = {name_input_, target_input_, args_input_};
-    focus_index_ = (focus_index_ + 1) % 3;
+    DuiLib::CEditUI* order[] = {name_input_, target_input_, args_input_, workdir_input_};
+    focus_index_ = (focus_index_ + 1) % 4;
     const HWND native_edit = appui::FocusNativeEdit(m_pm, order[focus_index_], m_hWnd);
     if (native_edit != nullptr) {
         // Windows 惯例：Tab 进入字段时全选现有内容。
@@ -289,7 +303,7 @@ LRESULT ItemEditWindow::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lPa
         }
         if (wParam == VK_ESCAPE) {
             if (on_done_) {
-                on_done_(false, item_id_, {}, {}, {}, {});
+                on_done_(false, item_id_, {}, {}, {}, {}, {});
             }
             Close();
             bHandled = TRUE;
@@ -331,9 +345,16 @@ void ItemEditWindow::Notify(TNotifyUI& msg) {
         }
         if (name == _T("item_dialog_cancel")) {
             if (on_done_) {
-                on_done_(false, item_id_, {}, {}, {}, {});
+                on_done_(false, item_id_, {}, {}, {}, {}, {});
             }
             Close();
+            return;
+        }
+        if (name == _T("item_dialog_workdir_browse")) {
+            const std::wstring folder = core::PickFolderPath(m_hWnd);
+            if (!folder.empty()) {
+                workdir_input_->SetText(folder.c_str());
+            }
             return;
         }
         if (name == _T("item_dialog_browse")) {

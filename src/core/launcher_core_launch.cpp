@@ -78,6 +78,7 @@ LaunchResult LauncherBackend::Launch(const std::string& group_id, const std::str
     // 占位符与环境变量展开（对齐 VB6 Poner：%pr%=程序目录，%cr%=所在盘根目录）。
     std::string launch_target = it->target_path;
     std::string launch_args = it->arguments;
+    std::string launch_workdir = it->working_dir;
     if (!app_dir_.empty()) {
         const auto app_dir_text = app_dir_.string();
         const auto drive_root_text = app_dir_.root_path().string();
@@ -85,12 +86,15 @@ LaunchResult LauncherBackend::Launch(const std::string& group_id, const std::str
         ReplaceAllInPlace(&launch_target, "%cr%", drive_root_text);
         ReplaceAllInPlace(&launch_args, "%pr%", app_dir_text);
         ReplaceAllInPlace(&launch_args, "%cr%", drive_root_text);
+        ReplaceAllInPlace(&launch_workdir, "%pr%", app_dir_text);
+        ReplaceAllInPlace(&launch_workdir, "%cr%", drive_root_text);
     }
     launch_target = ExpandEnvUtf8(launch_target);
     launch_args = ExpandEnvUtf8(launch_args);
+    launch_workdir = ExpandEnvUtf8(launch_workdir);
 
     std::string launch_error;
-    if (!launch_executor_->Launch(launch_target, launch_args, &launch_error)) {
+    if (!launch_executor_->Launch(launch_target, launch_args, launch_workdir, &launch_error)) {
         SetError(error, launch_error.empty() ? "launch failed" : launch_error);
         result.message = "launch failed";
         return result;

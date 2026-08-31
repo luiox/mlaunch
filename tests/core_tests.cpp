@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <fstream>
 #include <set>
+#include <tuple>
 
 #include <gtest/gtest.h>
 
@@ -16,12 +17,13 @@ namespace {
 // 测试用假执行器：只记录调用，不真正启动进程。
 class FakeLaunchExecutor : public core::LaunchExecutor {
 public:
-    bool Launch(const std::string& target_path, const std::string& arguments, std::string* error) override {
-        launched.emplace_back(target_path, arguments);
+    bool Launch(const std::string& target_path, const std::string& arguments,
+                const std::string& working_dir, std::string* error) override {
+        launched.emplace_back(target_path, arguments, working_dir);
         return true;
     }
 
-    std::vector<std::pair<std::string, std::string>> launched;
+    std::vector<std::tuple<std::string, std::string, std::string>> launched;
 };
 
 // 测试用假解析器：对 .lnk 返回固定目标。
@@ -527,7 +529,7 @@ TEST(BackendTest, LaunchUsesInjectedExecutor) {
     const auto result = b.Launch(gid, item_id, &error);
     ASSERT_TRUE(result.ok) << error;
     ASSERT_EQ(executor.launched.size(), 1u);
-    EXPECT_EQ(executor.launched[0].first, "C:\\Tools\\Procmon.exe");
+    EXPECT_EQ(std::get<0>(executor.launched[0]), "C:\\Tools\\Procmon.exe");
 
     const auto* group = FindGroupById(b, gid);
     ASSERT_NE(group, nullptr);
@@ -672,6 +674,7 @@ TEST(BackendTest, LaunchExpandsPlaceholdersAndEnvVars) {
     input.target_path = "%pr%\\tools\\tool.exe";
     input.icon_location = "%pr%\\tools\\tool.exe";
     input.arguments = "--root %cr%data --user %USERNAME%";
+    input.working_dir = "%pr%\\data";
     ASSERT_TRUE(b.UpsertItem(gid, input, &error)) << error;
 
     std::string item_id;
@@ -685,11 +688,12 @@ TEST(BackendTest, LaunchExpandsPlaceholdersAndEnvVars) {
     const auto result = b.Launch(gid, item_id, &error);
     ASSERT_TRUE(result.ok) << error;
     ASSERT_EQ(executor.launched.size(), 1u);
-    EXPECT_EQ(executor.launched[0].first, "D:\\Apps\\mlaunch\\tools\\tool.exe");
-    EXPECT_NE(executor.launched[0].second.find("--root D:\\data"), std::string::npos);
-    EXPECT_NE(executor.launched[0].second.find("--user "), std::string::npos);
+    EXPECT_EQ(std::get<2>(executor.launched[0]), "D:\\Apps\\mlaunch\\data");
+    EXPECT_EQ(std::get<0>(executor.launched[0]), "D:\\Apps\\mlaunch\\tools\\tool.exe");
+    EXPECT_NE(std::get<1>(executor.launched[0]).find("--root D:\\data"), std::string::npos);
+    EXPECT_NE(std::get<1>(executor.launched[0]).find("--user "), std::string::npos);
     // %USERNAME% 应被展开为非空值（不再包含百分号）
-    const auto& args = executor.launched[0].second;
+    const auto& args = std::get<1>(executor.launched[0]);
     const auto user_pos = args.find("--user ");
     EXPECT_EQ(args.find('%', user_pos), std::string::npos) << args;
 }
@@ -848,6 +852,10 @@ TEST(BackendTest, ConvertItemPathsRoundTripAndIdempotent) {
         core::ItemInput input;
         input.name = c.name;
         input.target_path = c.target;
+        // 工作目录与目标路径一并转换：仅 in-app-dir 携带，验证纳入而不影响计数。
+        if (std::string(c.name) == "in-app-dir") {
+            input.working_dir = "D:\\Apps\\mlaunch\\work";
+        }
         ASSERT_TRUE(b.UpsertItem(gid, input, &error)) << c.name << ": " << error;
     }
 
@@ -860,6 +868,9 @@ TEST(BackendTest, ConvertItemPathsRoundTripAndIdempotent) {
             if (i.name == c.name) {
                 EXPECT_EQ(i.target_path, c.expected_relative) << c.name;
             }
+        }
+        if (i.name == "in-app-dir") {
+            EXPECT_EQ(i.working_dir, "%pr%\\work") << i.name;
         }
     }
 

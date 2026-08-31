@@ -123,6 +123,7 @@ bool LauncherBackend::Load(std::string* error) {
                             item.name = GetStr(ji, "name", std::string());
                             item.target_path = GetStr(ji, "targetPath", std::string());
                             item.icon_location = GetStr(ji, "iconLocation", std::string());
+                            item.working_dir = GetStr(ji, "workingDir", std::string());
                             item.arguments = GetStr(ji, "arguments", std::string());
                             item.launch_count = GetU64(ji, "launchCount", 0);
                             item.enabled = GetBool(ji, "enabled", true);
@@ -255,6 +256,7 @@ std::string LauncherBackend::SerializeCurrentData() const {
             SetStr(ji, arena, "name", i.name);
             SetStr(ji, arena, "targetPath", i.target_path);
             SetStr(ji, arena, "iconLocation", i.icon_location);
+            SetStr(ji, arena, "workingDir", i.working_dir);
             SetStr(ji, arena, "arguments", i.arguments);
             SetInt(ji, arena, "launchCount", static_cast<std::int64_t>(i.launch_count));
             SetBool(ji, arena, "enabled", i.enabled);

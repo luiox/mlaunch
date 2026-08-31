@@ -135,8 +135,9 @@ void DialogManager::OpenItemDialog(bool edit_mode, const std::string& group_id, 
         edit_mode ? &initial : nullptr,
         [this, group_id_copy, item_id_copy](bool confirmed, const std::string& item_id,
                                             const std::string& name, const std::string& target,
-                                            const std::string& args, const std::string& icon) {
-            OnItemEditDone(group_id_copy, confirmed, item_id, name, target, args, icon);
+                                            const std::string& args, const std::string& icon,
+                                            const std::string& workdir) {
+            OnItemEditDone(group_id_copy, confirmed, item_id, name, target, args, icon, workdir);
         });
     item_edit_window_->CreateAndShow(owner_.m_hWnd);
 }
@@ -188,7 +189,8 @@ void DialogManager::OnSettingsDone(bool confirmed, const core::Settings& setting
 
 void DialogManager::OnItemEditDone(const std::string& group_id, bool confirmed, const std::string& item_id,
                                    const std::string& name, const std::string& target,
-                                   const std::string& args, const std::string& icon_location) {
+                                   const std::string& args, const std::string& icon_location,
+                                   const std::string& working_dir) {
     item_edit_window_ = nullptr;
     if (!confirmed) {
         return;
@@ -202,6 +204,7 @@ void DialogManager::OnItemEditDone(const std::string& group_id, bool confirmed, 
     input.target_path = target;
     input.arguments = args;
     input.icon_location = icon_location;
+    input.working_dir = working_dir;
     input.item_type = std::string("app");
     input.enabled = true;
 
