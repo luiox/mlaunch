@@ -121,6 +121,10 @@ void AppWindow::ShowItemContextMenu(const POINT& screen_point) {
         AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
         AppendMenuW(menu, MF_STRING, launcher::constants::command::kItemAdd, L"添加项目");
         AppendMenuW(menu, MF_STRING, launcher::constants::command::kItemEdit, L"编辑项目");
+        const core::LaunchItem* selected_item = FindSelectedItem();
+        const bool item_enabled = selected_item == nullptr || selected_item->enabled;
+        AppendMenuW(menu, MF_STRING, launcher::constants::command::kItemToggleEnabled,
+                    item_enabled ? L"禁用条目" : L"启用条目");
         AppendMenuW(menu, MF_STRING, launcher::constants::command::kItemDelete, L"删除项目");
 
         move_menu = CreatePopupMenu();
@@ -167,6 +171,7 @@ void AppWindow::ShowMainContextMenu(const POINT& screen_point, bool right_align)
     AppendMenuW(new_menu, MF_STRING, launcher::constants::command::kMainNewReboot, L"重启");
     AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(new_menu), L"新建项目");
     AppendMenuW(menu, MF_STRING, launcher::constants::command::kMainSortByName, L"按名称排序");
+    AppendMenuW(menu, MF_STRING, launcher::constants::command::kMainSortByCount, L"按使用频率排序");
     AppendMenuW(menu, MF_STRING | (layout_locked_ ? MF_CHECKED : 0), launcher::constants::command::kMainToggleLock, L"锁定");
     AppendMenuW(menu, MF_STRING | (auto_hide_ ? MF_CHECKED : 0), launcher::constants::command::kMainToggleAutoHide, L"自动隐藏");
 
@@ -231,6 +236,21 @@ void AppWindow::ExecuteMainCommand(UINT command_id) {
         }
         RenderItems();
         status_.Info("已按名称排序");
+        return;
+    }
+    case launcher::constants::command::kMainSortByCount: {
+        const core::Group* group = FindActiveGroup();
+        if (group == nullptr) {
+            status_.Warn("请先选择分组");
+            return;
+        }
+        std::string error;
+        if (!backend_.SortGroupItemsByLaunchCount(group->id, &error)) {
+            status_.Error("排序失败：" + error);
+            return;
+        }
+        RenderItems();
+        status_.Info("已按使用频率排序");
         return;
     }
     case launcher::constants::command::kMainImportData: {
@@ -339,6 +359,10 @@ void AppWindow::ExecuteItemCommand(UINT command_id) {
     }
     if (command_id == launcher::constants::command::kItemEdit) {
         OpenItemDialog(true);
+        return;
+    }
+    if (command_id == launcher::constants::command::kItemToggleEnabled) {
+        ToggleSelectedItemEnabled();
         return;
     }
     if (command_id == launcher::constants::command::kItemDelete) {

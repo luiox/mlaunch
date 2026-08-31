@@ -217,7 +217,7 @@ void ListController::RenderItems() {
 
                 auto* name = new CLabelUI();
                 name->SetText(launcher::util::Utf8ToWide(item.name + "  [" + group.name + "]").c_str());
-                name->SetTextColor(0xFF1A1A1A);
+                name->SetTextColor(item.enabled ? 0xFF1A1A1A : 0xFF909090);
                 name->SetTextStyle(DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
                 row->Add(name);
 
@@ -274,7 +274,7 @@ void ListController::RenderItems() {
 
         auto* name = new CLabelUI();
         name->SetText(launcher::util::Utf8ToWide(item.name).c_str());
-        name->SetTextColor(0xFF1A1A1A);
+        name->SetTextColor(item.enabled ? 0xFF1A1A1A : 0xFF909090);
         name->SetTextStyle(DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
         row->Add(name);
 

@@ -29,6 +29,7 @@ constexpr UINT kItemRunAs = 1104;
 constexpr UINT kItemOpenFolder = 1105;
 constexpr UINT kItemShellMenu = 1106;
 constexpr UINT kItemCopyPath = 1107;
+constexpr UINT kItemToggleEnabled = 1108;
 constexpr UINT kItemMoveBase = 2000;
 
 constexpr UINT kMainNewCustom = 3001;
@@ -53,6 +54,7 @@ constexpr UINT kMainToggleLock = 3015;
 constexpr UINT kMainToggleAutoHide = 3016;
 constexpr UINT kMainConvertRelative = 3017;
 constexpr UINT kMainConvertAbsolute = 3018;
+constexpr UINT kMainSortByCount = 3019;
 
 constexpr UINT kBackupRestoreBase = 4000;
 constexpr UINT kBackupRestoreMax = 9;
