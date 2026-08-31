@@ -4,6 +4,7 @@
 
 #include <functional>
 #include <string>
+#include <vector>
 
 #include "launcher_core.h"
 #include "ui_controls.h"
@@ -32,6 +33,8 @@ public:
 
 protected:
     void Confirm();
+    /** @brief 切换左侧导航分页（0 行为 / 1 启动 / 2 窗口 / 3 备份）。 */
+    void SelectPage(int index);
     bool PointOnEditableControl(POINT pt) const;
     /** @brief Tab 轮换：热键 → 宽 → 高 → 分组栏宽度 → 滚动备份数 → 每日天数。 */
     void CycleInputFocus();
@@ -48,6 +51,9 @@ private:
     DoneCallback on_done_;
     core::Settings draft_;
     int focus_index_ = 0;
+    int current_page_ = 0;
+    std::vector<appui::ButtonUI*> nav_buttons_;
+    std::vector<DuiLib::CVerticalLayoutUI*> pages_;
 
     DuiLib::CEditUI* hotkey_input_ = nullptr;
     appui::CheckBoxUI* hide_check_ = nullptr;

@@ -17,8 +17,8 @@ using namespace DuiLib;
 
 namespace {
 
-constexpr int kWindowWidth = 440;
-constexpr int kWindowHeight = 640;
+constexpr int kWindowWidth = 580;
+constexpr int kWindowHeight = 400;
 constexpr UINT kFocusEditMsg = WM_APP + 0x1B;
 
 std::string TrimCopy(const std::string& value) {
@@ -170,31 +170,41 @@ LRESULT SettingsWindow::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& 
     m_pm.SetDefaultFont(_T("微软雅黑"), 14, false, false, false, false);
     m_pm.AddFont(1, _T("微软雅黑"), 12, false, false, false);
 
-    auto* root = new CVerticalLayoutUI();
+    // 对齐 VB6 原版设置窗：左侧灰底分类导航（选中项白底），右侧为该分类的配置页。
+    auto* root = new CHorizontalLayoutUI();
     root->SetAttribute(_T("bkcolor"), _T("0xFFFFFFFF"));
     root->SetAttribute(_T("bordercolor"), _T("0xFFD2D2D2"));
     root->SetAttribute(_T("bordersize"), _T("1"));
-    root->SetAttribute(_T("inset"), _T("14,10,14,10"));
-    root->SetAttribute(_T("childpadding"), _T("6"));
+    root->SetAttribute(_T("childpadding"), _T("0"));
 
-    auto* title = new CLabelUI();
-    title->SetText(_T("设置"));
-    title->SetFixedHeight(22);
-    title->SetTextColor(0xFF1A1A1A);
-    title->SetTextStyle(DT_LEFT | DT_VCENTER | DT_SINGLELINE);
-    root->Add(title);
+    auto* nav = new CVerticalLayoutUI();
+    nav->SetFixedWidth(120);
+    nav->SetAttribute(_T("bkcolor"), _T("0xFFE6E6E6"));
+    nav->SetAttribute(_T("childpadding"), _T("0"));
 
-    // —— 通用小部件工厂 ——
-    auto make_section = [&root](LPCTSTR text) {
-        auto* label = new CLabelUI();
-        label->SetText(text);
-        label->SetFixedHeight(18);
-        label->SetTextColor(0xFF808689);
-        label->SetFont(1);
-        label->SetTextStyle(DT_LEFT | DT_VCENTER | DT_SINGLELINE);
-        root->Add(label);
+    auto make_nav_button = [&](LPCTSTR name, LPCTSTR text) {
+        auto* button = new appui::ButtonUI();
+        button->SetName(name);
+        button->SetText(text);
+        button->SetFixedHeight(36);
+        // 选中态走粘滞 active（白底盖住灰导航），悬停浅灰。
+        button->SetStateColors(0x00000000, 0xFFDCDCDC, 0xFFFFFFFF);
+        button->SetTextColor(0xFF1A1A1A);
+        button->SetTextStyle(DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+        button->SetAttribute(_T("textpadding"), _T("20,0,8,0"));
+        button->SetAttribute(_T("bordercolor"), _T("0x00000000"));
+        button->SetAttribute(_T("bordersize"), _T("0"));
+        nav->Add(button);
+        return button;
     };
-    auto make_check_row = [&root](LPCTSTR name, LPCTSTR text, bool checked) -> appui::CheckBoxUI* {
+
+    auto* content = new CVerticalLayoutUI();
+    content->SetAttribute(_T("bkcolor"), _T("0xFFFFFFFF"));
+    content->SetAttribute(_T("inset"), _T("18,16,18,12"));
+    content->SetAttribute(_T("childpadding"), _T("6"));
+
+    // —— 分页内容工厂 ——
+    auto make_check_row = [&](CVerticalLayoutUI* page, LPCTSTR name, LPCTSTR text, bool checked) -> appui::CheckBoxUI* {
         auto* row = new CHorizontalLayoutUI();
         row->SetFixedHeight(24);
         row->SetAttribute(_T("childpadding"), _T("4"));
@@ -204,10 +214,10 @@ LRESULT SettingsWindow::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& 
         box->SetFixedHeight(24);
         box->SetChecked(checked);
         row->Add(box);
-        root->Add(row);
+        page->Add(row);
         return box;
     };
-    auto make_num_row = [&root](LPCTSTR label_text, CEditUI*& input, LPCTSTR name) {
+    auto make_num_row = [&](CVerticalLayoutUI* page, LPCTSTR label_text, CEditUI*& input, LPCTSTR name) {
         auto* row = new CHorizontalLayoutUI();
         row->SetFixedHeight(24);
         row->SetAttribute(_T("childpadding"), _T("4"));
@@ -216,35 +226,40 @@ LRESULT SettingsWindow::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& 
         input->SetFixedWidth(70);
         input->SetNumberOnly(true);
         row->Add(input);
-        root->Add(row);
+        page->Add(row);
     };
 
-    // —— 热键 ——
-    auto* hotkey_row = new CHorizontalLayoutUI();
-    hotkey_row->SetFixedHeight(24);
-    hotkey_row->SetAttribute(_T("childpadding"), _T("4"));
-    hotkey_row->Add(MakeFieldLabel(_T("全局热键"), 140));
-    hotkey_input_ = MakeInput(_T("settings_hotkey_input"));
-    hotkey_input_->SetReadOnly(true);
-    hotkey_row->Add(hotkey_input_);
-    root->Add(hotkey_row);
-    root->Add(MakeHint(_T("点击输入框后按下组合键（需含 Ctrl/Alt/Shift/Win）；留空禁用")));
+    // —— 行为页 ——
+    auto* page_behavior = new CVerticalLayoutUI();
+    content->Add(page_behavior);
+    hide_check_ = make_check_row(page_behavior, _T("settings_hide_check"), _T("启动条目后最小化窗口（原版行为）"), draft_.execute_hide);
+    dblclick_check_ = make_check_row(page_behavior, _T("settings_dblclick_check"), _T("双击启动条目（关闭后单击仅选中）"), draft_.double_click_launch);
+    closemin_check_ = make_check_row(page_behavior, _T("settings_closemin_check"), _T("关闭按钮最小化而非退出（退出走菜单）"), draft_.close_minimize);
+    lock_check_ = make_check_row(page_behavior, _T("settings_lock_check"), _T("锁定布局（禁用拖动/缩放/重排/宽度滚轮）"), draft_.locked);
+    autohide_check_ = make_check_row(page_behavior, _T("settings_autohide_check"), _T("失焦自动隐藏（热键唤回）"), draft_.auto_hide);
 
-    // —— 行为 ——
-    make_section(_T("行为"));
-    hide_check_ = make_check_row(_T("settings_hide_check"), _T("启动条目后最小化窗口（原版行为）"), draft_.execute_hide);
-    dblclick_check_ = make_check_row(_T("settings_dblclick_check"), _T("双击启动条目（关闭后单击仅选中）"), draft_.double_click_launch);
-    closemin_check_ = make_check_row(_T("settings_closemin_check"), _T("关闭按钮最小化而非退出（退出走菜单）"), draft_.close_minimize);
-    lock_check_ = make_check_row(_T("settings_lock_check"), _T("锁定布局（禁用拖动/缩放/重排/宽度滚轮）"), draft_.locked);
-    autohide_check_ = make_check_row(_T("settings_autohide_check"), _T("失焦自动隐藏（热键唤回）"), draft_.auto_hide);
+    // —— 启动页 ——
+    auto* page_startup = new CVerticalLayoutUI();
+    page_startup->SetVisible(false);
+    content->Add(page_startup);
+    autorun_check_ = make_check_row(page_startup, _T("settings_autorun_check"), _T("开机自启（当前用户注册表）"), draft_.autorun);
+    starthidden_check_ = make_check_row(page_startup, _T("settings_starthidden_check"), _T("启动时隐藏主窗（热键唤出）"), draft_.start_hidden);
+    {
+        auto* hotkey_row = new CHorizontalLayoutUI();
+        hotkey_row->SetFixedHeight(24);
+        hotkey_row->SetAttribute(_T("childpadding"), _T("4"));
+        hotkey_row->Add(MakeFieldLabel(_T("全局热键"), 140));
+        hotkey_input_ = MakeInput(_T("settings_hotkey_input"));
+        hotkey_input_->SetReadOnly(true);
+        hotkey_row->Add(hotkey_input_);
+        page_startup->Add(hotkey_row);
+        page_startup->Add(MakeHint(_T("点击输入框后按下组合键（需含 Ctrl/Alt/Shift/Win）；留空禁用")));
+    }
 
-    // —— 启动 ——
-    make_section(_T("启动"));
-    autorun_check_ = make_check_row(_T("settings_autorun_check"), _T("开机自启（当前用户注册表）"), draft_.autorun);
-    starthidden_check_ = make_check_row(_T("settings_starthidden_check"), _T("启动时隐藏主窗（热键唤出）"), draft_.start_hidden);
-
-    // —— 窗口 ——
-    make_section(_T("窗口"));
+    // —— 窗口页 ——
+    auto* page_window = new CVerticalLayoutUI();
+    page_window->SetVisible(false);
+    content->Add(page_window);
     {
         auto* row = new CHorizontalLayoutUI();
         row->SetFixedHeight(24);
@@ -258,19 +273,21 @@ LRESULT SettingsWindow::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& 
         height_input_->SetFixedWidth(60);
         height_input_->SetNumberOnly(true);
         row->Add(height_input_);
-        root->Add(row);
+        page_window->Add(row);
     }
-    make_num_row(_T("分组栏宽度"), panel_input_, _T("settings_panel_input"));
-    root->Add(MakeHint(_T("窗口尺寸范围 320-3840 / 220-2160；分组栏宽度 80-600")));
+    make_num_row(page_window, _T("分组栏宽度"), panel_input_, _T("settings_panel_input"));
+    page_window->Add(MakeHint(_T("窗口尺寸范围 320-3840 / 220-2160；分组栏宽度 80-600")));
 
-    // —— 数据备份 ——
-    make_section(_T("数据备份"));
-    make_num_row(_T("滚动快照保留份数"), backup_rolling_input_, _T("settings_rolling_input"));
-    make_num_row(_T("每日快照保留天数"), backup_daily_input_, _T("settings_daily_input"));
-    root->Add(MakeHint(_T("保留范围：滚动 2-20 份、每日 3-90 天，越界边框变红并在确定时钳制")));
+    // —— 备份页 ——
+    auto* page_backup = new CVerticalLayoutUI();
+    page_backup->SetVisible(false);
+    content->Add(page_backup);
+    make_num_row(page_backup, _T("滚动快照保留份数"), backup_rolling_input_, _T("settings_rolling_input"));
+    make_num_row(page_backup, _T("每日快照保留天数"), backup_daily_input_, _T("settings_daily_input"));
+    page_backup->Add(MakeHint(_T("保留范围：滚动 2-20 份、每日 3-90 天，越界边框变红并在确定时钳制")));
 
     auto* spacer = new CControlUI();
-    root->Add(spacer);
+    content->Add(spacer);
 
     auto* actions = new CHorizontalLayoutUI();
     actions->SetFixedHeight(30);
@@ -278,7 +295,17 @@ LRESULT SettingsWindow::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& 
     actions->SetAttribute(_T("childalign"), _T("right"));
     actions->Add(MakeTextButton(_T("settings_ok"), _T("确定"), 88));
     actions->Add(MakeTextButton(_T("settings_cancel"), _T("取消"), 88));
-    root->Add(actions);
+    content->Add(actions);
+
+    root->Add(nav);
+    root->Add(content);
+
+    nav_buttons_ = {make_nav_button(_T("settings_nav_0"), _T("行为")),
+                    make_nav_button(_T("settings_nav_1"), _T("启动")),
+                    make_nav_button(_T("settings_nav_2"), _T("窗口")),
+                    make_nav_button(_T("settings_nav_3"), _T("备份"))};
+    pages_ = {page_behavior, page_startup, page_window, page_backup};
+    nav_buttons_[0]->SetActive(true);
 
     m_pm.AttachDialog(root);
     m_pm.AddNotifier(this);
@@ -346,6 +373,18 @@ void SettingsWindow::CancelHotkeyCapture() {
     m_pm.NeedUpdate();
 }
 
+void SettingsWindow::SelectPage(int index) {
+    if (index < 0 || index >= 4 || index == current_page_) {
+        return;
+    }
+    current_page_ = index;
+    for (int i = 0; i < 4; ++i) {
+        pages_[i]->SetVisible(i == index);
+        nav_buttons_[i]->SetActive(i == index);
+    }
+    m_pm.NeedUpdate();
+}
+
 void SettingsWindow::Confirm() {
     bool ok = false;
 
@@ -407,13 +446,23 @@ void SettingsWindow::Confirm() {
 void SettingsWindow::CycleInputFocus() {
     // 不依赖 manager 的 m_pFocus（fork 的 PreMessageHandler 会抢先做
     // SetNextTabControl 把焦点挪到按钮上），用窗口内索引确定性轮换。
-    DuiLib::CEditUI* order[] = {hotkey_input_, width_input_, height_input_, panel_input_,
-                                backup_rolling_input_, backup_daily_input_};
-    focus_index_ = (focus_index_ + 1) % 6;
-    const HWND native_edit = appui::FocusNativeEdit(m_pm, order[focus_index_], m_hWnd);
-    if (native_edit != nullptr) {
-        // Windows 惯例：Tab 进入字段时全选现有内容。
-        ::SendMessageW(native_edit, EM_SETSEL, 0, -1);
+    const struct {
+        DuiLib::CEditUI* input;
+        int page;
+    } order[] = {{hotkey_input_, 1}, {width_input_, 2}, {height_input_, 2},
+                 {panel_input_, 2}, {backup_rolling_input_, 3}, {backup_daily_input_, 3}};
+    // Tab 只在当前页内轮换（其余页的输入框不可见，聚焦会落到空处）。
+    for (int step = 0; step < 6; ++step) {
+        focus_index_ = (focus_index_ + 1) % 6;
+        if (order[focus_index_].page != current_page_) {
+            continue;
+        }
+        const HWND native_edit = appui::FocusNativeEdit(m_pm, order[focus_index_].input, m_hWnd);
+        if (native_edit != nullptr) {
+            // Windows 惯例：Tab 进入字段时全选现有内容。
+            ::SendMessageW(native_edit, EM_SETSEL, 0, -1);
+        }
+        return;
     }
 }
 
@@ -545,6 +594,12 @@ void SettingsWindow::Notify(TNotifyUI& msg) {
     }
     if (_tcscmp(msg.sType, DUI_MSGTYPE_CLICK) == 0 && msg.pSender != nullptr) {
         const CDuiString name = msg.pSender->GetName();
+        for (int i = 0; i < 4; ++i) {
+            if (name == nav_buttons_[i]->GetName()) {
+                SelectPage(i);
+                return;
+            }
+        }
         if (name == _T("settings_ok")) {
             Confirm();
             return;
