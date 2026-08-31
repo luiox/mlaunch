@@ -272,6 +272,8 @@ LRESULT AppWindow::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHand
     // 锁定/自动隐藏等行为开关随设置生效。
     layout_locked_ = backend_.CurrentSettings().locked;
     auto_hide_ = backend_.CurrentSettings().auto_hide;
+    // 开机自启注册表每次启动按设置对齐（exe 挪位后修正路径/清残留）。
+    ApplyAutorunRegistry(backend_.CurrentSettings().autorun);
 
     // 复刻 VB6 frmShadow：关掉 DWM 软阴影，改用主窗后方的硬边偏移剪影。
     {
@@ -450,6 +452,7 @@ void AppWindow::CloseItemDialog() {
 
 void AppWindow::ApplySettings() {
     RegisterConfiguredHotkey();
+    ApplyAutorunRegistry(backend_.CurrentSettings().autorun);
 
     layout_locked_ = backend_.CurrentSettings().locked;
     auto_hide_ = backend_.CurrentSettings().auto_hide;
@@ -460,6 +463,35 @@ void AppWindow::ApplySettings() {
         group_panel_->SetFixedWidth(panel_width);
     }
     m_pm.NeedUpdate();
+}
+
+void AppWindow::ApplyAutorunRegistry(bool enabled) {
+    // 开机自启 = HKCU Run 键注册表项；每次启动按设置同步（exe 挪位后自愈路径）。
+    HKEY key = nullptr;
+    if (::RegCreateKeyExW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+                          0, nullptr, 0, KEY_SET_VALUE, nullptr, &key, nullptr) != ERROR_SUCCESS) {
+        launcher::log::Warn("autorun: open Run key failed err=" + std::to_string(::GetLastError()));
+        return;
+    }
+    if (enabled) {
+        wchar_t exe_path[MAX_PATH] = {};
+        const DWORD path_len = ::GetModuleFileNameW(nullptr, exe_path, MAX_PATH);
+        if (path_len == 0 || path_len == MAX_PATH) {
+            launcher::log::Warn("autorun: GetModuleFileName failed err=" + std::to_string(::GetLastError()));
+            ::RegCloseKey(key);
+            return;
+        }
+        const std::wstring value = L"\"" + std::wstring(exe_path, path_len) + L"\"";
+        const LSTATUS status = ::RegSetKeyValueW(key, nullptr, L"mlaunch", REG_SZ, value.c_str(),
+                                                 static_cast<DWORD>((value.size() + 1) * sizeof(wchar_t)));
+        if (status != ERROR_SUCCESS) {
+            launcher::log::Warn("autorun: RegSetKeyValue failed err=" + std::to_string(status));
+        }
+    } else {
+        // 关闭/默认态都删除，顺带清掉历史遗留项。
+        ::RegDeleteKeyValueW(key, nullptr, L"mlaunch");
+    }
+    ::RegCloseKey(key);
 }
 
 LRESULT AppWindow::OnNcHitTest(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled) {

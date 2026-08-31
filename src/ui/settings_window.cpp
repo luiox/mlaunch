@@ -16,7 +16,7 @@ using namespace DuiLib;
 namespace {
 
 constexpr int kWindowWidth = 420;
-constexpr int kWindowHeight = 330;
+constexpr int kWindowHeight = 366;
 constexpr UINT kFocusEditMsg = WM_APP + 0x1B;
 
 std::string TrimCopy(const std::string& value) {
@@ -194,6 +194,19 @@ LRESULT SettingsWindow::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& 
     hide_row->Add(hide_check_);
     root->Add(hide_row);
 
+    // 开机自启（HKCU Run 键注册表项；路径随确认后同步，exe 挪位自愈）
+    auto* autorun_row = new CHorizontalLayoutUI();
+    autorun_row->SetFixedHeight(26);
+    autorun_row->SetAttribute(_T("childpadding"), _T("4"));
+    autorun_row->Add(MakeFieldLabel(_T("开机自启"), 92));
+    autorun_check_ = new appui::CheckBoxUI();
+    autorun_check_->SetName(_T("settings_autorun_check"));
+    autorun_check_->SetText(_T("启用"));
+    autorun_check_->SetFixedWidth(70);
+    autorun_check_->SetChecked(draft_.autorun);
+    autorun_row->Add(autorun_check_);
+    root->Add(autorun_row);
+
     // 默认窗口宽高
     auto* size_row = new CHorizontalLayoutUI();
     size_row->SetFixedHeight(26);
@@ -267,7 +280,7 @@ bool SettingsWindow::PointOnEditableControl(POINT pt) const {
     const CDuiString name = control->GetName();
     if (name == _T("settings_hotkey_input") || name == _T("settings_width_input") ||
         name == _T("settings_height_input") || name == _T("settings_panel_input") ||
-        name == _T("settings_hide_check")) {
+        name == _T("settings_hide_check") || name == _T("settings_autorun_check")) {
         return true;
     }
     return control->GetInterface(_T("ButtonUI")) != nullptr;
@@ -305,6 +318,7 @@ void SettingsWindow::Confirm() {
     // 控件状态在确认时统一读取；CheckBoxUI::Activate 先通知后翻转，
     // CLICK 通知里读 IsChecked 拿到的是旧值（与其它字段同风格）。
     next.execute_hide = hide_check_->IsChecked();
+    next.autorun = autorun_check_->IsChecked();
 
     const int width = ParseIntText(width_input_->GetText(), &ok);
     if (!ok || width < 320 || width > 3840) {

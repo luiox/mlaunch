@@ -809,6 +809,7 @@ TEST(BackendTest, SettingsLockedAndAutoHidePersist) {
     core::Settings next = b.CurrentSettings();
     next.locked = true;
     next.auto_hide = true;
+    next.autorun = true;
     ASSERT_TRUE(b.UpdateSettings(next, &error)) << error;
 
     core::LauncherBackend b2(base, legacy, nullptr, nullptr);
@@ -816,6 +817,7 @@ TEST(BackendTest, SettingsLockedAndAutoHidePersist) {
     ASSERT_TRUE(b2.Load(&error2)) << error2;
     EXPECT_TRUE(b2.CurrentSettings().locked);
     EXPECT_TRUE(b2.CurrentSettings().auto_hide);
+    EXPECT_TRUE(b2.CurrentSettings().autorun);
 }
 
 TEST(BackendTest, ConvertItemPathsRoundTripAndIdempotent) {

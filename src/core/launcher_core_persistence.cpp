@@ -212,6 +212,7 @@ bool LauncherBackend::Load(std::string* error) {
             settings_.execute_hide = GetBool(root, "executeHide", true);
             settings_.locked = GetBool(root, "locked", false);
             settings_.auto_hide = GetBool(root, "autoHide", false);
+            settings_.autorun = GetBool(root, "autorun", false);
             if (const auto* cg = FindField(root, "currentGroup"); cg != nullptr && cg->is_string()) {
                 settings_.current_group = ToStdString(cg->as_string());
             }
@@ -281,6 +282,7 @@ bool LauncherBackend::SaveSettings(std::string* error) const {
     SetBool(root, arena, "executeHide", settings_.execute_hide);
     SetBool(root, arena, "locked", settings_.locked);
     SetBool(root, arena, "autoHide", settings_.auto_hide);
+    SetBool(root, arena, "autorun", settings_.autorun);
     if (settings_.current_group.has_value()) {
         SetStr(root, arena, "currentGroup", *settings_.current_group);
     } else {
@@ -506,6 +508,7 @@ bool LauncherBackend::UpdateSettings(const Settings& settings, std::string* erro
         " execute_hide=" + (settings_.execute_hide ? "1" : "0") +
         " locked=" + (settings_.locked ? "1" : "0") +
         " auto_hide=" + (settings_.auto_hide ? "1" : "0") +
+        " autorun=" + (settings_.autorun ? "1" : "0") +
         " panel_width=" + std::to_string(static_cast<int>(settings_.group_panel_width)));
     return SaveSettings(error);
 }

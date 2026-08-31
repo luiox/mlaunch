@@ -25,6 +25,18 @@ void SetupConsoleOutput() {
 } // namespace
 
 int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int) {
+    // 单实例守卫：已有实例在跑时激活它并退出（顺带避免第二实例注册热键失败）。
+    // 句柄故意不关：进程退出时系统自动释放互斥体。
+    HANDLE single_instance_mutex = ::CreateMutexW(nullptr, TRUE, L"Local\\mlaunch.SingleInstance");
+    if (single_instance_mutex != nullptr && ::GetLastError() == ERROR_ALREADY_EXISTS) {
+        if (HWND existing = ::FindWindowW(L"NAssistantMainFrame", nullptr); existing != nullptr) {
+            // 隐藏（自动隐藏/热键藏起）或最小化状态都还原到前台。
+            ::ShowWindow(existing, SW_RESTORE);
+            ::SetForegroundWindow(existing);
+        }
+        return 0;
+    }
+
     SetupConsoleOutput();
 
     // DuiLib 的 SetCurrentPath 会把进程 CWD 改成 exe 目录，
