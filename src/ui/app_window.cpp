@@ -203,6 +203,27 @@ void AppWindow::DeleteSelectedItem() {
     status_.Info(permanent ? "已彻底删除" : "已删除 · Ctrl+Z 撤销");
 }
 
+void AppWindow::ToggleSelectedItemEnabled() {
+    const core::LaunchItem* item = FindSelectedItem();
+    if (item == nullptr) {
+        status_.Warn("请先选择条目");
+        return;
+    }
+    const std::string group_id = !selected_item_group_id_.empty() ? selected_item_group_id_ : active_group_id_;
+    if (group_id.empty()) {
+        status_.Warn("未选中分组");
+        return;
+    }
+    const bool next_enabled = !item->enabled;
+    std::string error;
+    if (!backend_.SetItemEnabled(group_id, item->id, next_enabled, &error)) {
+        status_.Error("切换失败：" + error);
+        return;
+    }
+    RenderItems();
+    status_.Info(next_enabled ? "已启用条目" : "已禁用条目（置灰，不可启动）");
+}
+
 void AppWindow::UndoLastDelete() {
     std::string error;
     if (!backend_.UndoLastDelete(&error)) {

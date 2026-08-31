@@ -152,6 +152,10 @@ public:
     std::size_t ImportPonerData(const std::filesystem::path& legacy_json_path, std::string* error = nullptr);
     /** @brief Sort one group's items by display name (case-insensitive, stable). */
     bool SortGroupItemsByName(const std::string& group_id, std::string* error = nullptr);
+    /** @brief 按启动次数降序稳定排序（次数相同保持原顺序）。 */
+    bool SortGroupItemsByLaunchCount(const std::string& group_id, std::string* error = nullptr);
+    /** @brief 启用/禁用条目；禁用项渲染置灰且不可启动。 */
+    bool SetItemEnabled(const std::string& group_id, const std::string& item_id, bool enabled, std::string* error = nullptr);
     /** @brief Write the current dataset to an arbitrary path without touching backups. */
     bool ExportData(const std::filesystem::path& target_path, std::string* error = nullptr);
     /** @brief Validate, apply and persist new settings (clamps sizes, trims hotkey). */

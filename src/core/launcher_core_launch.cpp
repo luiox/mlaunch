@@ -63,6 +63,12 @@ LaunchResult LauncherBackend::Launch(const std::string& group_id, const std::str
         return result;
     }
 
+    if (!it->enabled) {
+        SetError(error, "item is disabled");
+        result.message = "item is disabled";
+        return result;
+    }
+
     if (Trim(it->target_path).empty()) {
         SetError(error, "target path is empty");
         result.message = "target path is empty";

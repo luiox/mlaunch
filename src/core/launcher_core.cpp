@@ -158,6 +158,58 @@ bool LauncherBackend::SortGroupItemsByName(const std::string& group_id, std::str
     return SaveData(error);
 }
 
+bool LauncherBackend::SortGroupItemsByLaunchCount(const std::string& group_id, std::string* error) {
+    if (!EnsureLoaded(error)) {
+        return false;
+    }
+    if (IsRecycleBinId(group_id)) {
+        SetError(error, "recycle bin is managed automatically");
+        return false;
+    }
+
+    Group* group = FindGroup(group_id);
+    if (group == nullptr) {
+        SetError(error, "group not found");
+        return false;
+    }
+
+    // stable_sort 降序：次数相同的条目保持原有相对顺序。
+    std::stable_sort(group->items.begin(), group->items.end(),
+        [](const LaunchItem& lhs, const LaunchItem& rhs) {
+            return lhs.launch_count > rhs.launch_count;
+        });
+
+    AppendJournal("sort_group_by_count", "id=" + group->id + " name=" + group->name + " count=" + std::to_string(group->items.size()));
+    return SaveData(error);
+}
+
+bool LauncherBackend::SetItemEnabled(const std::string& group_id, const std::string& item_id, bool enabled, std::string* error) {
+    if (!EnsureLoaded(error)) {
+        return false;
+    }
+    if (IsRecycleBinId(group_id)) {
+        SetError(error, "cannot modify recycle bin directly");
+        return false;
+    }
+
+    Group* group = FindGroup(group_id);
+    if (group == nullptr) {
+        SetError(error, "group not found");
+        return false;
+    }
+    auto it = std::find_if(group->items.begin(), group->items.end(), [&](const LaunchItem& i) { return i.id == item_id; });
+    if (it == group->items.end()) {
+        SetError(error, "item not found");
+        return false;
+    }
+    if (it->enabled == enabled) {
+        return true; // 幂等：状态未变不落盘。
+    }
+    it->enabled = enabled;
+    AppendJournal("set_item_enabled", "id=" + it->id + " name=" + it->name + " enabled=" + (enabled ? "1" : "0"));
+    return SaveData(error);
+}
+
 namespace {
 
 constexpr const char* kPrToken = "%pr%";

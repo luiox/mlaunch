@@ -76,6 +76,8 @@ private:
     void SelectItemByIndex(int index);
     void LaunchSelectedItem();
     void DeleteSelectedItem();
+    /** @brief 条目禁用/启用切换（禁用项置灰且不可启动）。 */
+    void ToggleSelectedItemEnabled();
     void HandleFileDrop(HDROP drop_handle);
     void UpdateSearchUi();
     bool IsSearchMode() const;

@@ -698,6 +698,89 @@ TEST(BackendTest, LaunchExpandsPlaceholdersAndEnvVars) {
     EXPECT_EQ(args.find('%', user_pos), std::string::npos) << args;
 }
 
+TEST(BackendTest, ItemEnabledToggleAndLaunchBlocked) {
+    const auto legacy = MakeTempDir("legacy_disable");
+    const auto base = MakeTempDir("base_disable");
+
+    FakeLaunchExecutor executor;
+    core::LauncherBackend b(base, legacy, &executor, nullptr);
+    std::string error;
+    ASSERT_TRUE(b.Load(&error)) << error;
+
+    const auto gid = b.AddGroup("Tools", &error);
+    ASSERT_FALSE(gid.empty()) << error;
+
+    core::ItemInput input;
+    input.name = "App";
+    input.target_path = "C:\app.exe";
+    ASSERT_TRUE(b.UpsertItem(gid, input, &error)) << error;
+    std::string item_id;
+    for (const auto& g : b.Data().groups) {
+        if (g.id == gid && !g.items.empty()) item_id = g.items[0].id;
+    }
+    ASSERT_FALSE(item_id.empty());
+
+    // 禁用后：Launch 被拦截（fake 执行器零调用），状态持久化。
+    ASSERT_TRUE(b.SetItemEnabled(gid, item_id, false, &error)) << error;
+    {
+        const auto result = b.Launch(gid, item_id, &error);
+        EXPECT_FALSE(result.ok);
+        EXPECT_EQ(executor.launched.size(), 0u);
+    }
+
+    // 重新加载仍在（持久化验证）。
+    core::LauncherBackend b2(base, legacy, nullptr, nullptr);
+    ASSERT_TRUE(b2.Load(&error)) << error;
+    for (const auto& g : b2.Data().groups) {
+        for (const auto& i : g.items) {
+            if (i.id == item_id) EXPECT_FALSE(i.enabled);
+        }
+    }
+
+    // 再启用可启动（幂等切换不落盘）。
+    ASSERT_TRUE(b.SetItemEnabled(gid, item_id, true, &error)) << error;
+    {
+        const auto result = b.Launch(gid, item_id, &error);
+        EXPECT_TRUE(result.ok) << error;
+        EXPECT_EQ(executor.launched.size(), 1u);
+    }
+}
+
+TEST(BackendTest, SortGroupItemsByLaunchCountDescendingStable) {
+    const auto legacy = MakeTempDir("legacy_sortcount");
+    const auto base = MakeTempDir("base_sortcount");
+
+    core::LauncherBackend b(base, legacy, nullptr, nullptr);
+    std::string error;
+    ASSERT_TRUE(b.Load(&error)) << error;
+
+    const auto gid = b.AddGroup("Tools", &error);
+    ASSERT_FALSE(gid.empty()) << error;
+
+    // 次数 5/0/5，同数应保持插入顺序（A 在 C 前）。
+    const std::pair<const char*, int> seeds[] = {{"A", 5}, {"B", 0}, {"C", 5}};
+    for (const auto& [nm, cnt] : seeds) {
+        core::ItemInput input;
+        input.name = nm;
+        input.target_path = "C:\\x.exe";
+        ASSERT_TRUE(b.UpsertItem(gid, input, &error)) << error;
+        // 手动设置次数：找到该条目引用并累加后统一 SaveData。
+        for (auto& g : const_cast<std::vector<core::Group>&>(b.Data().groups)) {
+            for (auto& i : g.items) {
+                if (i.name == nm) i.launch_count = static_cast<std::uint64_t>(cnt);
+            }
+        }
+    }
+    ASSERT_TRUE(b.SortGroupItemsByLaunchCount(gid, &error)) << error;
+
+    const auto* group = FindGroupById(b, gid);
+    ASSERT_NE(group, nullptr);
+    ASSERT_EQ(group->items.size(), 3u);
+    EXPECT_EQ(group->items[0].name, "A"); // 5
+    EXPECT_EQ(group->items[1].name, "C"); // 5（稳定：同数保持原序）
+    EXPECT_EQ(group->items[2].name, "B"); // 0
+}
+
 TEST(BackendTest, SortGroupItemsByNameIsCaseInsensitiveAndJournaled) {
     const auto legacy = MakeTempDir("legacy_sort");
     const auto base = MakeTempDir("base_sort");
