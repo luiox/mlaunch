@@ -187,8 +187,9 @@ LRESULT SettingsWindow::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& 
         button->SetName(name);
         button->SetText(text);
         button->SetFixedHeight(36);
-        // 选中态走粘滞 active（白底盖住灰导航），悬停浅灰。
-        button->SetStateColors(0x00000000, 0xFFDCDCDC, 0xFFFFFFFF);
+        // 选中态走粘滞 active，配色对齐主窗分组列表：选中 D2D2D2、悬停 DCDCDC，
+        // 与导航灰底 E6E6E6 同一灰阶体系（同 GroupListUI 的条目配色）。
+        button->SetStateColors(0x00000000, 0xFFDCDCDC, 0xFFD2D2D2);
         button->SetTextColor(0xFF1A1A1A);
         button->SetTextStyle(DT_LEFT | DT_VCENTER | DT_SINGLELINE);
         button->SetAttribute(_T("textpadding"), _T("20,0,8,0"));

@@ -85,16 +85,23 @@ bool CheckBoxUI::Activate() {
 void CheckBoxUI::PaintStatusImage(DuiLib::UIRender* pRender) {
     ButtonUI::PaintStatusImage(pRender);
 
-    constexpr int kBox = 14;
+    // 勾选盒按 DPI 缩放（14 为 96 基准逻辑像素），对勾端点按盒尺寸比例定位，
+    // 否则高 DPI 下盒子相对缩放后的文字显小。
+    auto* dpi = (m_pManager != nullptr) ? m_pManager->GetDPIObj() : nullptr;
+    const int box_size = (dpi != nullptr) ? dpi->ScaleInt(14) : 14;
+    const int stroke = (dpi != nullptr) ? dpi->ScaleInt(2) : 2;
+    const int border = (dpi != nullptr) ? dpi->ScaleInt(1) : 1;
     const int cy = (m_rcItem.top + m_rcItem.bottom) / 2;
-    const DuiLib::CDuiRect box{m_rcItem.left, cy - kBox / 2, m_rcItem.left + kBox, cy + kBox / 2};
+    const DuiLib::CDuiRect box{m_rcItem.left, cy - box_size / 2, m_rcItem.left + box_size, cy + box_size / 2};
     const bool hot = IsHotState() || IsPushedState();
     pRender->DrawColor(box, DuiLib::CDuiSize(0, 0), checked_ ? 0xFF1A73E8 : 0xFFFFFFFF);
-    pRender->DrawRect(box, 1, checked_ ? 0xFF1A73E8 : (hot ? 0xFF8A8A8A : 0xFFB8B8B8));
+    pRender->DrawRect(box, border, checked_ ? 0xFF1A73E8 : (hot ? 0xFF8A8A8A : 0xFFB8B8B8));
     if (checked_) {
-        // 白色对勾（两段线，短撇 + 长捺）。
-        pRender->DrawLine(box.left + 3, cy + 1, box.left + 6, box.bottom - 4, 2, 0xFFFFFFFF);
-        pRender->DrawLine(box.left + 6, box.bottom - 4, box.left + 11, box.top + 3, 2, 0xFFFFFFFF);
+        // 白色对勾（两段线，短撇 + 长捺），端点为 14 基准盒内的比例坐标。
+        pRender->DrawLine(box.left + box_size * 3 / 14, box.top + box_size * 8 / 14,
+                          box.left + box_size * 6 / 14, box.top + box_size * 10 / 14, stroke, 0xFFFFFFFF);
+        pRender->DrawLine(box.left + box_size * 6 / 14, box.top + box_size * 10 / 14,
+                          box.left + box_size * 11 / 14, box.top + box_size * 3 / 14, stroke, 0xFFFFFFFF);
     }
 }
 
