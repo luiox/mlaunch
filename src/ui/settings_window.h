@@ -51,6 +51,7 @@ private:
 
     DuiLib::CEditUI* hotkey_input_ = nullptr;
     appui::CheckBoxUI* hide_check_ = nullptr;
+    appui::CheckBoxUI* autorun_check_ = nullptr;
     DuiLib::CEditUI* width_input_ = nullptr;
     DuiLib::CEditUI* height_input_ = nullptr;
     DuiLib::CEditUI* panel_input_ = nullptr;

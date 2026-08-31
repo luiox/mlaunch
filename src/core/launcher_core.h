@@ -48,6 +48,8 @@ struct Settings {
     bool locked = false;
     /// 失焦自动隐藏：窗口失去激活（且非自家弹窗获焦）时隐藏，热键唤回。
     bool auto_hide = false;
+    /// 开机自启：HKCU Run 键注册表项的镜像（注册表写放在 UI 层完成）。
+    bool autorun = false;
     std::optional<std::string> current_group;
     double group_panel_width = 220.0;
     double main_window_width = 1040.0;

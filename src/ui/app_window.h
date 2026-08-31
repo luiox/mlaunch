@@ -36,6 +36,8 @@ public:
     bool ShouldStartMaximized() const { return start_maximized_; }
     /** @brief Resize window to settings default size (used when no saved layout). */
     void ApplyDefaultWindowSize();
+    /** @brief 按设置同步 HKCU Run 注册表项（开机自启）。静态无状态，可在任意处调用。 */
+    static void ApplyAutorunRegistry(bool enabled);
     std::string IconSourceForItem(const core::LaunchItem& item) const;
 
     void Notify(DuiLib::TNotifyUI& msg) override;
