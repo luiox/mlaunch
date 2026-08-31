@@ -96,6 +96,19 @@ inline bool WriteUiStateAtomically(const std::filesystem::path& ini_path, const 
     // 有进程内句柄/写缓存，tmp 冲刷与替换在多种时序下都会失败（实测
     // ERROR_FILE_NOT_FOUND / 共享冲突），导致保存永久失败。
     // UI 几何信息非关键数据，改为直写目标文件 + 尽力冲刷，可靠性实测更好。
+    //
+    // 预创建目录与空文件：INI 的内核缓存会记住“文件不存在”，首次冲刷
+    // 因此返回 err=2（误报）；提前触碰文件可让首个 flush 正常返回。
+    std::error_code ec;
+    std::filesystem::create_directories(ini_path.parent_path(), ec);
+    if (!std::filesystem::exists(ini_path, ec)) {
+        if (HANDLE handle = ::CreateFileW(ini_path.wstring().c_str(), GENERIC_WRITE,
+                                          FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
+                                          CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr)) {
+            ::CloseHandle(handle);
+        }
+    }
+
     bool ok = true;
     ok = ok && WriteIniInt(ini_path, L"layout", L"splitter_width", snapshot.splitter_width);
     ok = ok && WriteIniInt(ini_path, L"window", L"left", snapshot.left);
@@ -111,9 +124,10 @@ inline bool WriteUiStateAtomically(const std::filesystem::path& ini_path, const 
         return false;
     }
 
-    // 尽力冲刷缓存；失败不视为保存失败（进程退出时缓存仍会落盘）。
+    // 尽力冲刷缓存；首次运行仍可能返回 err=2（INI 缓存对同进程新建文件的
+    // flush 误报，数据实际已正确落盘——实测验证），降为 Debug 避免噪音。
     if (!FlushIniFile(ini_path)) {
-        launcher::log::Warn("ui_state ini flush skipped err=" + std::to_string(::GetLastError()));
+        launcher::log::Debug("ui_state ini flush skipped err=" + std::to_string(::GetLastError()));
     }
     return true;
 }
