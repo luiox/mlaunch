@@ -1,5 +1,7 @@
 #include "item_edit_window.h"
 
+#include "dpi_helper.h"
+
 #include <windowsx.h>
 
 #include <algorithm>
@@ -53,7 +55,8 @@ CEditUI* MakeInput(LPCTSTR name) {
 CLabelUI* MakeFieldLabel(LPCTSTR text) {
     auto* label = new CLabelUI();
     label->SetText(text);
-    label->SetFixedWidth(38);
+    // 60px：容纳 4 个汉字（起始位置），38px 会截成"起始位"。
+    label->SetFixedWidth(60);
     label->SetTextColor(0xFF1A1A1A);
     label->SetTextStyle(DT_LEFT | DT_VCENTER | DT_SINGLELINE);
     return label;
@@ -201,6 +204,8 @@ void ItemEditWindow::CreateAndShow(HWND owner_hwnd) {
     const int x = owner_rect.left + (owner_cx > kWindowWidth ? (owner_cx - kWindowWidth) / 2 : 0);
     const int y = owner_rect.top + (owner_cy > kWindowHeight ? (owner_cy - kWindowHeight) / 2 : 0);
     Create(nullptr, _T("MLaunchItemEdit"), WS_POPUP | WS_CLIPCHILDREN, WS_EX_TOOLWINDOW, x, y, kWindowWidth, kWindowHeight);
+    // 窗口按逻辑尺寸创建；对齐真实 DPI 的同时按比例放大并重新居中。
+    appui::ScaleDialogToWindowDpi(m_pm, m_hWnd, owner_hwnd);
     ::ShowWindow(m_hWnd, SW_SHOW);
     ::SetForegroundWindow(m_hWnd);
     name_input_->SetFocus();
@@ -228,7 +233,9 @@ void ItemEditWindow::RefreshIcon() {
         name == _T("item_dialog_icon_preview")) {
         return true;
     }
-    return control->GetInterface(_T("ButtonUI")) != nullptr;
+    // fork 的 GetInterface 按 DUI_CTR_BUTTON="Button" 匹配，查 "ButtonUI" 永远为空，
+    // 会让按钮单击落进拖动分支（Enter/Esc 掩盖了这条路径）。
+    return control->GetInterface(_T("Button")) != nullptr;
 }
 
 void ItemEditWindow::Confirm() {

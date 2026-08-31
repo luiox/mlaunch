@@ -38,6 +38,12 @@ public:
     bool ShouldStartHidden() const;
     /** @brief Resize window to settings default size (used when no saved layout). */
     void ApplyDefaultWindowSize();
+
+    /** @brief 窗口创建后把 PaintManager 缩放对齐到窗口真实 DPI（多显示器场景）。 */
+    void AlignDpi();
+
+    /** @brief AlignDpi 是否已完成；之前吞掉初始化期间的 WM_DPICHANGED。 */
+    bool dpi_aligned_ = false;
     /** @brief 按设置同步 HKCU Run 注册表项（开机自启）。静态无状态，可在任意处调用。 */
     static void ApplyAutorunRegistry(bool enabled);
     /** @brief 只读后端访问（shell 菜单占位符展开等 UI 侧消费）。 */

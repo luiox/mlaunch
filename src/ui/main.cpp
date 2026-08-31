@@ -25,6 +25,19 @@ void SetupConsoleOutput() {
 } // namespace
 
 int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int) {
+    // DPI 感知：per-monitor v2（文字/图标按显示器实际 DPI 原生渲染，不再
+    // 系统拉伸发糊）。fork 布局度量在读取时统一 ScaleInt/ScaleRect，
+    // 这里只需声明感知即可让整条管线生效。旧系统回退 per-monitor v1。
+    if (::SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2) == FALSE) {
+        if (HMODULE shcore = ::LoadLibraryW(L"Shcore.dll")) {
+            using SetAwarenessFn = HRESULT(WINAPI*)(int);
+            if (auto set_awareness = reinterpret_cast<SetAwarenessFn>(
+                    ::GetProcAddress(shcore, "SetProcessDpiAwareness"))) {
+                set_awareness(2); // PROCESS_PER_MONITOR_DPI_AWARE
+            }
+        }
+    }
+
     // 单实例守卫：已有实例在跑时激活它并退出（顺带避免第二实例注册热键失败）。
     // 句柄故意不关：进程退出时系统自动释放互斥体。
     HANDLE single_instance_mutex = ::CreateMutexW(nullptr, TRUE, L"Local\\mlaunch.SingleInstance");
@@ -64,6 +77,10 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int) {
         CoUninitialize();
         return 2;
     }
+
+    // fork 初始化 PaintManager 用的是虚拟屏左上角显示器的 DPI；窗口实际落在
+    // 其它缩放的显示器上时需要按真实 DPI 重建字体/布局，否则内容按逻辑尺寸渲染。
+    frame->AlignDpi();
 
     if (!frame->HasRestoredWindowPlacement()) {
         // 无已保存布局时使用设置里的默认窗口宽高。

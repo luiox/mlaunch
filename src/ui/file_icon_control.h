@@ -15,7 +15,7 @@ public:
 
 private:
     void ResetIcon();
-    static HICON LoadShellIcon(const std::wstring& path);
+    static HICON LoadShellIcon(const std::wstring& path, bool prefer_large);
 
 private:
     HICON icon_ = nullptr;

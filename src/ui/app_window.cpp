@@ -1,4 +1,5 @@
 #include "app_window.h"
+#include "dpi_helper.h"
 
 #include <Windows.h>
 #include <commdlg.h>
@@ -244,6 +245,9 @@ CControlUI* AppWindow::BuildRootUi() {
 }
 
 LRESULT AppWindow::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled) {
+    // 必须先于 __InitWindow：布局属性读取、字体构建、shell 图标取材都依赖
+    // PaintManager 缩放；晚了列表图标会按 100% 取 16px 小图再被放大发虚。
+    AlignDpi();
     LONG styleValue = ::GetWindowLong(*this, GWL_STYLE);
     styleValue &= ~WS_CAPTION;
     ::SetWindowLong(*this, GWL_STYLE, styleValue | WS_CLIPSIBLINGS | WS_CLIPCHILDREN);
@@ -305,11 +309,38 @@ LRESULT AppWindow::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHand
     shadow_window_.Sync();
 
     __InitWindow();
+
     bHandled = TRUE;
     return 0;
 }
 
+void AppWindow::AlignDpi() {
+    // 窗口创建时几何已按物理像素摆好（默认尺寸/恢复布局都会换算），这里只对齐
+    // 渲染缩放，避免 CPaintManagerUI::SetDPI 内部的比例缩放造成二次放大。
+    appui::AlignPaintManagerDpi(m_pm, m_hWnd);
+    dpi_aligned_ = true;
+}
+
 LRESULT AppWindow::MessageHandler(UINT uMsg, WPARAM wParam, LPARAM lParam, bool& bHandled) {
+    if (uMsg == WM_DPICHANGED) {
+        if (!dpi_aligned_) {
+            // 初始化阶段（恢复布局跨屏移动会触发）：此刻渲染缩放必须保持 100%，
+            // 否则 fork 在创建尾声会按 GetMainMonitorDPI(96) 把窗口按比例砍半。
+            // 几何由调用方用物理像素摆好，这里直接吞掉。
+            bHandled = true;
+            return 0;
+        }
+        // 跨显示器拖动：按系统建议矩形（新 DPI 下的物理几何）摆窗口，再同步
+        // 渲染缩放。ui_state 落盘统一存 96 基准逻辑值，SaveUiState 自行换算。
+        const auto* suggested = reinterpret_cast<const RECT*>(lParam);
+        ::SetWindowPos(m_hWnd, nullptr, suggested->left, suggested->top,
+                       suggested->right - suggested->left, suggested->bottom - suggested->top,
+                       SWP_NOZORDER | SWP_NOACTIVATE);
+        appui::AlignPaintManagerDpi(m_pm, m_hWnd);
+        shadow_window_.Sync();
+        bHandled = true;
+        return 0;
+    }
     BOOL custom_handled = FALSE;
     const LRESULT custom_result = HandleCustomMessage(uMsg, wParam, lParam, custom_handled);
     if (custom_handled) {
@@ -348,7 +379,9 @@ LRESULT AppWindow::TranslateAccelerator(MSG* pMsg) {
         const RECT splitter_rect = panel_splitter_->GetPos();
         if (::PtInRect(&panel_rect, client) || ::PtInRect(&splitter_rect, client)) {
             const int delta = (static_cast<short>(HIWORD(pMsg->wParam)) > 0) ? 8 : -8;
-            int width = group_panel_->GetFixedWidth() + delta;
+            // GetFixedWidth 返回的是缩放后的物理值，SetFixedWidth 存逻辑值；
+            // 读-改-写必须先反算回逻辑值，否则非 100% 缩放下每滚一次都翻倍。
+            int width = m_pm.GetDPIObj()->ScaleIntBack(group_panel_->GetFixedWidth()) + delta;
             width = std::clamp(width, 80, 600);
             group_panel_->SetFixedWidth(width);
             m_pm.NeedUpdate();
@@ -584,8 +617,12 @@ bool AppWindow::ShouldStartHidden() const {
 void AppWindow::ApplyDefaultWindowSize() {
     int width = static_cast<int>(backend_.CurrentSettings().main_window_width);
     int height = static_cast<int>(backend_.CurrentSettings().main_window_height);
+    // 钳制在逻辑空间完成（settings 存的是 96 基逻辑值），再按 DPI 放大为物理像素。
     width = std::clamp(width, 320, 3840);
     height = std::clamp(height, 220, 2160);
+    const int dpi = static_cast<int>(::GetDpiForWindow(m_hWnd));
+    width = ::MulDiv(width, dpi, 96);
+    height = ::MulDiv(height, dpi, 96);
     ::SetWindowPos(m_hWnd, nullptr, 0, 0, width, height,
                    SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
 }
