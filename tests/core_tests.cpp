@@ -907,6 +907,77 @@ TEST(BackendTest, SettingsLockedAndAutoHidePersist) {
     EXPECT_TRUE(b2.CurrentSettings().autorun);
 }
 
+TEST(BackendTest, NewBehaviorSettingsPersistAndClamp) {
+    const auto legacy = MakeTempDir("legacy_newsettings");
+    const auto base = MakeTempDir("base_newsettings");
+
+    core::LauncherBackend b(base, legacy, nullptr, nullptr);
+    std::string error;
+    ASSERT_TRUE(b.Load(&error)) << error;
+
+    core::Settings next = b.CurrentSettings();
+    next.start_hidden = true;
+    next.close_minimize = true;
+    next.double_click_launch = true;
+    next.backup_rolling_count = 99;  // 钳到 20
+    next.backup_daily_days = 1;      // 钳到 3
+    ASSERT_TRUE(b.UpdateSettings(next, &error)) << error;
+
+    EXPECT_TRUE(b.CurrentSettings().start_hidden);
+    EXPECT_TRUE(b.CurrentSettings().close_minimize);
+    EXPECT_TRUE(b.CurrentSettings().double_click_launch);
+    EXPECT_EQ(b.CurrentSettings().backup_rolling_count, 20);
+    EXPECT_EQ(b.CurrentSettings().backup_daily_days, 3);
+
+    core::LauncherBackend b2(base, legacy, nullptr, nullptr);
+    ASSERT_TRUE(b2.Load(&error)) << error;
+    EXPECT_TRUE(b2.CurrentSettings().start_hidden);
+    EXPECT_TRUE(b2.CurrentSettings().double_click_launch);
+    EXPECT_EQ(b2.CurrentSettings().backup_rolling_count, 20);
+    EXPECT_EQ(b2.CurrentSettings().backup_daily_days, 3);
+}
+
+TEST(BackendTest, BackupRetentionFollowsSettings) {
+    const auto legacy = MakeTempDir("legacy_retention");
+    const auto base = MakeTempDir("base_retention");
+
+    core::LauncherBackend b(base, legacy, nullptr, nullptr);
+    std::string error;
+    ASSERT_TRUE(b.Load(&error)) << error;
+
+    // 预置 5 份不同日期的 rolling 假快照（真实保存的同秒覆盖会让计数失真，
+    // 用固定历史时间戳隔离验证轮转逻辑本身）。
+    std::error_code ec;
+    std::filesystem::create_directories(base / "backups", ec);
+    for (int i = 1; i <= 5; ++i) {
+        char stamp[32];
+        snprintf(stamp, sizeof(stamp), "2026010%d-000000", i);
+        WriteText(base / "backups" / ("launcher.v2." + std::string(stamp) + ".json"), "{}");
+    }
+
+    core::Settings next = b.CurrentSettings();
+    next.backup_rolling_count = 2;
+    ASSERT_TRUE(b.UpdateSettings(next, &error)) << error;
+
+    // UpdateSettings 不动数据文件；触发一次数据保存让轮转+裁剪跑起来。
+    const auto gid = b.AddGroup("G", &error);
+    ASSERT_FALSE(gid.empty()) << error;
+
+    int rolling_count = 0;
+    for (const auto& entry : std::filesystem::directory_iterator(base / "backups", ec)) {
+        const auto name = entry.path().filename().string();
+        if (name.rfind("launcher.v2.") != 0) {
+            continue;
+        }
+        const auto stamp = name.substr(strlen("launcher.v2."), name.size() - strlen("launcher.v2.") - strlen(".json"));
+        if (stamp.size() == 15 && stamp[8] == '-') {
+            ++rolling_count;
+        }
+    }
+    // 保留 2 份：旧的裁掉，本次保存新增 1 份 rolling → 总数为 2。
+    EXPECT_EQ(rolling_count, 2);
+}
+
 TEST(BackendTest, ConvertItemPathsRoundTripAndIdempotent) {
     const auto legacy = MakeTempDir("legacy_convert");
     const auto base = MakeTempDir("base_convert");

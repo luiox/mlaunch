@@ -34,10 +34,14 @@ public:
     DuiLib::CDuiString GetSkinFolder() { return _T(""); }
     bool HasRestoredWindowPlacement() const { return has_restored_window_; }
     bool ShouldStartMaximized() const { return start_maximized_; }
+    /** @brief 启动隐藏模式（settings.start_hidden）：不显示主窗，热键唤出。 */
+    bool ShouldStartHidden() const;
     /** @brief Resize window to settings default size (used when no saved layout). */
     void ApplyDefaultWindowSize();
     /** @brief 按设置同步 HKCU Run 注册表项（开机自启）。静态无状态，可在任意处调用。 */
     static void ApplyAutorunRegistry(bool enabled);
+    /** @brief 只读后端访问（shell 菜单占位符展开等 UI 侧消费）。 */
+    const core::LauncherBackend& backend() const { return backend_; }
     std::string IconSourceForItem(const core::LaunchItem& item) const;
 
     void Notify(DuiLib::TNotifyUI& msg) override;

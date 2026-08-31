@@ -15,8 +15,8 @@ using namespace DuiLib;
 
 namespace {
 
-constexpr int kWindowWidth = 420;
-constexpr int kWindowHeight = 366;
+constexpr int kWindowWidth = 440;
+constexpr int kWindowHeight = 566;
 constexpr UINT kFocusEditMsg = WM_APP + 0x1B;
 
 std::string TrimCopy(const std::string& value) {
@@ -73,6 +73,19 @@ int ParseIntText(const CDuiString& text, bool* ok) {
     const long value = std::strtol(narrow.c_str(), &end, 10);
     *ok = (end != nullptr && *end == '\0');
     return static_cast<int>(value);
+}
+
+// 数值输入实时校验：越界/非整数时边框变红，恢复灰框表示有效。
+// 只做视觉反馈不改写文本（改写会打断输入），钳制在 Confirm 统一执行。
+void ValidateRangeInput(CEditUI* input, int min_value, int max_value) {
+    if (input == nullptr) {
+        return;
+    }
+    bool ok = false;
+    const int value = ParseIntText(input->GetText(), &ok);
+    const bool valid = ok && value >= min_value && value <= max_value;
+    input->SetAttribute(_T("bordercolor"), valid ? _T("0xFFD2D2D2") : _T("0xFFD5303A"));
+    input->NeedUpdate();
 }
 
 // —— 热键捕获 ——
@@ -159,81 +172,99 @@ LRESULT SettingsWindow::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& 
     root->SetAttribute(_T("bkcolor"), _T("0xFFFFFFFF"));
     root->SetAttribute(_T("bordercolor"), _T("0xFFD2D2D2"));
     root->SetAttribute(_T("bordersize"), _T("1"));
-    root->SetAttribute(_T("inset"), _T("14,12,14,12"));
-    root->SetAttribute(_T("childpadding"), _T("8"));
+    root->SetAttribute(_T("inset"), _T("14,10,14,10"));
+    root->SetAttribute(_T("childpadding"), _T("6"));
 
     auto* title = new CLabelUI();
     title->SetText(_T("设置"));
-    title->SetFixedHeight(24);
+    title->SetFixedHeight(22);
     title->SetTextColor(0xFF1A1A1A);
     title->SetTextStyle(DT_LEFT | DT_VCENTER | DT_SINGLELINE);
     root->Add(title);
 
-    // 统一栅格：标签列 78px，行高 26px，控件左缘对齐。
-    // 热键行：只读展示框，点击进入捕获模式录制组合键。
+    // —— 通用小部件工厂 ——
+    auto make_section = [&root](LPCTSTR text) {
+        auto* label = new CLabelUI();
+        label->SetText(text);
+        label->SetFixedHeight(18);
+        label->SetTextColor(0xFF808689);
+        label->SetFont(1);
+        label->SetTextStyle(DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+        root->Add(label);
+    };
+    auto make_check_row = [&root](LPCTSTR name, LPCTSTR text, bool checked) -> appui::CheckBoxUI* {
+        auto* row = new CHorizontalLayoutUI();
+        row->SetFixedHeight(24);
+        row->SetAttribute(_T("childpadding"), _T("4"));
+        auto* box = new appui::CheckBoxUI();
+        box->SetName(name);
+        box->SetText(text);
+        box->SetFixedHeight(24);
+        box->SetChecked(checked);
+        row->Add(box);
+        root->Add(row);
+        return box;
+    };
+    auto make_num_row = [&root](LPCTSTR label_text, CEditUI*& input, LPCTSTR name) {
+        auto* row = new CHorizontalLayoutUI();
+        row->SetFixedHeight(24);
+        row->SetAttribute(_T("childpadding"), _T("4"));
+        row->Add(MakeFieldLabel(label_text, 140));
+        input = MakeInput(name);
+        input->SetFixedWidth(70);
+        input->SetNumberOnly(true);
+        row->Add(input);
+        root->Add(row);
+    };
+
+    // —— 热键 ——
     auto* hotkey_row = new CHorizontalLayoutUI();
-    hotkey_row->SetFixedHeight(26);
+    hotkey_row->SetFixedHeight(24);
     hotkey_row->SetAttribute(_T("childpadding"), _T("4"));
-    hotkey_row->Add(MakeFieldLabel(_T("全局热键"), 92));
+    hotkey_row->Add(MakeFieldLabel(_T("全局热键"), 140));
     hotkey_input_ = MakeInput(_T("settings_hotkey_input"));
     hotkey_input_->SetReadOnly(true);
     hotkey_row->Add(hotkey_input_);
     root->Add(hotkey_row);
     root->Add(MakeHint(_T("点击输入框后按下组合键（需含 Ctrl/Alt/Shift/Win）；留空禁用")));
 
-    // 执行后最小化（对齐 VB6 原版：启动条目后窗口最小化到任务栏）
-    auto* hide_row = new CHorizontalLayoutUI();
-    hide_row->SetFixedHeight(26);
-    hide_row->SetAttribute(_T("childpadding"), _T("4"));
-    hide_row->Add(MakeFieldLabel(_T("执行后最小化"), 92));
-    hide_check_ = new appui::CheckBoxUI();
-    hide_check_->SetName(_T("settings_hide_check"));
-    hide_check_->SetText(_T("启用"));
-    hide_check_->SetFixedWidth(70);
-    hide_check_->SetChecked(draft_.execute_hide);
-    hide_row->Add(hide_check_);
-    root->Add(hide_row);
+    // —— 行为 ——
+    make_section(_T("行为"));
+    hide_check_ = make_check_row(_T("settings_hide_check"), _T("启动条目后最小化窗口（原版行为）"), draft_.execute_hide);
+    dblclick_check_ = make_check_row(_T("settings_dblclick_check"), _T("双击启动条目（关闭后单击仅选中）"), draft_.double_click_launch);
+    closemin_check_ = make_check_row(_T("settings_closemin_check"), _T("关闭按钮最小化而非退出（退出走菜单）"), draft_.close_minimize);
+    lock_check_ = make_check_row(_T("settings_lock_check"), _T("锁定布局（禁用拖动/缩放/重排/宽度滚轮）"), draft_.locked);
+    autohide_check_ = make_check_row(_T("settings_autohide_check"), _T("失焦自动隐藏（热键唤回）"), draft_.auto_hide);
 
-    // 开机自启（HKCU Run 键注册表项；路径随确认后同步，exe 挪位自愈）
-    auto* autorun_row = new CHorizontalLayoutUI();
-    autorun_row->SetFixedHeight(26);
-    autorun_row->SetAttribute(_T("childpadding"), _T("4"));
-    autorun_row->Add(MakeFieldLabel(_T("开机自启"), 92));
-    autorun_check_ = new appui::CheckBoxUI();
-    autorun_check_->SetName(_T("settings_autorun_check"));
-    autorun_check_->SetText(_T("启用"));
-    autorun_check_->SetFixedWidth(70);
-    autorun_check_->SetChecked(draft_.autorun);
-    autorun_row->Add(autorun_check_);
-    root->Add(autorun_row);
+    // —— 启动 ——
+    make_section(_T("启动"));
+    autorun_check_ = make_check_row(_T("settings_autorun_check"), _T("开机自启（当前用户注册表）"), draft_.autorun);
+    starthidden_check_ = make_check_row(_T("settings_starthidden_check"), _T("启动时隐藏主窗（热键唤出）"), draft_.start_hidden);
 
-    // 默认窗口宽高
-    auto* size_row = new CHorizontalLayoutUI();
-    size_row->SetFixedHeight(26);
-    size_row->SetAttribute(_T("childpadding"), _T("4"));
-    size_row->Add(MakeFieldLabel(_T("默认宽高"), 92));
-    width_input_ = MakeInput(_T("settings_width_input"));
-    width_input_->SetFixedWidth(70);
-    width_input_->SetNumberOnly(true);
-    size_row->Add(width_input_);
-    height_input_ = MakeInput(_T("settings_height_input"));
-    height_input_->SetFixedWidth(70);
-    height_input_->SetNumberOnly(true);
-    size_row->Add(height_input_);
-    root->Add(size_row);
-    root->Add(MakeHint(_T("默认窗口尺寸在无已保存布局时生效（320-3840 / 220-2160）")));
+    // —— 窗口 ——
+    make_section(_T("窗口"));
+    {
+        auto* row = new CHorizontalLayoutUI();
+        row->SetFixedHeight(24);
+        row->SetAttribute(_T("childpadding"), _T("4"));
+        row->Add(MakeFieldLabel(_T("默认宽高 (320-3840/220-2160)"), 140));
+        width_input_ = MakeInput(_T("settings_width_input"));
+        width_input_->SetFixedWidth(60);
+        width_input_->SetNumberOnly(true);
+        row->Add(width_input_);
+        height_input_ = MakeInput(_T("settings_height_input"));
+        height_input_->SetFixedWidth(60);
+        height_input_->SetNumberOnly(true);
+        row->Add(height_input_);
+        root->Add(row);
+    }
+    make_num_row(_T("分组栏宽度 (80-600)"), panel_input_, _T("settings_panel_input"));
 
-    // 分组栏宽度
-    auto* panel_row = new CHorizontalLayoutUI();
-    panel_row->SetFixedHeight(26);
-    panel_row->SetAttribute(_T("childpadding"), _T("4"));
-    panel_row->Add(MakeFieldLabel(_T("分组栏宽度"), 92));
-    panel_input_ = MakeInput(_T("settings_panel_input"));
-    panel_input_->SetFixedWidth(70);
-    panel_input_->SetNumberOnly(true);
-    panel_row->Add(panel_input_);
-    root->Add(panel_row);
-    root->Add(MakeHint(_T("分组栏宽度范围 80-600，确定后立即生效")));
+    // —— 数据备份 ——
+    make_section(_T("数据备份"));
+    make_num_row(_T("滚动快照保留份数 (2-20)"), backup_rolling_input_, _T("settings_rolling_input"));
+    make_num_row(_T("每日快照保留天数 (3-90)"), backup_daily_input_, _T("settings_daily_input"));
+    root->Add(MakeHint(_T("保存于数据目录 backups/；数值输入越界时边框变红，确定时钳制")));
 
     auto* spacer = new CControlUI();
     root->Add(spacer);
@@ -254,6 +285,8 @@ LRESULT SettingsWindow::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& 
     width_input_->SetText(std::to_wstring(static_cast<int>(draft_.main_window_width)).c_str());
     height_input_->SetText(std::to_wstring(static_cast<int>(draft_.main_window_height)).c_str());
     panel_input_->SetText(std::to_wstring(static_cast<int>(draft_.group_panel_width)).c_str());
+    backup_rolling_input_->SetText(std::to_wstring(draft_.backup_rolling_count).c_str());
+    backup_daily_input_->SetText(std::to_wstring(draft_.backup_daily_days).c_str());
 
     bHandled = TRUE;
     return 0;
@@ -280,7 +313,8 @@ bool SettingsWindow::PointOnEditableControl(POINT pt) const {
     const CDuiString name = control->GetName();
     if (name == _T("settings_hotkey_input") || name == _T("settings_width_input") ||
         name == _T("settings_height_input") || name == _T("settings_panel_input") ||
-        name == _T("settings_hide_check") || name == _T("settings_autorun_check")) {
+        name == _T("settings_rolling_input") || name == _T("settings_daily_input") ||
+        _tcsstr(name, _T("_check")) != nullptr) {
         return true;
     }
     return control->GetInterface(_T("ButtonUI")) != nullptr;
@@ -319,6 +353,11 @@ void SettingsWindow::Confirm() {
     // CLICK 通知里读 IsChecked 拿到的是旧值（与其它字段同风格）。
     next.execute_hide = hide_check_->IsChecked();
     next.autorun = autorun_check_->IsChecked();
+    next.start_hidden = starthidden_check_->IsChecked();
+    next.close_minimize = closemin_check_->IsChecked();
+    next.double_click_launch = dblclick_check_->IsChecked();
+    next.locked = lock_check_->IsChecked();
+    next.auto_hide = autohide_check_->IsChecked();
 
     const int width = ParseIntText(width_input_->GetText(), &ok);
     if (!ok || width < 320 || width > 3840) {
@@ -335,10 +374,22 @@ void SettingsWindow::Confirm() {
         ::MessageBoxW(m_hWnd, L"分组栏宽度需为 80-600 的整数", L"设置", MB_ICONWARNING);
         return;
     }
+    const int rolling = ParseIntText(backup_rolling_input_->GetText(), &ok);
+    if (!ok || rolling < 2 || rolling > 20) {
+        ::MessageBoxW(m_hWnd, L"滚动快照份数需为 2-20 的整数", L"设置", MB_ICONWARNING);
+        return;
+    }
+    const int daily = ParseIntText(backup_daily_input_->GetText(), &ok);
+    if (!ok || daily < 3 || daily > 90) {
+        ::MessageBoxW(m_hWnd, L"每日快照天数需为 3-90 的整数", L"设置", MB_ICONWARNING);
+        return;
+    }
 
     next.main_window_width = static_cast<double>(width);
     next.main_window_height = static_cast<double>(height);
     next.group_panel_width = static_cast<double>(panel);
+    next.backup_rolling_count = rolling;
+    next.backup_daily_days = daily;
 
     if (on_done_) {
         on_done_(true, next);
@@ -349,8 +400,9 @@ void SettingsWindow::Confirm() {
 void SettingsWindow::CycleInputFocus() {
     // 不依赖 manager 的 m_pFocus（fork 的 PreMessageHandler 会抢先做
     // SetNextTabControl 把焦点挪到按钮上），用窗口内索引确定性轮换。
-    DuiLib::CEditUI* order[] = {hotkey_input_, width_input_, height_input_, panel_input_};
-    focus_index_ = (focus_index_ + 1) % 4;
+    DuiLib::CEditUI* order[] = {hotkey_input_, width_input_, height_input_, panel_input_,
+                                backup_rolling_input_, backup_daily_input_};
+    focus_index_ = (focus_index_ + 1) % 6;
     const HWND native_edit = appui::FocusNativeEdit(m_pm, order[focus_index_], m_hWnd);
     if (native_edit != nullptr) {
         // Windows 惯例：Tab 进入字段时全选现有内容。
@@ -465,6 +517,21 @@ LRESULT SettingsWindow::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lPa
 }
 
 void SettingsWindow::Notify(TNotifyUI& msg) {
+    if (_tcscmp(msg.sType, DUI_MSGTYPE_TEXTCHANGED) == 0 && msg.pSender != nullptr) {
+        const CDuiString name = msg.pSender->GetName();
+        if (name == _T("settings_width_input")) {
+            ValidateRangeInput(width_input_, 320, 3840);
+        } else if (name == _T("settings_height_input")) {
+            ValidateRangeInput(height_input_, 220, 2160);
+        } else if (name == _T("settings_panel_input")) {
+            ValidateRangeInput(panel_input_, 80, 600);
+        } else if (name == _T("settings_rolling_input")) {
+            ValidateRangeInput(backup_rolling_input_, 2, 20);
+        } else if (name == _T("settings_daily_input")) {
+            ValidateRangeInput(backup_daily_input_, 3, 90);
+        }
+        return;
+    }
     if (_tcscmp(msg.sType, DUI_MSGTYPE_RETURN) == 0) {
         Confirm();
         return;

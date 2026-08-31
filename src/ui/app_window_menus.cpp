@@ -536,6 +536,60 @@ bool AppWindow::OpenSelectedItemFolder() {
     return true;
 }
 
+namespace {
+
+// IContextMenu2/3 的菜单消息转发：TrackPopupMenu 模态期间，自绘动词与动态二级
+// 菜单项（如“打开方式”列表）要求宿主把 WM_INITMENUPOPUP/WM_MEASUREITEM/
+// WM_DRAWITEM 转交给处理器，否则渲染异常/缺项。WH_MSGFILTER 钩子是标准做法。
+IContextMenu3* g_shell_menu_cm3 = nullptr;
+IContextMenu2* g_shell_menu_cm2 = nullptr;
+
+LRESULT CALLBACK ShellMenuMsgHook(int code, WPARAM wParam, LPARAM lParam) {
+    if (code >= 0 && lParam != 0) {
+        const MSG* msg = reinterpret_cast<const MSG*>(lParam);
+        if (msg->message == WM_INITMENUPOPUP || msg->message == WM_MEASUREITEM ||
+            msg->message == WM_DRAWITEM) {
+            LRESULT handled = 0;
+            if (g_shell_menu_cm3 != nullptr) {
+                if (g_shell_menu_cm3->HandleMenuMsg2(msg->message, msg->wParam, msg->lParam, &handled) == S_OK) {
+                    return handled;
+                }
+            } else if (g_shell_menu_cm2 != nullptr) {
+                if (g_shell_menu_cm2->HandleMenuMsg(msg->message, msg->wParam, msg->lParam) == S_OK) {
+                    return 0;
+                }
+            }
+        }
+    }
+    return CallNextHookEx(nullptr, code, wParam, lParam);
+}
+
+// 与 core Launch 一致的路径展开：%pr%=程序目录、%cr%=盘根 + 环境变量。
+std::wstring ExpandItemTargetPath(AppWindow& window, const std::string& raw_utf8) {
+    std::string expanded = raw_utf8;
+    const auto& app_dir = window.backend().AppDir();
+    if (!app_dir.empty()) {
+        const std::string app_dir_text = app_dir.string();
+        const std::string drive_root_text = app_dir.root_path().string();
+        auto replace_all = [&expanded](const std::string& token, const std::string& value) {
+            for (auto pos = expanded.find(token); pos != std::string::npos;
+                 pos = expanded.find(token, pos + value.size())) {
+                expanded.replace(pos, token.size(), value);
+            }
+        };
+        replace_all("%pr%", app_dir_text);
+        replace_all("%cr%", drive_root_text);
+    }
+    wchar_t buffer[MAX_PATH * 2] = {};
+    const std::wstring wide = launcher::util::Utf8ToWide(expanded);
+    if (ExpandEnvironmentStringsW(wide.c_str(), buffer, MAX_PATH * 2) != 0) {
+        return buffer;
+    }
+    return wide;
+}
+
+} // namespace
+
 bool AppWindow::ShowSelectedItemShellMenu() {
     const core::LaunchItem* item = FindSelectedItem();
     if (item == nullptr) {
@@ -547,7 +601,7 @@ bool AppWindow::ShowSelectedItemShellMenu() {
         return false;
     }
 
-    const std::wstring path_w = launcher::util::Utf8ToWide(item->target_path);
+    const std::wstring path_w = ExpandItemTargetPath(*this, item->target_path);
 
     // 非文件系统目标（URL 等）退回属性页。
     PIDLIST_ABSOLUTE pidl_full = nullptr;
@@ -570,6 +624,8 @@ bool AppWindow::ShowSelectedItemShellMenu() {
     bool launched = false;
 
     auto release_all = [&]() {
+        if (g_shell_menu_cm3 != nullptr) { g_shell_menu_cm3->Release(); g_shell_menu_cm3 = nullptr; }
+        if (g_shell_menu_cm2 != nullptr) { g_shell_menu_cm2->Release(); g_shell_menu_cm2 = nullptr; }
         if (menu != nullptr) {
             DestroyMenu(menu);
             menu = nullptr;
@@ -602,6 +658,11 @@ bool AppWindow::ShowSelectedItemShellMenu() {
         return false;
     }
 
+    // 自绘动词/动态子菜单需要 IContextMenu2/3 的消息转发（见 ShellMenuMsgHook）。
+    if (FAILED(context_menu->QueryInterface(IID_IContextMenu3, reinterpret_cast<void**>(&g_shell_menu_cm3)))) {
+        context_menu->QueryInterface(IID_IContextMenu2, reinterpret_cast<void**>(&g_shell_menu_cm2));
+    }
+
     menu = CreatePopupMenu();
     constexpr UINT kScratchFirst = 0x7000;
     constexpr UINT kScratchLast = 0x7FFF;
@@ -615,8 +676,12 @@ bool AppWindow::ShowSelectedItemShellMenu() {
     POINT invoke_pt{0, 0};
     ::GetCursorPos(&invoke_pt);
     SetForegroundWindow(m_hWnd);
+    const HHOOK msg_hook = SetWindowsHookExW(WH_MSGFILTER, ShellMenuMsgHook, nullptr, ::GetCurrentThreadId());
     const UINT command_id = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_RIGHTBUTTON | TPM_LEFTALIGN,
                                            invoke_pt.x, invoke_pt.y, 0, m_hWnd, nullptr);
+    if (msg_hook != nullptr) {
+        UnhookWindowsHookEx(msg_hook);
+    }
     DestroyMenu(menu);
     menu = nullptr;
 

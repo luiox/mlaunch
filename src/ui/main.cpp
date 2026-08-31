@@ -70,7 +70,12 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int) {
         frame->ApplyDefaultWindowSize();
         frame->CenterWindow();
     }
-    ::ShowWindow(hwnd, frame->ShouldStartMaximized() ? SW_SHOWMAXIMIZED : SW_SHOWNORMAL);
+    if (frame->ShouldStartHidden()) {
+        // 启动隐藏模式：不显示主窗（热键唤出）；仍走一次布局避免首次唤出错位。
+        ::ShowWindow(hwnd, SW_HIDE);
+    } else {
+        ::ShowWindow(hwnd, frame->ShouldStartMaximized() ? SW_SHOWMAXIMIZED : SW_SHOWNORMAL);
+    }
     ::UpdateWindow(hwnd);
 
     DuiLibPaintManagerUI::MessageLoop();

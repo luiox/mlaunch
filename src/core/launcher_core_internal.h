@@ -265,9 +265,9 @@ inline std::string ClassifyBackupName(const std::string& file_name) {
     return {};
 }
 
-inline void PruneBackups(const std::filesystem::path& backup_dir) {
-    constexpr std::size_t kKeepRolling = 5;
-    constexpr std::size_t kKeepDaily = 30;
+inline void PruneBackups(const std::filesystem::path& backup_dir,
+                         std::size_t keep_rolling = 5,
+                         std::size_t keep_daily = 30) {
 
     std::vector<std::string> rolling;
     std::vector<std::string> daily;
@@ -289,10 +289,10 @@ inline void PruneBackups(const std::filesystem::path& backup_dir) {
     std::sort(rolling.begin(), rolling.end(), std::greater<std::string>());
     std::sort(daily.begin(), daily.end(), std::greater<std::string>());
 
-    for (std::size_t i = kKeepRolling; i < rolling.size(); ++i) {
+    for (std::size_t i = keep_rolling; i < rolling.size(); ++i) {
         std::filesystem::remove(backup_dir / rolling[i], ec);
     }
-    for (std::size_t i = kKeepDaily; i < daily.size(); ++i) {
+    for (std::size_t i = keep_daily; i < daily.size(); ++i) {
         std::filesystem::remove(backup_dir / daily[i], ec);
     }
 }
