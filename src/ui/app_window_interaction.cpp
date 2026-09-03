@@ -222,14 +222,29 @@ LRESULT AppWindow::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, 
     if (uMsg == WM_GETMINMAXINFO) {
         auto* info = reinterpret_cast<MINMAXINFO*>(lParam);
         if (info != nullptr) {
-            if (info->ptMinTrackSize.x < 420) {
-                info->ptMinTrackSize.x = 420;
-            }
-            if (info->ptMinTrackSize.y < 280) {
-                info->ptMinTrackSize.y = 280;
-            }
+            // 最小尺寸存 96 基准逻辑值，按当前渲染 DPI 换算成物理像素钳制。
+            const int min_w = m_pm.GetDPIObj()->ScaleInt(launcher::constants::layout::kMinWindowWidth);
+            const int min_h = m_pm.GetDPIObj()->ScaleInt(launcher::constants::layout::kMinWindowHeight);
+            info->ptMinTrackSize.x = min_w;
+            info->ptMinTrackSize.y = min_h;
             bHandled = TRUE;
             return 0;
+        }
+    }
+
+    // 分隔条是透明窄条，悬停时给出左右调整光标作为可拖拽的提示。
+    if (uMsg == WM_SETCURSOR && LOWORD(lParam) == HTCLIENT
+        && !layout_locked_ && panel_splitter_ != nullptr) {
+        const DWORD cursor_pos = ::GetMessagePos();
+        POINT pt{static_cast<short>(LOWORD(cursor_pos)), static_cast<short>(HIWORD(cursor_pos))};
+        ::ScreenToClient(m_hWnd, &pt);
+        RECT rc = panel_splitter_->GetPos();
+        rc.left -= 3;
+        rc.right += 3;
+        if (::PtInRect(&rc, pt)) {
+            ::SetCursor(::LoadCursorW(nullptr, IDC_SIZEWE));
+            bHandled = TRUE;
+            return TRUE;
         }
     }
 
@@ -338,8 +353,8 @@ LRESULT AppWindow::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, 
         RECT client{};
         ::GetClientRect(m_hWnd, &client);
         const int total_width = dpi->ScaleIntBack(client.right - client.left);
-        const int min_group = 80;
-        const int min_items = 220;
+        const int min_group = launcher::constants::layout::kMinGroupPanelWidth;
+        const int min_items = launcher::constants::layout::kMinItemsPanelWidth;
         const int max_group = (total_width - min_items - 12 > min_group) ? (total_width - min_items - 12) : min_group;
 
         if (next_width < min_group) {

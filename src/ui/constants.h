@@ -76,9 +76,10 @@ constexpr UINT_PTR kStatusToast = 0x4E55;
 
 namespace layout {
 constexpr int kDefaultSplitterWidth = 220;
-constexpr int kMinWindowWidth = 420;
+constexpr int kMinWindowWidth = 320;
 constexpr int kMinWindowHeight = 280;
 constexpr int kMinGroupPanelWidth = 80;
+constexpr int kMaxGroupPanelWidth = 600;
 constexpr int kMinItemsPanelWidth = 220;
 } // namespace layout
 
