@@ -717,12 +717,8 @@ void AppWindow::CommitGroupRename() {
     // 先把焦点还给主窗：关闭仍打开的原生 EDIT，避免焦点落在即将隐藏的控件上。
     ::SetFocus(m_hWnd);
 
-    std::string trimmed = launcher::util::WideToUtf8(group_rename_edit_->GetText().GetData());
-    trimmed.erase(trimmed.begin(), std::find_if(trimmed.begin(), trimmed.end(),
-        [](unsigned char ch) { return !std::isspace(ch); }));
-    while (!trimmed.empty() && std::isspace(static_cast<unsigned char>(trimmed.back()))) {
-        trimmed.pop_back();
-    }
+    const std::string trimmed = launcher::util::Trim(
+        launcher::util::WideToUtf8(group_rename_edit_->GetText().GetData()));
 
     const std::string group_id = group_rename_group_id_;
     group_rename_group_id_.clear();

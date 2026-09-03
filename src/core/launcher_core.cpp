@@ -25,23 +25,14 @@ void LauncherBackend::SetAppDir(std::filesystem::path dir) {
     app_dir_ = std::move(dir);
 }
 
-std::string LauncherBackend::Trim(const std::string& value) {
-    const auto begin = std::find_if_not(value.begin(), value.end(), [](unsigned char ch) { return std::isspace(ch); });
-    const auto end = std::find_if_not(value.rbegin(), value.rend(), [](unsigned char ch) { return std::isspace(ch); }).base();
-    if (begin >= end) {
-        return {};
-    }
-    return std::string(begin, end);
-}
-
 std::string LauncherBackend::ToLowerAscii(std::string value) {
     std::transform(value.begin(), value.end(), value.begin(), [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
     return value;
 }
 
 bool LauncherBackend::IsSeparatorItem(const std::string& name, const std::string& target, const std::string& icon) {
-    const auto trimmed = Trim(name);
-    return (Trim(target).empty() && Trim(icon).empty()) ||
+    const auto trimmed = launcher::util::Trim(name);
+    return (launcher::util::Trim(target).empty() && launcher::util::Trim(icon).empty()) ||
            (trimmed.rfind("----", 0) == 0 && trimmed.size() >= 8 && trimmed.substr(trimmed.size() - 4) == "----");
 }
 
@@ -343,7 +334,7 @@ std::string LauncherBackend::AddGroup(const std::string& name, std::string* erro
     if (!EnsureLoaded(error)) {
         return {};
     }
-    const auto group_name = Trim(name);
+    const auto group_name = launcher::util::Trim(name);
     if (group_name.empty()) {
         SetError(error, "group name is empty");
         return {};
@@ -380,7 +371,7 @@ bool LauncherBackend::RenameGroup(const std::string& group_id, const std::string
     if (!EnsureLoaded(error)) {
         return false;
     }
-    const auto next_name = Trim(name);
+    const auto next_name = launcher::util::Trim(name);
     if (next_name.empty()) {
         SetError(error, "group name is empty");
         return false;
@@ -488,11 +479,11 @@ bool LauncherBackend::UpsertItem(const std::string& group_id, const ItemInput& i
 
     const auto item_type = input.item_type.has_value() ? *input.item_type :
         (IsSeparatorItem(input.name, input.target_path, input.icon_location) ? "separator" : "app");
-    const auto target = Trim(input.target_path);
-    const auto icon = (item_type == "app" && Trim(input.icon_location).empty()) ? target : Trim(input.icon_location);
-    const auto args = Trim(input.arguments);
-    const auto working_dir = Trim(input.working_dir);
-    const auto name = Trim(input.name);
+    const auto target = launcher::util::Trim(input.target_path);
+    const auto icon = (item_type == "app" && launcher::util::Trim(input.icon_location).empty()) ? target : launcher::util::Trim(input.icon_location);
+    const auto args = launcher::util::Trim(input.arguments);
+    const auto working_dir = launcher::util::Trim(input.working_dir);
+    const auto name = launcher::util::Trim(input.name);
     const auto enabled = input.enabled.value_or(true);
 
     if (input.id.has_value()) {
@@ -768,7 +759,7 @@ std::string LauncherBackend::PercentDecodePath(const std::string& input) {
 }
 
 std::string LauncherBackend::NormalizeDroppedPath(const std::string& raw_path) {
-    auto value = Trim(raw_path);
+    auto value = launcher::util::Trim(raw_path);
     if (!value.empty() && value.front() == '"' && value.back() == '"') {
         value = value.substr(1, value.size() - 2);
     }
@@ -823,8 +814,8 @@ std::size_t LauncherBackend::CreateItemsFromDroppedPaths(const std::string& grou
             if (!resolved.has_value()) {
                 continue;
             }
-            target = Trim(resolved->first);
-            args = Trim(resolved->second);
+            target = launcher::util::Trim(resolved->first);
+            args = launcher::util::Trim(resolved->second);
             if (target.empty()) {
                 continue;
             }
@@ -846,7 +837,7 @@ std::size_t LauncherBackend::CreateItemsFromDroppedPaths(const std::string& grou
                 base.resize(dot);
             }
         }
-        auto name = Trim(base);
+        auto name = launcher::util::Trim(base);
         if (name.empty()) {
             continue;
         }

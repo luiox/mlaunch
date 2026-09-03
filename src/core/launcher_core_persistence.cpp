@@ -31,7 +31,7 @@ Settings LauncherBackend::ParsePonerCfg(const std::filesystem::path& cfg_path) c
     std::map<std::string, std::string> values;
     std::string line;
     while (std::getline(in, line)) {
-        auto trimmed = Trim(line);
+        auto trimmed = launcher::util::Trim(line);
         if (trimmed.empty() || trimmed[0] == '[') {
             continue;
         }
@@ -39,7 +39,7 @@ Settings LauncherBackend::ParsePonerCfg(const std::filesystem::path& cfg_path) c
         if (pos == std::string::npos) {
             continue;
         }
-        values[Trim(trimmed.substr(0, pos))] = Trim(trimmed.substr(pos + 1));
+        values[launcher::util::Trim(trimmed.substr(0, pos))] = launcher::util::Trim(trimmed.substr(pos + 1));
     }
 
     const auto it_hide = values.find("ExecuteHide");
@@ -52,7 +52,7 @@ Settings LauncherBackend::ParsePonerCfg(const std::filesystem::path& cfg_path) c
     if (it_current == values.end()) {
         it_current = values.find("ActivatedTab");
     }
-    if (it_current != values.end() && !Trim(it_current->second).empty()) {
+    if (it_current != values.end() && !launcher::util::Trim(it_current->second).empty()) {
         settings.current_group = it_current->second;
     }
 
@@ -226,7 +226,7 @@ bool LauncherBackend::Load(std::string* error) {
             settings_.group_panel_width = GetF64(root, "groupPanelWidth", 220.0);
             settings_.main_window_width = GetF64(root, "mainWindowWidth", 1040.0);
             settings_.main_window_height = GetF64(root, "mainWindowHeight", 700.0);
-            if (Trim(settings_.title).empty()) {
+            if (launcher::util::Trim(settings_.title).empty()) {
                 settings_.title = "mlaunch";
             }
         }
@@ -515,11 +515,11 @@ bool LauncherBackend::UpdateSettings(const Settings& settings, std::string* erro
     }
 
     Settings next = settings;
-    next.title = Trim(next.title);
+    next.title = launcher::util::Trim(next.title);
     if (next.title.empty()) {
         next.title = "mlaunch";
     }
-    next.hotkey = Trim(next.hotkey);
+    next.hotkey = launcher::util::Trim(next.hotkey);
     next.group_panel_width = std::clamp(next.group_panel_width,
         static_cast<double>(limits::kGroupPanelWidthMin), static_cast<double>(limits::kGroupPanelWidthMax));
     next.main_window_width = std::max(next.main_window_width,

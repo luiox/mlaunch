@@ -69,7 +69,7 @@ LaunchResult LauncherBackend::Launch(const std::string& group_id, const std::str
         return result;
     }
 
-    if (Trim(it->target_path).empty()) {
+    if (launcher::util::Trim(it->target_path).empty()) {
         SetError(error, "target path is empty");
         result.message = "target path is empty";
         return result;

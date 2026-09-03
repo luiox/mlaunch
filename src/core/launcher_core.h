@@ -219,7 +219,6 @@ public:
     const std::filesystem::path& DataPath() const { return data_path_; }
 
 private:
-    static std::string Trim(const std::string& value);
     static std::string ToLowerAscii(std::string value);
     static bool IsSeparatorItem(const std::string& name, const std::string& target, const std::string& icon);
     static std::vector<std::string> SplitWindowsArgs(const std::string& arguments);

@@ -21,15 +21,6 @@ constexpr int kWindowWidth = 580;
 constexpr int kWindowHeight = 400;
 constexpr UINT kFocusEditMsg = WM_APP + 0x1B;
 
-std::string TrimCopy(const std::string& value) {
-    auto out = value;
-    out.erase(out.begin(), std::find_if(out.begin(), out.end(), [](unsigned char ch) { return !std::isspace(ch); }));
-    while (!out.empty() && std::isspace(static_cast<unsigned char>(out.back()))) {
-        out.pop_back();
-    }
-    return out;
-}
-
 CButtonUI* MakeTextButton(LPCTSTR name, LPCTSTR text, int width = 0) {
     // 统一走 appui 工厂（CButtonUI 无状态色属性，必须用 appui::ButtonUI 自绘）。
     return appui::MakeTextButton(name, text, width);
@@ -66,7 +57,7 @@ CLabelUI* MakeHint(LPCTSTR text) {
 }
 
 int ParseIntText(const CDuiString& text, bool* ok) {
-    const std::string narrow = TrimCopy(launcher::util::WideToUtf8(text.GetData()));
+    const std::string narrow = launcher::util::Trim(launcher::util::WideToUtf8(text.GetData()));
     if (narrow.empty()) {
         *ok = false;
         return 0;
@@ -170,7 +161,7 @@ std::wstring VirtualKeyName(WPARAM vk) {
 SettingsWindow::SettingsWindow(const core::Settings& initial, DoneCallback on_done)
     : on_done_(std::move(on_done)),
       draft_(initial) {
-    draft_.hotkey = TrimCopy(draft_.hotkey);
+    draft_.hotkey = launcher::util::Trim(draft_.hotkey);
 }
 
 LRESULT SettingsWindow::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled) {
@@ -423,9 +414,9 @@ void SettingsWindow::Confirm() {
     }
 
     core::Settings next = draft_;
-    next.hotkey = TrimCopy(launcher::util::WideToUtf8(hotkey_input_->GetText().GetData()));
+    next.hotkey = launcher::util::Trim(launcher::util::WideToUtf8(hotkey_input_->GetText().GetData()));
     // 标题留空时由 UpdateSettings 归一化为 "mlaunch"；这里直接填好避免确认后显示与输入不一致。
-    next.title = TrimCopy(launcher::util::WideToUtf8(title_input_->GetText().GetData()));
+    next.title = launcher::util::Trim(launcher::util::WideToUtf8(title_input_->GetText().GetData()));
     if (next.title.empty()) {
         next.title = "mlaunch";
     }

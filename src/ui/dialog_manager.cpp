@@ -66,12 +66,7 @@ void DialogManager::ConfirmGroupDialog() {
 
     const std::string raw_input = launcher::util::WideToUtf8(owner_.group_dialog_input_->GetText().GetData());
 
-    std::string name = raw_input;
-    std::string trimmed = name;
-    trimmed.erase(trimmed.begin(), std::find_if(trimmed.begin(), trimmed.end(), [](unsigned char ch) { return !std::isspace(ch); }));
-    while (!trimmed.empty() && std::isspace(static_cast<unsigned char>(trimmed.back()))) {
-        trimmed.pop_back();
-    }
+    const std::string trimmed = launcher::util::Trim(raw_input);
 
     if (trimmed.empty()) {
         owner_.status_.Warn("分组名不能为空");
