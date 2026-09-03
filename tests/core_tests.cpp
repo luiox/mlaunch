@@ -554,8 +554,34 @@ TEST(BackendTest, DropImportUsesInjectedResolver) {
     const auto* group = FindGroupById(b, gid);
     ASSERT_NE(group, nullptr);
     ASSERT_EQ(group->items.size(), 1u);
+    // 显示名取快捷方式文件名（去 .lnk 后缀），而非解析出的 exe 名。
+    EXPECT_EQ(group->items[0].name, "app");
     EXPECT_EQ(group->items[0].target_path, "C:\\resolved\\target.exe");
     EXPECT_EQ(group->items[0].arguments, "/resolved-arg");
+}
+
+TEST(BackendTest, DropImportShortcutNameKeepsUtf8AndExeDropsStripExt) {
+    const auto legacy = MakeTempDir("legacy_drop_utf8");
+    const auto base = MakeTempDir("base_drop_utf8");
+
+    FakeShortcutResolver resolver;
+    core::LauncherBackend b(base, legacy, nullptr, &resolver);
+    std::string error;
+    ASSERT_TRUE(b.Load(&error)) << error;
+
+    const auto gid = b.AddGroup("Tools", &error);
+    ASSERT_FALSE(gid.empty()) << error;
+
+    ASSERT_EQ(b.CreateItemsFromDroppedPaths(gid, {"C:\\drop\\\xE8\x85\xBE\xE8\xAE\xAF\xE4\xBC\x9A\xE8\xAE\xAE.lnk"}, &error), 1u) << error;
+    ASSERT_EQ(b.CreateItemsFromDroppedPaths(gid, {"C:\\drop\\Everything.exe"}, &error), 1u) << error;
+
+    const auto* group = FindGroupById(b, gid);
+    ASSERT_NE(group, nullptr);
+    ASSERT_EQ(group->items.size(), 2u);
+    // 中文名快捷方式不经 ACP 转换，原样保留 UTF-8 字节。
+    const std::string utf8_name = reinterpret_cast<const char*>("\xE8\x85\xBE\xE8\xAE\xAF\xE4\xBC\x9A\xE8\xAE\xAE");
+    EXPECT_EQ(group->items[0].name, utf8_name);
+    EXPECT_EQ(group->items[1].name, "Everything");
 }
 
 TEST(BackendTest, ImportPonerDataIsIdempotent) {

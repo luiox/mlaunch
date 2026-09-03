@@ -811,9 +811,11 @@ std::size_t LauncherBackend::CreateItemsFromDroppedPaths(const std::string& grou
 
         std::string target = dropped;
         std::string args;
+        bool is_shortcut = false;
 
         auto lower = ToLowerAscii(dropped);
         if (lower.size() >= 4 && lower.substr(lower.size() - 4) == ".lnk") {
+            is_shortcut = true;
             if (shortcut_resolver_ == nullptr) {
                 continue;
             }
@@ -828,7 +830,23 @@ std::size_t LauncherBackend::CreateItemsFromDroppedPaths(const std::string& grou
             }
         }
 
-        auto name = BasenameNoExt(target);
+        // 快捷方式的显示名取 .lnk 文件自身（去掉后缀），而不是解析出来的 exe 名；
+        // 其余文件沿用目标路径基名并去掉扩展名。手动按 '/' '\\' 与 ASCII '.' 切分，
+        // 不走 std::filesystem，避免 UTF-8 路径经 ACP 窄编码转换产生乱码。
+        const std::string& name_source = is_shortcut ? dropped : target;
+        std::string base = name_source.substr(name_source.find_last_of("/\\") + 1);
+        const std::string base_lower = ToLowerAscii(base);
+        if (is_shortcut) {
+            if (base_lower.size() >= 4 && base_lower.substr(base_lower.size() - 4) == ".lnk") {
+                base.resize(base.size() - 4);
+            }
+        } else {
+            const auto dot = base.rfind('.');
+            if (dot != std::string::npos && dot > 0) {
+                base.resize(dot);
+            }
+        }
+        auto name = Trim(base);
         if (name.empty()) {
             continue;
         }
