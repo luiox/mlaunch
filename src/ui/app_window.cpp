@@ -877,8 +877,8 @@ void AppWindow::ApplyDefaultWindowSize() {
     int width = static_cast<int>(backend_.CurrentSettings().main_window_width);
     int height = static_cast<int>(backend_.CurrentSettings().main_window_height);
     // 钳制在逻辑空间完成（settings 存的是 96 基逻辑值），再按 DPI 放大为物理像素。
-    width = std::clamp(width, 320, 3840);
-    height = std::clamp(height, 220, 2160);
+    width = std::clamp(width, core::limits::kMainWindowWidthMin, core::limits::kMainWindowWidthMax);
+    height = std::clamp(height, core::limits::kMainWindowHeightMin, core::limits::kMainWindowHeightMax);
     const int dpi = static_cast<int>(::GetDpiForWindow(m_hWnd));
     width = ::MulDiv(width, dpi, 96);
     height = ::MulDiv(height, dpi, 96);

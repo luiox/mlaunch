@@ -77,6 +77,15 @@ int ParseIntText(const CDuiString& text, bool* ok) {
     return static_cast<int>(value);
 }
 
+// "320-3840" 形式的范围文本（提示与错误消息共用）。
+std::wstring RangeText(int min_value, int max_value) {
+    return std::to_wstring(min_value) + L"-" + std::to_wstring(max_value);
+}
+
+std::wstring RangeMessage(const wchar_t* label, int min_value, int max_value) {
+    return std::wstring(label) + L"需为 " + RangeText(min_value, max_value) + L" 的整数";
+}
+
 // 数值输入实时校验：越界/非整数时边框变红，恢复灰框表示有效。
 // 只做视觉反馈不改写文本（改写会打断输入），钳制在 Confirm 统一执行。
 void ValidateRangeInput(CEditUI* input, int min_value, int max_value) {
@@ -288,7 +297,10 @@ LRESULT SettingsWindow::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& 
         page_window->Add(row);
     }
     make_num_row(page_window, _T("分组栏宽度"), panel_input_, _T("settings_panel_input"));
-    page_window->Add(MakeHint(_T("窗口尺寸范围 320-3840 / 220-2160；分组栏宽度 80-600")));
+    page_window->Add(MakeHint((L"窗口尺寸范围 " +
+        RangeText(core::limits::kMainWindowWidthMin, core::limits::kMainWindowWidthMax) + L" / " +
+        RangeText(core::limits::kMainWindowHeightMin, core::limits::kMainWindowHeightMax) +
+        L"；分组栏宽度 " + RangeText(core::limits::kGroupPanelWidthMin, core::limits::kGroupPanelWidthMax)).c_str()));
 
     // —— 备份页 ——
     auto* page_backup = new CVerticalLayoutUI();
@@ -296,7 +308,10 @@ LRESULT SettingsWindow::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& 
     content->Add(page_backup);
     make_num_row(page_backup, _T("滚动快照保留份数"), backup_rolling_input_, _T("settings_rolling_input"));
     make_num_row(page_backup, _T("每日快照保留天数"), backup_daily_input_, _T("settings_daily_input"));
-    page_backup->Add(MakeHint(_T("保留范围：滚动 2-20 份、每日 3-90 天，越界边框变红并在确定时钳制")));
+    page_backup->Add(MakeHint((L"保留范围：滚动 " +
+        RangeText(core::limits::kBackupRollingMin, core::limits::kBackupRollingMax) + L" 份、每日 " +
+        RangeText(core::limits::kBackupDailyMin, core::limits::kBackupDailyMax) +
+        L" 天，越界边框变红并在确定时钳制").c_str()));
 
     auto* spacer = new CControlUI();
     content->Add(spacer);
@@ -425,28 +440,33 @@ void SettingsWindow::Confirm() {
     next.auto_hide = autohide_check_->IsChecked();
 
     const int width = ParseIntText(width_input_->GetText(), &ok);
-    if (!ok || width < 320 || width > 3840) {
-        ::MessageBoxW(m_hWnd, L"默认宽度需为 320-3840 的整数", L"设置", MB_ICONWARNING);
+    if (!ok || width < core::limits::kMainWindowWidthMin || width > core::limits::kMainWindowWidthMax) {
+        ::MessageBoxW(m_hWnd, RangeMessage(L"默认宽度", core::limits::kMainWindowWidthMin,
+                                           core::limits::kMainWindowWidthMax).c_str(), L"设置", MB_ICONWARNING);
         return;
     }
     const int height = ParseIntText(height_input_->GetText(), &ok);
-    if (!ok || height < 220 || height > 2160) {
-        ::MessageBoxW(m_hWnd, L"默认高度需为 220-2160 的整数", L"设置", MB_ICONWARNING);
+    if (!ok || height < core::limits::kMainWindowHeightMin || height > core::limits::kMainWindowHeightMax) {
+        ::MessageBoxW(m_hWnd, RangeMessage(L"默认高度", core::limits::kMainWindowHeightMin,
+                                           core::limits::kMainWindowHeightMax).c_str(), L"设置", MB_ICONWARNING);
         return;
     }
     const int panel = ParseIntText(panel_input_->GetText(), &ok);
-    if (!ok || panel < 80 || panel > 600) {
-        ::MessageBoxW(m_hWnd, L"分组栏宽度需为 80-600 的整数", L"设置", MB_ICONWARNING);
+    if (!ok || panel < core::limits::kGroupPanelWidthMin || panel > core::limits::kGroupPanelWidthMax) {
+        ::MessageBoxW(m_hWnd, RangeMessage(L"分组栏宽度", core::limits::kGroupPanelWidthMin,
+                                           core::limits::kGroupPanelWidthMax).c_str(), L"设置", MB_ICONWARNING);
         return;
     }
     const int rolling = ParseIntText(backup_rolling_input_->GetText(), &ok);
-    if (!ok || rolling < 2 || rolling > 20) {
-        ::MessageBoxW(m_hWnd, L"滚动快照份数需为 2-20 的整数", L"设置", MB_ICONWARNING);
+    if (!ok || rolling < core::limits::kBackupRollingMin || rolling > core::limits::kBackupRollingMax) {
+        ::MessageBoxW(m_hWnd, RangeMessage(L"滚动快照份数", core::limits::kBackupRollingMin,
+                                           core::limits::kBackupRollingMax).c_str(), L"设置", MB_ICONWARNING);
         return;
     }
     const int daily = ParseIntText(backup_daily_input_->GetText(), &ok);
-    if (!ok || daily < 3 || daily > 90) {
-        ::MessageBoxW(m_hWnd, L"每日快照天数需为 3-90 的整数", L"设置", MB_ICONWARNING);
+    if (!ok || daily < core::limits::kBackupDailyMin || daily > core::limits::kBackupDailyMax) {
+        ::MessageBoxW(m_hWnd, RangeMessage(L"每日快照天数", core::limits::kBackupDailyMin,
+                                           core::limits::kBackupDailyMax).c_str(), L"设置", MB_ICONWARNING);
         return;
     }
 
@@ -595,15 +615,15 @@ void SettingsWindow::Notify(TNotifyUI& msg) {
     if (_tcscmp(msg.sType, DUI_MSGTYPE_TEXTCHANGED) == 0 && msg.pSender != nullptr) {
         const CDuiString name = msg.pSender->GetName();
         if (name == _T("settings_width_input")) {
-            ValidateRangeInput(width_input_, 320, 3840);
+            ValidateRangeInput(width_input_, core::limits::kMainWindowWidthMin, core::limits::kMainWindowWidthMax);
         } else if (name == _T("settings_height_input")) {
-            ValidateRangeInput(height_input_, 220, 2160);
+            ValidateRangeInput(height_input_, core::limits::kMainWindowHeightMin, core::limits::kMainWindowHeightMax);
         } else if (name == _T("settings_panel_input")) {
-            ValidateRangeInput(panel_input_, 80, 600);
+            ValidateRangeInput(panel_input_, core::limits::kGroupPanelWidthMin, core::limits::kGroupPanelWidthMax);
         } else if (name == _T("settings_rolling_input")) {
-            ValidateRangeInput(backup_rolling_input_, 2, 20);
+            ValidateRangeInput(backup_rolling_input_, core::limits::kBackupRollingMin, core::limits::kBackupRollingMax);
         } else if (name == _T("settings_daily_input")) {
-            ValidateRangeInput(backup_daily_input_, 3, 90);
+            ValidateRangeInput(backup_daily_input_, core::limits::kBackupDailyMin, core::limits::kBackupDailyMax);
         }
         return;
     }

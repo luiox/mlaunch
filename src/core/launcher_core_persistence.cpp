@@ -520,11 +520,16 @@ bool LauncherBackend::UpdateSettings(const Settings& settings, std::string* erro
         next.title = "mlaunch";
     }
     next.hotkey = Trim(next.hotkey);
-    next.group_panel_width = std::clamp(next.group_panel_width, 80.0, 600.0);
-    next.main_window_width = std::max(next.main_window_width, 320.0);
-    next.main_window_height = std::max(next.main_window_height, 220.0);
-    next.backup_rolling_count = std::clamp(next.backup_rolling_count, 2, 20);
-    next.backup_daily_days = std::clamp(next.backup_daily_days, 3, 90);
+    next.group_panel_width = std::clamp(next.group_panel_width,
+        static_cast<double>(limits::kGroupPanelWidthMin), static_cast<double>(limits::kGroupPanelWidthMax));
+    next.main_window_width = std::max(next.main_window_width,
+                                      static_cast<double>(limits::kMainWindowWidthMin));
+    next.main_window_height = std::max(next.main_window_height,
+                                       static_cast<double>(limits::kMainWindowHeightMin));
+    next.backup_rolling_count = std::clamp(next.backup_rolling_count,
+                                           limits::kBackupRollingMin, limits::kBackupRollingMax);
+    next.backup_daily_days = std::clamp(next.backup_daily_days,
+                                        limits::kBackupDailyMin, limits::kBackupDailyMax);
 
     settings_ = std::move(next);
 
