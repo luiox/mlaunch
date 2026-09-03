@@ -327,7 +327,8 @@ void AppWindow::ExecuteGroupCommand(UINT command_id) {
             status_.Warn("请先选择分组");
             return;
         }
-        OpenGroupDialog(true, group->id);
+        // 对齐原版：重命名直接在分组行上原地编辑，不再弹对话框。
+        StartGroupRename(group->id);
         return;
     }
 

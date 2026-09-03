@@ -68,6 +68,13 @@ constexpr int kAppHotkeyId = 0xA001;
 /// 同步 SetFocus 会以 0 尺寸创建原生 EDIT；PostMessage 到布局完成后再聚焦。
 constexpr UINT kFocusSearchMsg = WM_APP + 0x1B;
 
+/// @brief 分组对话框延迟聚焦：OpenGroupDialog 同步 SetFocus 会以旧/0 rect
+/// 创建原生 EDIT 且此后不再跟随重排，输入文字与光标都不可见。
+constexpr UINT kFocusGroupDialogMsg = WM_APP + 0x1C;
+
+/// @brief 分组原地重命名编辑框的延迟聚焦（同上，等行 rect 摆好再创建原生 EDIT）。
+constexpr UINT kFocusGroupRenameMsg = WM_APP + 0x1D;
+
 namespace timer {
 constexpr UINT_PTR kUiStateSave = 0x4E53;
 constexpr UINT_PTR kListDragPoll = 0x4E54;

@@ -101,6 +101,10 @@ private:
     void OpenGroupDialog(bool rename_mode, const std::string& group_id);
     void CloseGroupDialog();
     void ConfirmGroupDialog();
+    /** @brief 分组原地重命名：在分组行位置浮出编辑框，回车/失焦提交，ESC 取消。 */
+    void StartGroupRename(const std::string& group_id);
+    void CommitGroupRename();
+    void CancelGroupRename();
 
     void UndoLastDelete();
     void ShowBackupRecoveryMenu();
@@ -181,6 +185,7 @@ private:
     DuiLib::CVerticalLayoutUI* group_dialog_ = nullptr;
     DuiLib::CLabelUI* group_dialog_title_ = nullptr;
     DuiLib::CEditUI* group_dialog_input_ = nullptr;
+    DuiLib::CEditUI* group_rename_edit_ = nullptr;
 
     std::vector<std::string> group_ids_;
     std::vector<std::string> item_ids_;
@@ -192,6 +197,8 @@ private:
     bool search_mode_ = false;
     bool group_dialog_rename_mode_ = false;
     std::string group_dialog_group_id_;
+    bool group_rename_active_ = false;
+    std::string group_rename_group_id_;
 
     // 设置镜像（ApplySettings 从 backend 刷新）：锁定布局 / 失焦自动隐藏。
     bool layout_locked_ = false;

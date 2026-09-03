@@ -219,6 +219,35 @@ LRESULT AppWindow::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, 
         return 0;
     }
 
+    if (uMsg == launcher::constants::kFocusGroupDialogMsg) {
+        // 分组对话框输入框延迟聚焦：先 UpdateWindow 让对话框 rect 算出来
+        //（float 控件靠重排定位），再创建原生 EDIT，见 kFocusGroupDialogMsg 注释。
+        ::UpdateWindow(m_hWnd);
+        if (group_dialog_ != nullptr && group_dialog_->IsVisible() && group_dialog_input_ != nullptr) {
+            group_dialog_input_->SetFocus();
+            const int text_len = group_dialog_input_->GetText().GetLength();
+            group_dialog_input_->SetSel(text_len, text_len);
+        }
+        bHandled = TRUE;
+        return 0;
+    }
+
+    if (uMsg == launcher::constants::kFocusGroupRenameMsg) {
+        // 分组原地重命名编辑框延迟聚焦：等行 rect 摆好后再创建原生 EDIT。
+        ::UpdateWindow(m_hWnd);
+        if (group_rename_active_ && group_rename_edit_ != nullptr) {
+            group_rename_edit_->SetFocus();
+            // CEditUI::SetSel 在此 fork 是空实现，全选现名走原生 EM_SETSEL，
+            // 直接输入即覆盖（对齐常规重命名交互）。
+            const HWND focused = ::GetFocus();
+            if (focused != nullptr) {
+                ::SendMessageW(focused, EM_SETSEL, 0, -1);
+            }
+        }
+        bHandled = TRUE;
+        return 0;
+    }
+
     if (uMsg == WM_GETMINMAXINFO) {
         auto* info = reinterpret_cast<MINMAXINFO*>(lParam);
         if (info != nullptr) {

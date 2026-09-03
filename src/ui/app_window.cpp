@@ -286,6 +286,7 @@ LRESULT AppWindow::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHand
     group_dialog_ = static_cast<CVerticalLayoutUI*>(m_pm.FindControl(_T("group_dialog")));
     group_dialog_title_ = static_cast<CLabelUI*>(m_pm.FindControl(_T("group_dialog_title")));
     group_dialog_input_ = static_cast<CEditUI*>(m_pm.FindControl(_T("group_dialog_input")));
+    group_rename_edit_ = static_cast<CEditUI*>(m_pm.FindControl(_T("group_rename_edit")));
     status_.Bind(status_line_, m_hWnd, launcher::constants::timer::kStatusToast);
 
     DragAcceptFiles(m_hWnd, TRUE);
@@ -342,9 +343,18 @@ LRESULT AppWindow::MessageHandler(UINT uMsg, WPARAM wParam, LPARAM lParam, bool&
 }
 
 LRESULT AppWindow::TranslateAccelerator(MSG* pMsg) {
-    // 搜索框的原生 EDIT 持有焦点时 WM_KEYDOWN 只到 EDIT 子窗口（Win32 机制），
-    // 在 fork 消息循环派发前拦截 ESC 退出搜索模式与上/下方向键移动搜索结果选择；
-    // 键位→业务动作属宿主职责，不下沉进 DuiLib。返回约定见头文件：S_OK 吞掉、S_FALSE 放行。
+    // 原生 EDIT 子窗口内的键盘消息只到 EDIT（Win32 机制），在 fork 消息循环
+    // 派发前拦截；键位→业务动作属宿主职责，不下沉进 DuiLib。
+    // 返回约定见头文件：S_OK 吞掉、S_FALSE 放行。
+    if (group_rename_active_ && pMsg != nullptr && pMsg->message == WM_KEYDOWN
+        && pMsg->hwnd != nullptr && pMsg->hwnd != m_hWnd
+        && ::GetAncestor(pMsg->hwnd, GA_ROOT) == m_hWnd) {
+        if (pMsg->wParam == VK_ESCAPE) {
+            CancelGroupRename();
+            return S_OK;
+        }
+    }
+
     if (search_mode_ && pMsg != nullptr && pMsg->message == WM_KEYDOWN
         && pMsg->hwnd != nullptr && pMsg->hwnd != m_hWnd
         && ::GetAncestor(pMsg->hwnd, GA_ROOT) == m_hWnd) {
@@ -451,6 +461,18 @@ void AppWindow::Notify(TNotifyUI& msg) {
         }
     }
 
+    // 分组原地重命名：回车提交；失焦（点击别处）也提交，ESC 走 TranslateAccelerator 取消。
+    if (msg.pSender != nullptr && msg.pSender->GetName() == _T("group_rename_edit")) {
+        if (_tcscmp(msg.sType, DUI_MSGTYPE_RETURN) == 0) {
+            CommitGroupRename();
+            return;
+        }
+        if (_tcscmp(msg.sType, DUI_MSGTYPE_KILLFOCUS) == 0 && group_rename_active_) {
+            CommitGroupRename();
+            return;
+        }
+    }
+
     if (_tcscmp(msg.sType, DUI_MSGTYPE_ITEMCLICK) == 0 && msg.pSender != nullptr) {
         if (groups_list_ != nullptr && appwin::IsSenderFromList(msg.pSender, groups_list_)) {
             SelectGroupByIndex(groups_list_->GetCurSel());
@@ -500,6 +522,108 @@ void AppWindow::CloseGroupDialog() {
 
 void AppWindow::ConfirmGroupDialog() {
     dialog_manager_.ConfirmGroupDialog();
+}
+
+void AppWindow::StartGroupRename(const std::string& group_id) {
+    if (group_rename_edit_ == nullptr || groups_list_ == nullptr) {
+        return;
+    }
+    if (backend_.IsRecycleBinId(group_id)) {
+        status_.Info("回收站由系统自动管理");
+        return;
+    }
+
+    const core::Group* group = nullptr;
+    for (const auto& candidate : backend_.Data().groups) {
+        if (candidate.id == group_id) {
+            group = &candidate;
+            break;
+        }
+    }
+    if (group == nullptr) {
+        status_.Warn("分组不存在");
+        return;
+    }
+
+    int index = -1;
+    for (int i = 0; i < static_cast<int>(group_ids_.size()); ++i) {
+        if (group_ids_[i] == group_id) {
+            index = i;
+            break;
+        }
+    }
+    CControlUI* row = index >= 0 ? groups_list_->GetItemAt(index) : nullptr;
+    if (row == nullptr) {
+        status_.Warn("分组不存在");
+        return;
+    }
+
+    // float 控件的 rect 由布局的 SetFloatPos 按 FixedXY + FixedWidth/Height 每次
+    // 重算（96 基准逻辑值，Get 时按 DPI 缩放），手动 SetPos 会在下一次布局被
+    // 重置成 (0,0) 零尺寸——必须走 Fixed 值才能稳定盖在分组行上。
+    auto* dpi = m_pm.GetDPIObj();
+    const RECT row_rect = row->GetPos();
+    group_rename_edit_->SetFixedXY(CDuiSize(dpi->ScaleIntBack(row_rect.left),
+                                            dpi->ScaleIntBack(row_rect.top)));
+    group_rename_edit_->SetFixedWidth(dpi->ScaleIntBack(row_rect.right - row_rect.left));
+    group_rename_edit_->SetFixedHeight(dpi->ScaleIntBack(row_rect.bottom - row_rect.top));
+    group_rename_edit_->SetText(launcher::util::Utf8ToWide(group->name).c_str());
+    group_rename_edit_->SetVisible(true);
+    group_rename_group_id_ = group_id;
+    group_rename_active_ = true;
+    m_pm.NeedUpdate();
+    // 与搜索框同套路：等重排把 rect 摆好后再创建原生 EDIT（同步 SetFocus 会以
+    // 旧/0 rect 创建且之后不再跟随重排）。
+    ::PostMessage(m_pm.GetPaintWindow(), launcher::constants::kFocusGroupRenameMsg, 0, 0);
+}
+
+void AppWindow::CommitGroupRename() {
+    if (!group_rename_active_ || group_rename_edit_ == nullptr) {
+        return;
+    }
+    group_rename_active_ = false;
+    // 先把焦点还给主窗：关闭仍打开的原生 EDIT，避免焦点落在即将隐藏的控件上。
+    ::SetFocus(m_hWnd);
+
+    std::string trimmed = launcher::util::WideToUtf8(group_rename_edit_->GetText().GetData());
+    trimmed.erase(trimmed.begin(), std::find_if(trimmed.begin(), trimmed.end(),
+        [](unsigned char ch) { return !std::isspace(ch); }));
+    while (!trimmed.empty() && std::isspace(static_cast<unsigned char>(trimmed.back()))) {
+        trimmed.pop_back();
+    }
+
+    const std::string group_id = group_rename_group_id_;
+    group_rename_group_id_.clear();
+    group_rename_edit_->SetVisible(false);
+
+    if (trimmed.empty()) {
+        status_.Warn("分组名不能为空");
+        return;
+    }
+
+    std::string error;
+    if (!backend_.RenameGroup(group_id, trimmed, &error)) {
+        status_.Error("重命名分组失败：" + error);
+        return;
+    }
+    status_.Info("分组已重命名");
+    RenderGroups();
+    for (int i = 0; i < static_cast<int>(group_ids_.size()); ++i) {
+        if (group_ids_[i] == group_id) {
+            SelectGroupByIndex(i);
+            break;
+        }
+    }
+}
+
+void AppWindow::CancelGroupRename() {
+    if (!group_rename_active_ || group_rename_edit_ == nullptr) {
+        return;
+    }
+    group_rename_active_ = false;
+    ::SetFocus(m_hWnd);
+    group_rename_group_id_.clear();
+    group_rename_edit_->SetVisible(false);
 }
 
 void AppWindow::OpenSettingsDialog() {
