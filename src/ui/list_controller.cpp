@@ -89,8 +89,23 @@ void ListController::RenderItems() {
 
         // 对齐原版：空输入不显示任何结果，改为三行居中提示。
         if (keyword.empty() && active_cmd == launcher::constants::search_cmd::kNone) {
-            int list_height = owner_.items_list_->GetPos().bottom - owner_.items_list_->GetPos().top;
-            int spacer = list_height / 2 - 60;
+            // GetPos 是缩放后的物理值，行高 SetFixedHeight 存逻辑值：先反算回
+            // 逻辑高度再算居中，否则非 100% 缩放下 spacer 翻倍、提示被压到底部裁掉。
+            auto* dpi = owner_.m_pm.GetDPIObj();
+            const RECT list_rect = owner_.items_list_->GetPos();
+            int list_height = dpi->ScaleIntBack(list_rect.bottom - list_rect.top);
+            // 刚切入搜索模式时布局尚未重跑，rect 还是搜索栏 0 高时的旧值
+            //（搜索栏自身 rect 仍 0 高，或列表顶边不在搜索栏底边之下），扣除它。
+            if (owner_.search_bar_ != nullptr) {
+                const RECT bar_rect = owner_.search_bar_->GetPos();
+                const int bar_height = dpi->ScaleIntBack(owner_.search_bar_->GetFixedHeight());
+                if (bar_rect.bottom - bar_rect.top <= 0 || list_rect.top < bar_rect.bottom) {
+                    list_height -= bar_height;
+                }
+            }
+            constexpr int kHintRows = 3;
+            constexpr int kHintRowHeight = 33;
+            int spacer = (list_height - kHintRowHeight * kHintRows) / 2;
             if (spacer < 0) {
                 spacer = 0;
             }
@@ -108,7 +123,7 @@ void ListController::RenderItems() {
             };
             for (const auto& hint : hints) {
                 auto* row = new CListContainerElementUI();
-                row->SetFixedHeight(33);
+                row->SetFixedHeight(kHintRowHeight);
                 row->SetEnabled(false);
                 row->SetAttribute(_T("inset"), _T("4,0,4,0"));
 
