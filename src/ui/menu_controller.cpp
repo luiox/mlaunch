@@ -1,4 +1,4 @@
-#include "app_window.h"
+#include "menu_controller.h"
 
 #include <Windows.h>
 #include <commdlg.h>
@@ -10,8 +10,9 @@
 #include <cstring>
 #include <filesystem>
 #include <string>
+#include <vector>
 
-#include "app_window_internal.h"
+#include "app_window.h"
 #include "constants.h"
 #include "list_controller.h"
 #include "logger.h"
@@ -20,10 +21,13 @@
 
 using namespace DuiLib;
 
-void AppWindow::ShowBackupRecoveryMenu() {
-    const auto backups = backend_.ListBackups();
+MenuController::MenuController(AppWindow& owner)
+    : owner_(owner) {}
+
+void MenuController::ShowBackupRecoveryMenu() {
+    const auto backups = owner_.backend_.ListBackups();
     if (backups.empty()) {
-        status_.Warn("数据损坏且无可用备份");
+        owner_.status_.Warn("数据损坏且无可用备份");
         return;
     }
 
@@ -46,10 +50,10 @@ void AppWindow::ShowBackupRecoveryMenu() {
     AppendMenuW(menu, MF_STRING, launcher::constants::command::kBackupStartFresh, L"使用全新数据启动");
 
     RECT rc{};
-    ::GetWindowRect(m_hWnd, &rc);
+    ::GetWindowRect(owner_.m_hWnd, &rc);
     POINT menu_point{(rc.left + rc.right) / 2, (rc.top + rc.bottom) / 2};
-    SetForegroundWindow(m_hWnd);
-    const UINT command_id = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_RIGHTBUTTON, menu_point.x, menu_point.y, 0, m_hWnd, nullptr);
+    SetForegroundWindow(owner_.m_hWnd);
+    const UINT command_id = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_RIGHTBUTTON, menu_point.x, menu_point.y, 0, owner_.m_hWnd, nullptr);
     DestroyMenu(menu);
 
     if (command_id != 0) {
@@ -57,9 +61,9 @@ void AppWindow::ShowBackupRecoveryMenu() {
     }
 }
 
-void AppWindow::ExecuteBackupCommand(UINT command_id) {
+void MenuController::ExecuteBackupCommand(UINT command_id) {
     if (command_id == launcher::constants::command::kBackupStartFresh) {
-        status_.Warn("已保留全新数据；原备份仍在 backups/ 目录");
+        owner_.status_.Warn("已保留全新数据；原备份仍在 backups/ 目录");
         return;
     }
     if (command_id < launcher::constants::command::kBackupRestoreBase) {
@@ -67,28 +71,28 @@ void AppWindow::ExecuteBackupCommand(UINT command_id) {
     }
 
     const auto index = static_cast<int>(command_id - launcher::constants::command::kBackupRestoreBase);
-    const auto backups = backend_.ListBackups();
+    const auto backups = owner_.backend_.ListBackups();
     if (index < 0 || index >= static_cast<int>(backups.size())) {
-        status_.Error("备份项已不可用");
+        owner_.status_.Error("备份项已不可用");
         return;
     }
 
     std::string error;
-    if (!backend_.RestoreFromBackup(backups[index].path, &error)) {
-        status_.Error("恢复失败：" + error);
+    if (!owner_.backend_.RestoreFromBackup(backups[index].path, &error)) {
+        owner_.status_.Error("恢复失败：" + error);
         return;
     }
 
-    RenderGroups();
-    if (!group_ids_.empty()) {
-        SelectGroupByIndex(0);
+    owner_.RenderGroups();
+    if (!owner_.group_ids_.empty()) {
+        owner_.SelectGroupByIndex(0);
     }
-    status_.Info("已从 " + backups[index].name + " 恢复");
+    owner_.status_.Info("已从 " + backups[index].name + " 恢复");
 }
 
-void AppWindow::ShowGroupContextMenu(const POINT& screen_point) {
-    if (IsActiveGroupRecycleBin()) {
-        status_.Info("回收站由系统自动管理");
+void MenuController::ShowGroupContextMenu(const POINT& screen_point) {
+    if (owner_.IsActiveGroupRecycleBin()) {
+        owner_.status_.Info("回收站由系统自动管理");
         return;
     }
 
@@ -98,8 +102,8 @@ void AppWindow::ShowGroupContextMenu(const POINT& screen_point) {
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(menu, MF_STRING, launcher::constants::command::kGroupDelete, L"删除分组");
 
-    SetForegroundWindow(m_hWnd);
-    const UINT command_id = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_RIGHTBUTTON, screen_point.x, screen_point.y, 0, m_hWnd, nullptr);
+    SetForegroundWindow(owner_.m_hWnd);
+    const UINT command_id = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_RIGHTBUTTON, screen_point.x, screen_point.y, 0, owner_.m_hWnd, nullptr);
     DestroyMenu(menu);
 
     if (command_id != 0) {
@@ -107,11 +111,11 @@ void AppWindow::ShowGroupContextMenu(const POINT& screen_point) {
     }
 }
 
-void AppWindow::ShowItemContextMenu(const POINT& screen_point) {
+void MenuController::ShowItemContextMenu(const POINT& screen_point) {
     HMENU menu = CreatePopupMenu();
     HMENU move_menu = nullptr;
 
-    if (IsActiveGroupRecycleBin()) {
+    if (owner_.IsActiveGroupRecycleBin()) {
         AppendMenuW(menu, MF_STRING, launcher::constants::command::kItemDelete, L"彻底删除");
     } else {
         AppendMenuW(menu, MF_STRING, launcher::constants::command::kItemRunAs, L"以管理员身份运行");
@@ -121,20 +125,20 @@ void AppWindow::ShowItemContextMenu(const POINT& screen_point) {
         AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
         AppendMenuW(menu, MF_STRING, launcher::constants::command::kItemAdd, L"添加项目");
         AppendMenuW(menu, MF_STRING, launcher::constants::command::kItemEdit, L"编辑项目");
-        const core::LaunchItem* selected_item = FindSelectedItem();
+        const core::LaunchItem* selected_item = owner_.FindSelectedItem();
         const bool item_enabled = selected_item == nullptr || selected_item->enabled;
         AppendMenuW(menu, MF_STRING, launcher::constants::command::kItemToggleEnabled,
                     item_enabled ? L"禁用条目" : L"启用条目");
         AppendMenuW(menu, MF_STRING, launcher::constants::command::kItemDelete, L"删除项目");
 
         move_menu = CreatePopupMenu();
-        for (int i = 0; i < static_cast<int>(group_ids_.size()); ++i) {
-            if (group_ids_[i] == active_group_id_) {
+        for (int i = 0; i < static_cast<int>(owner_.group_ids_.size()); ++i) {
+            if (owner_.group_ids_[i] == owner_.active_group_id_) {
                 continue;
             }
             const core::Group* group = nullptr;
-            for (const auto& candidate : backend_.Data().groups) {
-                if (candidate.id == group_ids_[i]) {
+            for (const auto& candidate : owner_.backend_.Data().groups) {
+                if (candidate.id == owner_.group_ids_[i]) {
                     group = &candidate;
                     break;
                 }
@@ -146,8 +150,8 @@ void AppWindow::ShowItemContextMenu(const POINT& screen_point) {
         AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(move_menu), L"移动到分组");
     }
 
-    SetForegroundWindow(m_hWnd);
-    const UINT command_id = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_RIGHTBUTTON, screen_point.x, screen_point.y, 0, m_hWnd, nullptr);
+    SetForegroundWindow(owner_.m_hWnd);
+    const UINT command_id = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_RIGHTBUTTON, screen_point.x, screen_point.y, 0, owner_.m_hWnd, nullptr);
     DestroyMenu(menu);
 
     if (command_id != 0) {
@@ -155,7 +159,7 @@ void AppWindow::ShowItemContextMenu(const POINT& screen_point) {
     }
 }
 
-void AppWindow::ShowMainContextMenu(const POINT& screen_point, bool right_align) {
+void MenuController::ShowMainContextMenu(const POINT& screen_point, bool right_align) {
     HMENU menu = CreatePopupMenu();
     HMENU new_menu = CreatePopupMenu();
 
@@ -172,8 +176,8 @@ void AppWindow::ShowMainContextMenu(const POINT& screen_point, bool right_align)
     AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(new_menu), L"新建项目");
     AppendMenuW(menu, MF_STRING, launcher::constants::command::kMainSortByName, L"按名称排序");
     AppendMenuW(menu, MF_STRING, launcher::constants::command::kMainSortByCount, L"按使用频率排序");
-    AppendMenuW(menu, MF_STRING | (layout_locked_ ? MF_CHECKED : 0), launcher::constants::command::kMainToggleLock, L"锁定");
-    AppendMenuW(menu, MF_STRING | (auto_hide_ ? MF_CHECKED : 0), launcher::constants::command::kMainToggleAutoHide, L"自动隐藏");
+    AppendMenuW(menu, MF_STRING | (owner_.layout_locked_ ? MF_CHECKED : 0), launcher::constants::command::kMainToggleLock, L"锁定");
+    AppendMenuW(menu, MF_STRING | (owner_.auto_hide_ ? MF_CHECKED : 0), launcher::constants::command::kMainToggleAutoHide, L"自动隐藏");
 
     HMENU convert_menu = CreatePopupMenu();
     AppendMenuW(convert_menu, MF_STRING, launcher::constants::command::kMainConvertRelative, L"转为相对路径（便携模式）…");
@@ -187,9 +191,9 @@ void AppWindow::ShowMainContextMenu(const POINT& screen_point, bool right_align)
     AppendMenuW(menu, MF_STRING, launcher::constants::command::kMainSettings, L"设置");
     AppendMenuW(menu, MF_STRING, launcher::constants::command::kMainExit, L"退出");
 
-    SetForegroundWindow(m_hWnd);
+    SetForegroundWindow(owner_.m_hWnd);
     const UINT flags = TPM_RETURNCMD | TPM_RIGHTBUTTON | (right_align ? TPM_RIGHTALIGN : 0);
-    const UINT command_id = TrackPopupMenu(menu, flags, screen_point.x, screen_point.y, 0, m_hWnd, nullptr);
+    const UINT command_id = TrackPopupMenu(menu, flags, screen_point.x, screen_point.y, 0, owner_.m_hWnd, nullptr);
     DestroyMenu(menu);
 
     if (command_id != 0) {
@@ -197,10 +201,10 @@ void AppWindow::ShowMainContextMenu(const POINT& screen_point, bool right_align)
     }
 }
 
-void AppWindow::ExecuteMainCommand(UINT command_id) {
+void MenuController::ExecuteMainCommand(UINT command_id) {
     switch (command_id) {
     case launcher::constants::command::kMainNewCustom:
-        OpenItemDialog(false);
+        owner_.OpenItemDialog(false);
         return;
     case launcher::constants::command::kMainNewEmpty:
     case launcher::constants::command::kMainNewComputer:
@@ -224,33 +228,33 @@ void AppWindow::ExecuteMainCommand(UINT command_id) {
         ConvertItemPathsMenu(false);
         return;
     case launcher::constants::command::kMainSortByName: {
-        const core::Group* group = FindActiveGroup();
+        const core::Group* group = owner_.FindActiveGroup();
         if (group == nullptr) {
-            status_.Warn("请先选择分组");
+            owner_.status_.Warn("请先选择分组");
             return;
         }
         std::string error;
-        if (!backend_.SortGroupItemsByName(group->id, &error)) {
-            status_.Error("排序失败：" + error);
+        if (!owner_.backend_.SortGroupItemsByName(group->id, &error)) {
+            owner_.status_.Error("排序失败：" + error);
             return;
         }
-        RenderItems();
-        status_.Info("已按名称排序");
+        owner_.RenderItems();
+        owner_.status_.Info("已按名称排序");
         return;
     }
     case launcher::constants::command::kMainSortByCount: {
-        const core::Group* group = FindActiveGroup();
+        const core::Group* group = owner_.FindActiveGroup();
         if (group == nullptr) {
-            status_.Warn("请先选择分组");
+            owner_.status_.Warn("请先选择分组");
             return;
         }
         std::string error;
-        if (!backend_.SortGroupItemsByLaunchCount(group->id, &error)) {
-            status_.Error("排序失败：" + error);
+        if (!owner_.backend_.SortGroupItemsByLaunchCount(group->id, &error)) {
+            owner_.status_.Error("排序失败：" + error);
             return;
         }
-        RenderItems();
-        status_.Info("已按使用频率排序");
+        owner_.RenderItems();
+        owner_.status_.Info("已按使用频率排序");
         return;
     }
     case launcher::constants::command::kMainImportData: {
@@ -267,29 +271,29 @@ void AppWindow::ExecuteMainCommand(UINT command_id) {
             return;
         }
         std::string error;
-        if (!backend_.ExportData(std::filesystem::path(path), &error)) {
-            status_.Error("导出失败：" + error);
+        if (!owner_.backend_.ExportData(std::filesystem::path(path), &error)) {
+            owner_.status_.Error("导出失败：" + error);
             return;
         }
-        status_.Info("已导出到 " + launcher::util::WideToUtf8(std::filesystem::path(path).filename().wstring()));
+        owner_.status_.Info("已导出到 " + launcher::util::WideToUtf8(std::filesystem::path(path).filename().wstring()));
         return;
     }
     case launcher::constants::command::kMainSettings:
-        OpenSettingsDialog();
+        owner_.OpenSettingsDialog();
         return;
     case launcher::constants::command::kMainExit:
-        ::PostMessage(m_hWnd, WM_CLOSE, 0, 0);
+        ::PostMessage(owner_.m_hWnd, WM_CLOSE, 0, 0);
         return;
     default:
         return;
     }
 }
 
-void AppWindow::ExecuteGroupCommand(UINT command_id) {
+void MenuController::ExecuteGroupCommand(UINT command_id) {
     if (command_id == launcher::constants::command::kGroupAdd) {
         // 对齐 VB6 原版：新建分组不弹窗，按当前可见分组数+1 直接创建“分组N”。
         std::size_t visible_count = 0;
-        for (const auto& group : backend_.Data().groups) {
+        for (const auto& group : owner_.backend_.Data().groups) {
             if (!group.hidden) {
                 ++visible_count;
             }
@@ -299,36 +303,36 @@ void AppWindow::ExecuteGroupCommand(UINT command_id) {
         std::string name;
         for (std::size_t suffix = visible_count + 1; suffix <= visible_count + 64; ++suffix) {
             name = "分组" + std::to_string(suffix);
-            created_id = backend_.AddGroup(name, &error);
+            created_id = owner_.backend_.AddGroup(name, &error);
             if (!created_id.empty()) {
                 break;
             }
             error.clear();
         }
         if (created_id.empty()) {
-            status_.Error("新建分组失败：" + error);
+            owner_.status_.Error("新建分组失败：" + error);
             return;
         }
-        active_group_id_ = created_id;
-        RenderGroups();
-        for (int i = 0; i < static_cast<int>(group_ids_.size()); ++i) {
-            if (group_ids_[i] == created_id) {
-                SelectGroupByIndex(i);
+        owner_.active_group_id_ = created_id;
+        owner_.RenderGroups();
+        for (int i = 0; i < static_cast<int>(owner_.group_ids_.size()); ++i) {
+            if (owner_.group_ids_[i] == created_id) {
+                owner_.SelectGroupByIndex(i);
                 break;
             }
         }
-        status_.Info("已创建分组 " + name);
+        owner_.status_.Info("已创建分组 " + name);
         return;
     }
 
     if (command_id == launcher::constants::command::kGroupRename) {
-        const core::Group* group = FindActiveGroup();
+        const core::Group* group = owner_.FindActiveGroup();
         if (group == nullptr) {
-            status_.Warn("请先选择分组");
+            owner_.status_.Warn("请先选择分组");
             return;
         }
         // 对齐原版：重命名直接在分组行上原地编辑，不再弹对话框。
-        StartGroupRename(group->id);
+        owner_.StartGroupRename(group->id);
         return;
     }
 
@@ -337,7 +341,7 @@ void AppWindow::ExecuteGroupCommand(UINT command_id) {
     }
 }
 
-void AppWindow::ExecuteItemCommand(UINT command_id) {
+void MenuController::ExecuteItemCommand(UINT command_id) {
     if (command_id == launcher::constants::command::kItemRunAs) {
         RunSelectedItemAsAdmin();
         return;
@@ -355,36 +359,36 @@ void AppWindow::ExecuteItemCommand(UINT command_id) {
         return;
     }
     if (command_id == launcher::constants::command::kItemAdd) {
-        OpenItemDialog(false);
+        owner_.OpenItemDialog(false);
         return;
     }
     if (command_id == launcher::constants::command::kItemEdit) {
-        OpenItemDialog(true);
+        owner_.OpenItemDialog(true);
         return;
     }
     if (command_id == launcher::constants::command::kItemToggleEnabled) {
-        ToggleSelectedItemEnabled();
+        owner_.ToggleSelectedItemEnabled();
         return;
     }
     if (command_id == launcher::constants::command::kItemDelete) {
-        DeleteSelectedItem();
+        owner_.DeleteSelectedItem();
         return;
     }
     if (command_id >= launcher::constants::command::kItemMoveBase) {
         const int group_index = static_cast<int>(command_id - launcher::constants::command::kItemMoveBase);
-        if (group_index < 0 || group_index >= static_cast<int>(group_ids_.size())) {
-            status_.Warn("目标分组无效");
+        if (group_index < 0 || group_index >= static_cast<int>(owner_.group_ids_.size())) {
+            owner_.status_.Warn("目标分组无效");
             return;
         }
-        MoveSelectedItemToGroup(group_ids_[group_index]);
+        MoveSelectedItemToGroup(owner_.group_ids_[group_index]);
     }
 }
 
-std::wstring AppWindow::PickJsonFilePath() const {
+std::wstring MenuController::PickJsonFilePath() const {
     wchar_t file_path[MAX_PATH] = {0};
     OPENFILENAMEW ofn{};
     ofn.lStructSize = sizeof(ofn);
-    ofn.hwndOwner = m_hWnd;
+    ofn.hwndOwner = owner_.m_hWnd;
     ofn.lpstrFilter = L"JSON 数据 (*.json)\0*.json\0所有文件 (*.*)\0*.*\0";
     ofn.lpstrFile = file_path;
     ofn.nMaxFile = MAX_PATH;
@@ -395,11 +399,11 @@ std::wstring AppWindow::PickJsonFilePath() const {
     return file_path;
 }
 
-std::wstring AppWindow::PickSaveJsonFilePath() const {
+std::wstring MenuController::PickSaveJsonFilePath() const {
     wchar_t file_path[MAX_PATH] = {0};
     OPENFILENAMEW ofn{};
     ofn.lStructSize = sizeof(ofn);
-    ofn.hwndOwner = m_hWnd;
+    ofn.hwndOwner = owner_.m_hWnd;
     ofn.lpstrFilter = L"JSON 数据 (*.json)\0*.json\0所有文件 (*.*)\0*.*\0";
     ofn.lpstrDefExt = L"json";
     ofn.lpstrFile = file_path;
@@ -411,129 +415,129 @@ std::wstring AppWindow::PickSaveJsonFilePath() const {
     return file_path;
 }
 
-bool AppWindow::ImportPonerFile(const std::filesystem::path& path) {
+bool MenuController::ImportPonerFile(const std::filesystem::path& path) {
     std::string error;
-    const auto merged = backend_.ImportPonerData(path, &error);
+    const auto merged = owner_.backend_.ImportPonerData(path, &error);
     if (merged == 0 && !error.empty()) {
-        status_.Error("导入失败：" + error);
+        owner_.status_.Error("导入失败：" + error);
         return false;
     }
 
-    RenderGroups();
-    if (!group_ids_.empty()) {
-        SelectGroupByIndex(0);
+    owner_.RenderGroups();
+    if (!owner_.group_ids_.empty()) {
+        owner_.SelectGroupByIndex(0);
     }
-    RenderItems();
+    owner_.RenderItems();
 
     if (merged == 0) {
-        status_.Info("没有需要导入的新内容");
+        owner_.status_.Info("没有需要导入的新内容");
     } else {
-        status_.Info("已导入 " + std::to_string(merged) + " 条（来源 " + path.filename().string() + "）");
+        owner_.status_.Info("已导入 " + std::to_string(merged) + " 条（来源 " + path.filename().string() + "）");
     }
     return true;
 }
 
-bool AppWindow::DeleteActiveGroup() {
-    const core::Group* active_group = FindActiveGroup();
+bool MenuController::DeleteActiveGroup() {
+    const core::Group* active_group = owner_.FindActiveGroup();
     if (active_group == nullptr) {
-        status_.Warn("请先选择分组");
+        owner_.status_.Warn("请先选择分组");
         return false;
     }
 
     std::string target_group_id;
-    for (const auto& group_id : group_ids_) {
+    for (const auto& group_id : owner_.group_ids_) {
         if (group_id != active_group->id) {
             target_group_id = group_id;
             break;
         }
     }
     if (target_group_id.empty()) {
-        status_.Warn("至少保留一个分组");
+        owner_.status_.Warn("至少保留一个分组");
         return false;
     }
 
-    const int confirmed = MessageBoxW(m_hWnd,
+    const int confirmed = MessageBoxW(owner_.m_hWnd,
         L"该分组将被删除，其中的条目会移入其他分组。确定删除？",
         L"删除分组",
         MB_ICONQUESTION | MB_YESNO);
     if (confirmed != IDYES) {
-        status_.Warn("已取消删除");
+        owner_.status_.Warn("已取消删除");
         return false;
     }
 
     std::string error;
-    if (!backend_.DeleteGroup(active_group->id, target_group_id, &error)) {
-        status_.Error("删除分组失败：" + error);
+    if (!owner_.backend_.DeleteGroup(active_group->id, target_group_id, &error)) {
+        owner_.status_.Error("删除分组失败：" + error);
         return false;
     }
 
-    active_group_id_ = target_group_id;
-    selected_item_id_.clear();
-    selected_item_group_id_.clear();
-    RenderGroups();
-    for (int i = 0; i < static_cast<int>(group_ids_.size()); ++i) {
-        if (group_ids_[i] == active_group_id_) {
-            SelectGroupByIndex(i);
+    owner_.active_group_id_ = target_group_id;
+    owner_.selected_item_id_.clear();
+    owner_.selected_item_group_id_.clear();
+    owner_.RenderGroups();
+    for (int i = 0; i < static_cast<int>(owner_.group_ids_.size()); ++i) {
+        if (owner_.group_ids_[i] == owner_.active_group_id_) {
+            owner_.SelectGroupByIndex(i);
             break;
         }
     }
-    status_.Info("分组已删除");
+    owner_.status_.Info("分组已删除");
     return true;
 }
 
-bool AppWindow::RunSelectedItemAsAdmin() {
-    const core::LaunchItem* item = FindSelectedItem();
+bool MenuController::RunSelectedItemAsAdmin() {
+    const core::LaunchItem* item = owner_.FindSelectedItem();
     if (item == nullptr) {
-        status_.Warn("请先选择条目");
+        owner_.status_.Warn("请先选择条目");
         return false;
     }
     if (item->item_type == "separator") {
-        status_.Warn("分隔条目无法启动");
+        owner_.status_.Warn("分隔条目无法启动");
         return false;
     }
 
     const std::wstring target_w = launcher::util::Utf8ToWide(item->target_path);
     const std::wstring args_w = launcher::util::Utf8ToWide(item->arguments);
     HINSTANCE instance = ShellExecuteW(
-        m_hWnd,
+        owner_.m_hWnd,
         L"runas",
         target_w.c_str(),
         args_w.empty() ? nullptr : args_w.c_str(),
         nullptr,
         SW_SHOWNORMAL);
     if (reinterpret_cast<INT_PTR>(instance) <= 32) {
-        status_.Error("管理员方式启动失败");
+        owner_.status_.Error("管理员方式启动失败");
         return false;
     }
 
-    status_.Info("已以管理员身份启动");
+    owner_.status_.Info("已以管理员身份启动");
     return true;
 }
 
-bool AppWindow::OpenSelectedItemFolder() {
-    const core::LaunchItem* item = FindSelectedItem();
+bool MenuController::OpenSelectedItemFolder() {
+    const core::LaunchItem* item = owner_.FindSelectedItem();
     if (item == nullptr) {
-        status_.Warn("请先选择条目");
+        owner_.status_.Warn("请先选择条目");
         return false;
     }
     if (item->target_path.empty()) {
-        status_.Warn("目标路径为空");
+        owner_.status_.Warn("目标路径为空");
         return false;
     }
 
     PIDLIST_ABSOLUTE pidl = ILCreateFromPathW(launcher::util::Utf8ToWide(item->target_path).c_str());
     if (pidl == nullptr) {
-        status_.Error("打开所在位置失败");
+        owner_.status_.Error("打开所在位置失败");
         return false;
     }
     const HRESULT hr = SHOpenFolderAndSelectItems(pidl, 0, nullptr, 0);
     ILFree(pidl);
     if (FAILED(hr)) {
-        status_.Error("打开所在位置失败");
+        owner_.status_.Error("打开所在位置失败");
         return false;
     }
 
-    status_.Info("已打开所在位置");
+    owner_.status_.Info("已打开所在位置");
     return true;
 }
 
@@ -591,29 +595,29 @@ std::wstring ExpandItemTargetPath(AppWindow& window, const std::string& raw_utf8
 
 } // namespace
 
-bool AppWindow::ShowSelectedItemShellMenu() {
-    const core::LaunchItem* item = FindSelectedItem();
+bool MenuController::ShowSelectedItemShellMenu() {
+    const core::LaunchItem* item = owner_.FindSelectedItem();
     if (item == nullptr) {
-        status_.Warn("请先选择条目");
+        owner_.status_.Warn("请先选择条目");
         return false;
     }
     if (item->target_path.empty()) {
-        status_.Warn("目标路径为空");
+        owner_.status_.Warn("目标路径为空");
         return false;
     }
 
-    const std::wstring path_w = ExpandItemTargetPath(*this, item->target_path);
+    const std::wstring path_w = ExpandItemTargetPath(owner_, item->target_path);
 
     // 非文件系统目标（URL 等）退回属性页。
     PIDLIST_ABSOLUTE pidl_full = nullptr;
     const HRESULT parse_hr = SHParseDisplayName(path_w.c_str(), nullptr, &pidl_full, 0, nullptr);
     if (FAILED(parse_hr) || pidl_full == nullptr) {
-        HINSTANCE instance = ShellExecuteW(m_hWnd, L"properties", path_w.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+        HINSTANCE instance = ShellExecuteW(owner_.m_hWnd, L"properties", path_w.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
         if (reinterpret_cast<INT_PTR>(instance) <= 32) {
-            status_.Error("打开资源管理器菜单失败");
+            owner_.status_.Error("打开资源管理器菜单失败");
             return false;
         }
-        status_.Info("已打开属性页");
+        owner_.status_.Info("已打开属性页");
         return true;
     }
 
@@ -648,14 +652,14 @@ bool AppWindow::ShowSelectedItemShellMenu() {
     HRESULT hr = SHBindToParent(pidl_full, IID_IShellFolder, reinterpret_cast<void**>(&parent_folder), &child_pidl);
     if (FAILED(hr)) {
         release_all();
-        status_.Error("打开资源管理器菜单失败");
+        owner_.status_.Error("打开资源管理器菜单失败");
         return false;
     }
 
-    hr = parent_folder->GetUIObjectOf(m_hWnd, 1, &child_pidl, IID_IContextMenu, nullptr, reinterpret_cast<void**>(&context_menu));
+    hr = parent_folder->GetUIObjectOf(owner_.m_hWnd, 1, &child_pidl, IID_IContextMenu, nullptr, reinterpret_cast<void**>(&context_menu));
     if (FAILED(hr)) {
         release_all();
-        status_.Error("打开资源管理器菜单失败");
+        owner_.status_.Error("打开资源管理器菜单失败");
         return false;
     }
 
@@ -670,16 +674,16 @@ bool AppWindow::ShowSelectedItemShellMenu() {
     hr = context_menu->QueryContextMenu(menu, 0, kScratchFirst, kScratchLast, CMF_NORMAL);
     if (FAILED(hr)) {
         release_all();
-        status_.Error("打开资源管理器菜单失败");
+        owner_.status_.Error("打开资源管理器菜单失败");
         return false;
     }
 
     POINT invoke_pt{0, 0};
     ::GetCursorPos(&invoke_pt);
-    SetForegroundWindow(m_hWnd);
+    SetForegroundWindow(owner_.m_hWnd);
     const HHOOK msg_hook = SetWindowsHookExW(WH_MSGFILTER, ShellMenuMsgHook, nullptr, ::GetCurrentThreadId());
     const UINT command_id = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_RIGHTBUTTON | TPM_LEFTALIGN,
-                                           invoke_pt.x, invoke_pt.y, 0, m_hWnd, nullptr);
+                                           invoke_pt.x, invoke_pt.y, 0, owner_.m_hWnd, nullptr);
     if (msg_hook != nullptr) {
         UnhookWindowsHookEx(msg_hook);
     }
@@ -694,7 +698,7 @@ bool AppWindow::ShowSelectedItemShellMenu() {
     CMINVOKECOMMANDINFOEX invoke{};
     invoke.cbSize = sizeof(invoke);
     invoke.fMask = CMIC_MASK_UNICODE | CMIC_MASK_PTINVOKE;
-    invoke.hwnd = m_hWnd;
+    invoke.hwnd = owner_.m_hWnd;
     invoke.lpVerb = MAKEINTRESOURCEA(command_id - kScratchFirst);
     invoke.lpVerbW = MAKEINTRESOURCEW(command_id - kScratchFirst);
     invoke.nShow = SW_SHOWNORMAL;
@@ -703,29 +707,29 @@ bool AppWindow::ShowSelectedItemShellMenu() {
     release_all();
 
     if (FAILED(hr)) {
-        status_.Error("执行资源管理器命令失败");
+        owner_.status_.Error("执行资源管理器命令失败");
         return false;
     }
 
-    status_.Info("已执行资源管理器命令");
+    owner_.status_.Info("已执行资源管理器命令");
     launched = true;
     return launched;
 }
 
-bool AppWindow::CopySelectedItemPath() {
-    const core::LaunchItem* item = FindSelectedItem();
+bool MenuController::CopySelectedItemPath() {
+    const core::LaunchItem* item = owner_.FindSelectedItem();
     if (item == nullptr) {
-        status_.Warn("请先选择条目");
+        owner_.status_.Warn("请先选择条目");
         return false;
     }
     if (item->target_path.empty()) {
-        status_.Warn("目标路径为空");
+        owner_.status_.Warn("目标路径为空");
         return false;
     }
 
     const std::wstring text = launcher::util::Utf8ToWide(item->target_path);
-    if (!OpenClipboard(m_hWnd)) {
-        status_.Error("复制路径失败");
+    if (!OpenClipboard(owner_.m_hWnd)) {
+        owner_.status_.Error("复制路径失败");
         return false;
     }
 
@@ -734,7 +738,7 @@ bool AppWindow::CopySelectedItemPath() {
     HGLOBAL buffer = GlobalAlloc(GMEM_MOVEABLE, bytes);
     if (buffer == nullptr) {
         CloseClipboard();
-        status_.Error("复制路径失败");
+        owner_.status_.Error("复制路径失败");
         return false;
     }
     void* ptr = GlobalLock(buffer);
@@ -743,38 +747,38 @@ bool AppWindow::CopySelectedItemPath() {
     SetClipboardData(CF_UNICODETEXT, buffer);
     CloseClipboard();
 
-    status_.Info("路径已复制");
+    owner_.status_.Info("路径已复制");
     return true;
 }
 
-bool AppWindow::MoveSelectedItemToGroup(const std::string& target_group_id) {
-    if (selected_item_id_.empty()) {
-        status_.Warn("请先选择条目");
+bool MenuController::MoveSelectedItemToGroup(const std::string& target_group_id) {
+    if (owner_.selected_item_id_.empty()) {
+        owner_.status_.Warn("请先选择条目");
         return false;
     }
-    const std::string source_group_id = !selected_item_group_id_.empty() ? selected_item_group_id_ : active_group_id_;
+    const std::string source_group_id = !owner_.selected_item_group_id_.empty() ? owner_.selected_item_group_id_ : owner_.active_group_id_;
     if (source_group_id.empty()) {
-        status_.Warn("源分组缺失");
+        owner_.status_.Warn("源分组缺失");
         return false;
     }
     if (target_group_id == source_group_id) {
-        status_.Warn("条目已在目标分组中");
+        owner_.status_.Warn("条目已在目标分组中");
         return false;
     }
 
     std::string error;
-    if (!backend_.MoveItem(source_group_id, selected_item_id_, target_group_id, &error)) {
-        status_.Error("移动条目失败：" + error);
+    if (!owner_.backend_.MoveItem(source_group_id, owner_.selected_item_id_, target_group_id, &error)) {
+        owner_.status_.Error("移动条目失败：" + error);
         return false;
     }
 
-    RenderGroups();
-    RenderItems();
-    status_.Info("条目已移动");
+    owner_.RenderGroups();
+    owner_.RenderItems();
+    owner_.status_.Info("条目已移动");
     return true;
 }
 
-void AppWindow::ExecuteSearchCommand(const std::string& item_id) {
+void MenuController::ExecuteSearchCommand(const std::string& item_id) {
     const std::string prefix = launcher::constants::kSearchCmdPrefix;
     if (item_id.rfind(prefix, 0) != 0) {
         return;
@@ -784,58 +788,58 @@ void AppWindow::ExecuteSearchCommand(const std::string& item_id) {
     switch (cmd_id) {
     case launcher::constants::search_cmd::kCmd: {
         ShellExecuteW(nullptr, L"open", L"cmd.exe", nullptr, nullptr, SW_SHOWNORMAL);
-        status_.Info("已打开命令提示符");
+        owner_.status_.Info("已打开命令提示符");
         break;
     }
     case launcher::constants::search_cmd::kSettings: {
         ShellExecuteW(nullptr, L"open", L"ms-settings:", nullptr, nullptr, SW_SHOWNORMAL);
-        status_.Info("已打开系统设置");
+        owner_.status_.Info("已打开系统设置");
         break;
     }
     case launcher::constants::search_cmd::kShutdown: {
-        const int confirmed = MessageBoxW(m_hWnd, L"确定要关机吗？", L"关机", MB_ICONQUESTION | MB_YESNO);
+        const int confirmed = MessageBoxW(owner_.m_hWnd, L"确定要关机吗？", L"关机", MB_ICONQUESTION | MB_YESNO);
         if (confirmed == IDYES) {
             system("shutdown /s /t 0");
-            status_.Info("正在关机…");
+            owner_.status_.Info("正在关机…");
         } else {
-            status_.Info("已取消关机");
+            owner_.status_.Info("已取消关机");
         }
         break;
     }
     case launcher::constants::search_cmd::kReboot: {
-        const int confirmed = MessageBoxW(m_hWnd, L"确定要重启吗？", L"重启", MB_ICONQUESTION | MB_YESNO);
+        const int confirmed = MessageBoxW(owner_.m_hWnd, L"确定要重启吗？", L"重启", MB_ICONQUESTION | MB_YESNO);
         if (confirmed == IDYES) {
             system("shutdown /r /t 0");
-            status_.Info("正在重启…");
+            owner_.status_.Info("正在重启…");
         } else {
-            status_.Info("已取消重启");
+            owner_.status_.Info("已取消重启");
         }
         break;
     }
     case launcher::constants::search_cmd::kLogoff: {
-        const int confirmed = MessageBoxW(m_hWnd, L"确定要注销当前用户吗？", L"注销", MB_ICONQUESTION | MB_YESNO);
+        const int confirmed = MessageBoxW(owner_.m_hWnd, L"确定要注销当前用户吗？", L"注销", MB_ICONQUESTION | MB_YESNO);
         if (confirmed == IDYES) {
             system("shutdown /l /t 0");
-            status_.Info("正在注销…");
+            owner_.status_.Info("正在注销…");
         } else {
-            status_.Info("已取消注销");
+            owner_.status_.Info("已取消注销");
         }
         break;
     }
     case launcher::constants::search_cmd::kScreenoff: {
-        SendMessage(m_hWnd, WM_SYSCOMMAND, SC_MONITORPOWER, 2);
-        status_.Info("显示器已关闭");
+        SendMessage(owner_.m_hWnd, WM_SYSCOMMAND, SC_MONITORPOWER, 2);
+        owner_.status_.Info("显示器已关闭");
         break;
     }
     case launcher::constants::search_cmd::kBaidu: {
-        const std::wstring keyword = launcher::util::Utf8ToWide(search_controller_.GetBaiduKeyword());
+        const std::wstring keyword = launcher::util::Utf8ToWide(owner_.search_controller_.GetBaiduKeyword());
         if (keyword.empty()) {
             ShellExecuteW(nullptr, L"open", L"https://www.baidu.com", nullptr, nullptr, SW_SHOWNORMAL);
         } else {
             std::wstring url = L"https://www.baidu.com/s?wd=" + keyword;
             ShellExecuteW(nullptr, L"open", url.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
         }
-        status_.Info("正在打开百度搜索");
+        owner_.status_.Info("正在打开百度搜索");
         break;
     }
     default:
@@ -843,7 +847,7 @@ void AppWindow::ExecuteSearchCommand(const std::string& item_id) {
     }
 }
 
-void AppWindow::AddPresetSystemItem(UINT command_id) {
+void MenuController::AddPresetSystemItem(UINT command_id) {
     namespace cmd = launcher::constants::command;
 
     core::ItemInput input;
@@ -883,63 +887,63 @@ void AppWindow::AddPresetSystemItem(UINT command_id) {
         return;
     }
 
-    const core::Group* group = FindActiveGroup();
+    const core::Group* group = owner_.FindActiveGroup();
     if (group == nullptr) {
-        status_.Warn("请先选择分组");
+        owner_.status_.Warn("请先选择分组");
         return;
     }
     std::string error;
-    if (!backend_.UpsertItem(group->id, input, &error)) {
-        status_.Error("创建失败：" + error);
+    if (!owner_.backend_.UpsertItem(group->id, input, &error)) {
+        owner_.status_.Error("创建失败：" + error);
         return;
     }
-    RenderItems();
-    status_.Info(std::string("已创建「") + input.name + "」");
+    owner_.RenderItems();
+    owner_.status_.Info(std::string("已创建「") + input.name + "」");
 }
 
-void AppWindow::ToggleLayoutLock() {
-    core::Settings next = backend_.CurrentSettings();
+void MenuController::ToggleLayoutLock() {
+    core::Settings next = owner_.backend_.CurrentSettings();
     next.locked = !next.locked;
     std::string error;
-    if (!backend_.UpdateSettings(next, &error)) {
-        status_.Error("保存设置失败：" + error);
+    if (!owner_.backend_.UpdateSettings(next, &error)) {
+        owner_.status_.Error("保存设置失败：" + error);
         return;
     }
-    layout_locked_ = next.locked;
-    status_.Info(layout_locked_ ? "已锁定布局（拖动/缩放/重排已禁用）" : "已解除锁定");
+    owner_.layout_locked_ = next.locked;
+    owner_.status_.Info(owner_.layout_locked_ ? "已锁定布局（拖动/缩放/重排已禁用）" : "已解除锁定");
 }
 
-void AppWindow::ToggleAutoHide() {
-    core::Settings next = backend_.CurrentSettings();
+void MenuController::ToggleAutoHide() {
+    core::Settings next = owner_.backend_.CurrentSettings();
     next.auto_hide = !next.auto_hide;
     std::string error;
-    if (!backend_.UpdateSettings(next, &error)) {
-        status_.Error("保存设置失败：" + error);
+    if (!owner_.backend_.UpdateSettings(next, &error)) {
+        owner_.status_.Error("保存设置失败：" + error);
         return;
     }
-    auto_hide_ = next.auto_hide;
-    status_.Info(auto_hide_ ? "自动隐藏已开启（失焦隐藏，热键唤回）" : "自动隐藏已关闭");
+    owner_.auto_hide_ = next.auto_hide;
+    owner_.status_.Info(owner_.auto_hide_ ? "自动隐藏已开启（失焦隐藏，热键唤回）" : "自动隐藏已关闭");
 }
 
-void AppWindow::ConvertItemPathsMenu(bool to_relative) {
+void MenuController::ConvertItemPathsMenu(bool to_relative) {
     const wchar_t* question = to_relative
         ? L"将扫描全部条目，把位于程序目录/同盘的路径转换为 %pr%/%cr% 占位符（便携模式）。\n转换前自动创建备份。继续吗？"
         : L"将扫描全部条目，把 %pr%/%cr% 占位符路径还原为绝对路径。\n转换前自动创建备份。继续吗？";
-    if (MessageBoxW(m_hWnd, question, L"路径转换", MB_ICONQUESTION | MB_YESNO) != IDYES) {
+    if (MessageBoxW(owner_.m_hWnd, question, L"路径转换", MB_ICONQUESTION | MB_YESNO) != IDYES) {
         return;
     }
 
     std::string error;
-    const int converted = backend_.ConvertItemPaths(to_relative, &error);
+    const int converted = owner_.backend_.ConvertItemPaths(to_relative, &error);
     if (converted < 0) {
-        status_.Error("路径转换失败：" + error);
+        owner_.status_.Error("路径转换失败：" + error);
         return;
     }
     if (converted == 0) {
-        status_.Info("没有可转换的路径");
+        owner_.status_.Info("没有可转换的路径");
         return;
     }
-    RenderItems();
-    status_.Info("已转换 " + std::to_string(converted) + " 条路径"
+    owner_.RenderItems();
+    owner_.status_.Info("已转换 " + std::to_string(converted) + " 条路径"
         + (to_relative ? "（便携模式）" : "（绝对路径）"));
 }

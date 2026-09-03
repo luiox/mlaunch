@@ -62,11 +62,7 @@ std::string SearchController::CommandIdToItemId(int cmd_id) {
 }
 
 int SearchController::ParseCommand(const std::string& input, std::string* out_keyword) {
-    std::string trimmed = input;
-    trimmed.erase(trimmed.begin(), std::find_if(trimmed.begin(), trimmed.end(),
-        [](unsigned char ch) { return !std::isspace(ch); }));
-    trimmed.erase(std::find_if(trimmed.rbegin(), trimmed.rend(),
-        [](unsigned char ch) { return !std::isspace(ch); }).base(), trimmed.end());
+    const std::string trimmed = launcher::util::Trim(input);
 
     auto to_lower = [](const std::string& s) {
         std::string result = s;

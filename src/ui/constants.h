@@ -2,6 +2,8 @@
 
 #include <Windows.h>
 
+#include "launcher_core.h"
+
 namespace launcher::constants {
 
 namespace search_cmd {
@@ -85,8 +87,9 @@ namespace layout {
 constexpr int kDefaultSplitterWidth = 220;
 constexpr int kMinWindowWidth = 320;
 constexpr int kMinWindowHeight = 280;
-constexpr int kMinGroupPanelWidth = 80;
-constexpr int kMaxGroupPanelWidth = 600;
+// 分组栏宽度合法范围以 core::limits 为准（设置窗校验/钳制共用同一来源）。
+constexpr int kMinGroupPanelWidth = core::limits::kGroupPanelWidthMin;
+constexpr int kMaxGroupPanelWidth = core::limits::kGroupPanelWidthMax;
 constexpr int kMinItemsPanelWidth = 220;
 } // namespace layout
 

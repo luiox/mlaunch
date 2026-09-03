@@ -2,7 +2,18 @@
 
 #include <Windows.h>
 
+#include <algorithm>
+#include <cctype>
+
 namespace launcher::util {
+
+std::string Trim(const std::string& text) {
+    const auto begin = std::find_if_not(text.begin(), text.end(),
+                                        [](unsigned char ch) { return std::isspace(ch); });
+    const auto end = std::find_if_not(text.rbegin(), text.rend(),
+                                      [](unsigned char ch) { return std::isspace(ch); }).base();
+    return (begin < end) ? std::string(begin, end) : std::string();
+}
 
 std::wstring Utf8ToWide(const std::string& text) {
     if (text.empty()) {

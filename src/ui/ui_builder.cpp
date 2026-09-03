@@ -22,7 +22,9 @@ CControlUI* UiBuilder::BuildRootUi() const {
     auto* topBar = new appui::TitleBarUI();
 
     auto* title = new CLabelUI();
-    title->SetText(_T("Poner"));
+    // 标题可由设置修改：初始给默认值，LoadBackendData 后由 ApplyTitleSetting 覆盖。
+    title->SetName(_T("title_label"));
+    title->SetText(_T("mlaunch"));
     title->SetTextColor(0xFF1A1A1A);
     title->SetFont(0);
     title->SetTextStyle(DT_LEFT | DT_VCENTER | DT_SINGLELINE);

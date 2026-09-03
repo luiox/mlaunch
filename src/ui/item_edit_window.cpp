@@ -22,15 +22,6 @@ constexpr int kWindowWidth = 400;
 constexpr int kWindowHeight = 336;
 constexpr UINT kFocusEditMsg = WM_APP + 0x1A;
 
-std::string TrimCopy(const std::string& value) {
-    auto out = value;
-    out.erase(out.begin(), std::find_if(out.begin(), out.end(), [](unsigned char ch) { return !std::isspace(ch); }));
-    while (!out.empty() && std::isspace(static_cast<unsigned char>(out.back()))) {
-        out.pop_back();
-    }
-    return out;
-}
-
 CButtonUI* MakeTextButton(LPCTSTR name, LPCTSTR text, int width = 0) {
     // 统一走 appui 工厂（CButtonUI 无状态色属性，必须用 appui::ButtonUI 自绘）。
     return appui::MakeTextButton(name, text, width);
@@ -239,10 +230,10 @@ void ItemEditWindow::RefreshIcon() {
 }
 
 void ItemEditWindow::Confirm() {
-    const std::string name = TrimCopy(launcher::util::WideToUtf8(name_input_->GetText().GetData()));
-    const std::string target = TrimCopy(launcher::util::WideToUtf8(target_input_->GetText().GetData()));
+    const std::string name = launcher::util::Trim(launcher::util::WideToUtf8(name_input_->GetText().GetData()));
+    const std::string target = launcher::util::Trim(launcher::util::WideToUtf8(target_input_->GetText().GetData()));
     const std::string args = launcher::util::WideToUtf8(args_input_->GetText().GetData());
-    const std::string workdir = TrimCopy(launcher::util::WideToUtf8(workdir_input_->GetText().GetData()));
+    const std::string workdir = launcher::util::Trim(launcher::util::WideToUtf8(workdir_input_->GetText().GetData()));
 
     if (name.empty()) {
         ::MessageBoxW(m_hWnd, L"名称不能为空", L"MLaunch", MB_ICONWARNING);

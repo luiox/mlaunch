@@ -42,8 +42,24 @@ struct LauncherData {
     std::vector<Group> groups;
 };
 
+/** @brief 设置项合法范围：设置窗校验、UpdateSettings 钳制与界面提示共用同一来源。 */
+namespace limits {
+constexpr int kMainWindowWidthMin = 320;
+constexpr int kMainWindowWidthMax = 3840;
+constexpr int kMainWindowHeightMin = 220;
+constexpr int kMainWindowHeightMax = 2160;
+constexpr int kGroupPanelWidthMin = 80;
+constexpr int kGroupPanelWidthMax = 600;
+constexpr int kBackupRollingMin = 2;
+constexpr int kBackupRollingMax = 20;
+constexpr int kBackupDailyMin = 3;
+constexpr int kBackupDailyMax = 90;
+} // namespace limits
+
 /** @brief Runtime settings loaded from nassistant.settings.json. */
 struct Settings {
+    /// 顶栏与任务栏标题（留空归一化为 "mlaunch"）。
+    std::string title = "mlaunch";
     std::string hotkey = "Alt+1";
     bool execute_hide = true;
     /// 锁定布局：禁用窗口拖动/缩放、分隔条与列表拖拽重排。
@@ -203,7 +219,6 @@ public:
     const std::filesystem::path& DataPath() const { return data_path_; }
 
 private:
-    static std::string Trim(const std::string& value);
     static std::string ToLowerAscii(std::string value);
     static bool IsSeparatorItem(const std::string& name, const std::string& target, const std::string& icon);
     static std::vector<std::string> SplitWindowsArgs(const std::string& arguments);
