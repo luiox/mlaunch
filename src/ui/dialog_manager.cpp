@@ -43,7 +43,9 @@ void DialogManager::OpenGroupDialog(bool rename_mode, const std::string& group_i
     }
 
     owner_.group_dialog_->SetVisible(true);
-    owner_.group_dialog_input_->SetFocus();
+    // 布局完成后再聚焦：此刻对话框 rect 还没算出来（float 控件要等重排），
+    // 同步 SetFocus 会以 0 尺寸创建原生 EDIT 且之后不再跟随重排（同 kFocusSearchMsg）。
+    ::PostMessage(owner_.m_pm.GetPaintWindow(), launcher::constants::kFocusGroupDialogMsg, 0, 0);
     owner_.m_pm.NeedUpdate();
 }
 

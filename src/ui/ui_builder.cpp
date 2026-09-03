@@ -159,6 +159,9 @@ CControlUI* UiBuilder::BuildRootUi() const {
     auto* groupDialogInput = new CEditUI();
     groupDialogInput->SetName(_T("group_dialog_input"));
     groupDialogInput->SetFixedHeight(28);
+    // 文字色必须显式给：CEditUI 继承的 m_dwTextColor 默认全 0（透明），
+    // 未持焦时 DuiLib 自绘文字会不可见。
+    groupDialogInput->SetTextColor(0xFF1A1A1A);
     groupDialogInput->SetAttribute(_T("bordercolor"), _T("0xFFD2D2D2"));
     groupDialogInput->SetAttribute(_T("bkcolor"), _T("0xFFFFFFFF"));
     groupDialogInput->SetAttribute(_T("textpadding"), _T("6,3,6,3"));
@@ -176,6 +179,20 @@ CControlUI* UiBuilder::BuildRootUi() const {
 
     groupDialog->Add(actions);
     root->Add(groupDialog);
+
+    // 分组原地重命名编辑框：float 且不带 align，父布局不重排它的 rect，
+    // 位置由 StartGroupRename 按分组行 rect 用 SetPos 指定。
+    auto* groupRenameEdit = new CEditUI();
+    groupRenameEdit->SetName(_T("group_rename_edit"));
+    groupRenameEdit->SetVisible(false);
+    groupRenameEdit->SetFloat(true);
+    groupRenameEdit->SetFont(1);
+    groupRenameEdit->SetTextColor(0xFF1A1A1A);
+    groupRenameEdit->SetBkColor(0xFFFFFFFF);
+    groupRenameEdit->SetAttribute(_T("bordercolor"), _T("0xFFD2D2D2"));
+    groupRenameEdit->SetAttribute(_T("bordersize"), _T("1"));
+    groupRenameEdit->SetAttribute(_T("textpadding"), _T("6,3,6,3"));
+    root->Add(groupRenameEdit);
 
     return root;
 }
