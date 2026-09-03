@@ -202,17 +202,17 @@ LRESULT SettingsWindow::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& 
     auto* content = new CVerticalLayoutUI();
     content->SetAttribute(_T("bkcolor"), _T("0xFFFFFFFF"));
     content->SetAttribute(_T("inset"), _T("18,16,18,12"));
-    content->SetAttribute(_T("childpadding"), _T("6"));
+    content->SetAttribute(_T("childpadding"), _T("10"));
 
     // —— 分页内容工厂 ——
     auto make_check_row = [&](CVerticalLayoutUI* page, LPCTSTR name, LPCTSTR text, bool checked) -> appui::CheckBoxUI* {
         auto* row = new CHorizontalLayoutUI();
-        row->SetFixedHeight(24);
+        row->SetFixedHeight(28);
         row->SetAttribute(_T("childpadding"), _T("4"));
         auto* box = new appui::CheckBoxUI();
         box->SetName(name);
         box->SetText(text);
-        box->SetFixedHeight(24);
+        box->SetFixedHeight(28);
         box->SetChecked(checked);
         row->Add(box);
         page->Add(row);
@@ -220,7 +220,7 @@ LRESULT SettingsWindow::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& 
     };
     auto make_num_row = [&](CVerticalLayoutUI* page, LPCTSTR label_text, CEditUI*& input, LPCTSTR name) {
         auto* row = new CHorizontalLayoutUI();
-        row->SetFixedHeight(24);
+        row->SetFixedHeight(30);
         row->SetAttribute(_T("childpadding"), _T("4"));
         row->Add(MakeFieldLabel(label_text, 140));
         input = MakeInput(name);
@@ -247,7 +247,7 @@ LRESULT SettingsWindow::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& 
     starthidden_check_ = make_check_row(page_startup, _T("settings_starthidden_check"), _T("启动时隐藏主窗（热键唤出）"), draft_.start_hidden);
     {
         auto* hotkey_row = new CHorizontalLayoutUI();
-        hotkey_row->SetFixedHeight(24);
+        hotkey_row->SetFixedHeight(30);
         hotkey_row->SetAttribute(_T("childpadding"), _T("4"));
         hotkey_row->Add(MakeFieldLabel(_T("全局热键"), 140));
         hotkey_input_ = MakeInput(_T("settings_hotkey_input"));
@@ -263,7 +263,18 @@ LRESULT SettingsWindow::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& 
     content->Add(page_window);
     {
         auto* row = new CHorizontalLayoutUI();
-        row->SetFixedHeight(24);
+        row->SetFixedHeight(30);
+        row->SetAttribute(_T("childpadding"), _T("4"));
+        row->Add(MakeFieldLabel(_T("标题"), 140));
+        title_input_ = MakeInput(_T("settings_title_input"));
+        title_input_->SetFixedWidth(200);
+        row->Add(title_input_);
+        page_window->Add(row);
+        page_window->Add(MakeHint(_T("顶栏与任务栏显示的标题，留空恢复默认 mlaunch")));
+    }
+    {
+        auto* row = new CHorizontalLayoutUI();
+        row->SetFixedHeight(30);
         row->SetAttribute(_T("childpadding"), _T("4"));
         row->Add(MakeFieldLabel(_T("默认宽高"), 140));
         width_input_ = MakeInput(_T("settings_width_input"));
@@ -313,6 +324,7 @@ LRESULT SettingsWindow::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& 
     m_pm.AddTranslateAccelerator(this);
 
     hotkey_input_->SetText(launcher::util::Utf8ToWide(draft_.hotkey).c_str());
+    title_input_->SetText(launcher::util::Utf8ToWide(draft_.title).c_str());
     width_input_->SetText(std::to_wstring(static_cast<int>(draft_.main_window_width)).c_str());
     height_input_->SetText(std::to_wstring(static_cast<int>(draft_.main_window_height)).c_str());
     panel_input_->SetText(std::to_wstring(static_cast<int>(draft_.group_panel_width)).c_str());
@@ -344,9 +356,10 @@ bool SettingsWindow::PointOnEditableControl(POINT pt) const {
         return false;
     }
     const CDuiString name = control->GetName();
-    if (name == _T("settings_hotkey_input") || name == _T("settings_width_input") ||
-        name == _T("settings_height_input") || name == _T("settings_panel_input") ||
-        name == _T("settings_rolling_input") || name == _T("settings_daily_input") ||
+    if (name == _T("settings_hotkey_input") || name == _T("settings_title_input") ||
+        name == _T("settings_width_input") || name == _T("settings_height_input") ||
+        name == _T("settings_panel_input") || name == _T("settings_rolling_input") ||
+        name == _T("settings_daily_input") ||
         _tcsstr(name, _T("_check")) != nullptr) {
         return true;
     }
@@ -396,6 +409,11 @@ void SettingsWindow::Confirm() {
 
     core::Settings next = draft_;
     next.hotkey = TrimCopy(launcher::util::WideToUtf8(hotkey_input_->GetText().GetData()));
+    // 标题留空时由 UpdateSettings 归一化为 "mlaunch"；这里直接填好避免确认后显示与输入不一致。
+    next.title = TrimCopy(launcher::util::WideToUtf8(title_input_->GetText().GetData()));
+    if (next.title.empty()) {
+        next.title = "mlaunch";
+    }
     // 控件状态在确认时统一读取；CheckBoxUI::Activate 先通知后翻转，
     // CLICK 通知里读 IsChecked 拿到的是旧值（与其它字段同风格）。
     next.execute_hide = hide_check_->IsChecked();
@@ -450,11 +468,11 @@ void SettingsWindow::CycleInputFocus() {
     const struct {
         DuiLib::CEditUI* input;
         int page;
-    } order[] = {{hotkey_input_, 1}, {width_input_, 2}, {height_input_, 2},
+    } order[] = {{hotkey_input_, 1}, {title_input_, 2}, {width_input_, 2}, {height_input_, 2},
                  {panel_input_, 2}, {backup_rolling_input_, 3}, {backup_daily_input_, 3}};
     // Tab 只在当前页内轮换（其余页的输入框不可见，聚焦会落到空处）。
-    for (int step = 0; step < 6; ++step) {
-        focus_index_ = (focus_index_ + 1) % 6;
+    for (int step = 0; step < 7; ++step) {
+        focus_index_ = (focus_index_ + 1) % 7;
         if (order[focus_index_].page != current_page_) {
             continue;
         }

@@ -44,6 +44,8 @@ struct LauncherData {
 
 /** @brief Runtime settings loaded from nassistant.settings.json. */
 struct Settings {
+    /// 顶栏与任务栏标题（留空归一化为 "mlaunch"）。
+    std::string title = "mlaunch";
     std::string hotkey = "Alt+1";
     bool execute_hide = true;
     /// 锁定布局：禁用窗口拖动/缩放、分隔条与列表拖拽重排。

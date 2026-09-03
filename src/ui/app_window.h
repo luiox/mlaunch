@@ -135,6 +135,8 @@ private:
 
     /** @brief Re-apply persisted settings: global hotkey, live group panel width. */
     void ApplySettings();
+    /** @brief 标题设置应用到顶栏标签与 OS 窗口文本（LoadBackendData 后与设置确认后调用）。 */
+    void ApplyTitleSetting();
     /** @brief (Re)register the configured global hotkey; empty hotkey unregisters. */
     void RegisterConfiguredHotkey();
     /** @brief Parse "Ctrl+Alt+S" style text into Win32 modifier/VK codes. */
@@ -176,6 +178,7 @@ private:
 
     DuiLib::CListUI* groups_list_ = nullptr;
     DuiLib::CListUI* items_list_ = nullptr;
+    DuiLib::CLabelUI* title_label_ = nullptr;
     DuiLib::CLabelUI* status_line_ = nullptr;
     DuiLib::CControlUI* search_bar_ = nullptr;
     appui::IconButtonUI* search_button_ = nullptr;

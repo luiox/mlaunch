@@ -209,6 +209,7 @@ bool LauncherBackend::Load(std::string* error) {
             }
             ca::json::JsonDocument doc = std::move(*parsed);
             const auto& root = doc.root();
+            settings_.title = GetStr(root, "title", std::string("mlaunch"));
             settings_.hotkey = GetStr(root, "hotkey", std::string("Alt+1"));
             settings_.execute_hide = GetBool(root, "executeHide", true);
             settings_.locked = GetBool(root, "locked", false);
@@ -225,6 +226,9 @@ bool LauncherBackend::Load(std::string* error) {
             settings_.group_panel_width = GetF64(root, "groupPanelWidth", 220.0);
             settings_.main_window_width = GetF64(root, "mainWindowWidth", 1040.0);
             settings_.main_window_height = GetF64(root, "mainWindowHeight", 700.0);
+            if (Trim(settings_.title).empty()) {
+                settings_.title = "mlaunch";
+            }
         }
     } else {
         const auto cfg = legacy_root_ / "Poner.cfg";
@@ -285,6 +289,7 @@ bool LauncherBackend::SaveSettings(std::string* error) const {
     ca::json::JsonDocument doc;
     auto& arena = doc.arena();
     ca::json::JsonValue root = ca::json::JsonValue::make_object();
+    SetStr(root, arena, "title", settings_.title);
     SetStr(root, arena, "hotkey", settings_.hotkey);
     SetBool(root, arena, "executeHide", settings_.execute_hide);
     SetBool(root, arena, "locked", settings_.locked);
@@ -510,6 +515,10 @@ bool LauncherBackend::UpdateSettings(const Settings& settings, std::string* erro
     }
 
     Settings next = settings;
+    next.title = Trim(next.title);
+    if (next.title.empty()) {
+        next.title = "mlaunch";
+    }
     next.hotkey = Trim(next.hotkey);
     next.group_panel_width = std::clamp(next.group_panel_width, 80.0, 600.0);
     next.main_window_width = std::max(next.main_window_width, 320.0);
@@ -520,7 +529,8 @@ bool LauncherBackend::UpdateSettings(const Settings& settings, std::string* erro
     settings_ = std::move(next);
 
     AppendJournal("update_settings",
-        "hotkey=" + settings_.hotkey +
+        "title=" + settings_.title +
+        " hotkey=" + settings_.hotkey +
         " execute_hide=" + (settings_.execute_hide ? "1" : "0") +
         " locked=" + (settings_.locked ? "1" : "0") +
         " auto_hide=" + (settings_.auto_hide ? "1" : "0") +

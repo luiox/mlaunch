@@ -36,7 +36,7 @@ protected:
     /** @brief 切换左侧导航分页（0 行为 / 1 启动 / 2 窗口 / 3 备份）。 */
     void SelectPage(int index);
     bool PointOnEditableControl(POINT pt) const;
-    /** @brief Tab 轮换：热键 → 宽 → 高 → 分组栏宽度 → 滚动备份数 → 每日天数。 */
+    /** @brief Tab 轮换：热键 → 标题 → 宽 → 高 → 分组栏宽度 → 滚动备份数 → 每日天数。 */
     void CycleInputFocus();
     /** @brief 热键捕获：点击输入框进入，录制下一个组合键。 */
     void StartHotkeyCapture();
@@ -55,6 +55,7 @@ private:
     std::vector<appui::ButtonUI*> nav_buttons_;
     std::vector<DuiLib::CVerticalLayoutUI*> pages_;
 
+    DuiLib::CEditUI* title_input_ = nullptr;
     DuiLib::CEditUI* hotkey_input_ = nullptr;
     appui::CheckBoxUI* hide_check_ = nullptr;
     appui::CheckBoxUI* autorun_check_ = nullptr;

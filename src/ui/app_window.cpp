@@ -277,6 +277,7 @@ LRESULT AppWindow::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHand
 
     groups_list_ = static_cast<CListUI*>(m_pm.FindControl(_T("groups_list")));
     items_list_ = static_cast<CListUI*>(m_pm.FindControl(_T("items_list")));
+    title_label_ = static_cast<CLabelUI*>(m_pm.FindControl(_T("title_label")));
     status_line_ = static_cast<CLabelUI*>(m_pm.FindControl(_T("status_line")));
     search_bar_ = m_pm.FindControl(_T("search_bar"));
     search_button_ = static_cast<appui::IconButtonUI*>(m_pm.FindControl(_T("searchbtn")));
@@ -293,6 +294,7 @@ LRESULT AppWindow::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHand
 
     // 先加载数据与设置，RestoreUiState 才能用设置里的默认分组栏宽度。
     LoadBackendData();
+    ApplyTitleSetting();
     RestoreUiState();
     RegisterConfiguredHotkey();
     // 锁定/自动隐藏等行为开关随设置生效。
@@ -662,6 +664,7 @@ void AppWindow::CloseItemDialog() {
 void AppWindow::ApplySettings() {
     RegisterConfiguredHotkey();
     ApplyAutorunRegistry(backend_.CurrentSettings().autorun);
+    ApplyTitleSetting();
 
     layout_locked_ = backend_.CurrentSettings().locked;
     auto_hide_ = backend_.CurrentSettings().auto_hide;
@@ -673,6 +676,15 @@ void AppWindow::ApplySettings() {
         group_panel_->SetFixedWidth(panel_width);
     }
     m_pm.NeedUpdate();
+}
+
+void AppWindow::ApplyTitleSetting() {
+    const std::wstring title = launcher::util::Utf8ToWide(backend_.CurrentSettings().title);
+    if (title_label_ != nullptr) {
+        title_label_->SetText(title.c_str());
+    }
+    // OS 窗口文本供任务栏/Alt-Tab/单实例外自动化按标题定位使用。
+    ::SetWindowTextW(m_hWnd, title.c_str());
 }
 
 void AppWindow::ApplyAutorunRegistry(bool enabled) {
