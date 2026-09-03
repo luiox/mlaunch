@@ -373,7 +373,8 @@ LRESULT AppWindow::TranslateAccelerator(MSG* pMsg) {
             // GetFixedWidth 返回的是缩放后的物理值，SetFixedWidth 存逻辑值；
             // 读-改-写必须先反算回逻辑值，否则非 100% 缩放下每滚一次都翻倍。
             int width = m_pm.GetDPIObj()->ScaleIntBack(group_panel_->GetFixedWidth()) + delta;
-            width = std::clamp(width, 80, 600);
+            width = std::clamp(width, launcher::constants::layout::kMinGroupPanelWidth,
+                               launcher::constants::layout::kMaxGroupPanelWidth);
             group_panel_->SetFixedWidth(width);
             m_pm.NeedUpdate();
             MarkUiStateDirty();
@@ -543,7 +544,8 @@ void AppWindow::ApplySettings() {
 
     if (group_panel_ != nullptr) {
         int panel_width = static_cast<int>(backend_.CurrentSettings().group_panel_width);
-        panel_width = std::clamp(panel_width, 80, 600);
+        panel_width = std::clamp(panel_width, launcher::constants::layout::kMinGroupPanelWidth,
+                                 launcher::constants::layout::kMaxGroupPanelWidth);
         group_panel_->SetFixedWidth(panel_width);
     }
     m_pm.NeedUpdate();
