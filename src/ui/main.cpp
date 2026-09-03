@@ -9,6 +9,9 @@ using namespace DuiLib;
 
 namespace {
 
+// 控制台输出仅 Debug 构建启用（xmake debug 模式定义 MLAUNCH_DEV_CONSOLE）；
+// Release 以 GUI 程序运行，不能弹出控制台窗口。
+#ifdef MLAUNCH_DEV_CONSOLE
 void SetupConsoleOutput() {
     if (!::AttachConsole(ATTACH_PARENT_PROCESS)) {
         ::AllocConsole();
@@ -21,6 +24,7 @@ void SetupConsoleOutput() {
     setvbuf(stdout, nullptr, _IONBF, 0);
     setvbuf(stderr, nullptr, _IONBF, 0);
 }
+#endif
 
 } // namespace
 
@@ -50,7 +54,9 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int) {
         return 0;
     }
 
+#ifdef MLAUNCH_DEV_CONSOLE
     SetupConsoleOutput();
+#endif
 
     // DuiLib 的 SetCurrentPath 会把进程 CWD 改成 exe 目录，
     // 旧版 Poner 数据发现依赖启动目录，必须先在这里捕获。
