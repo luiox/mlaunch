@@ -300,14 +300,6 @@ LRESULT AppWindow::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHand
     // 开机自启注册表每次启动按设置对齐（exe 挪位后修正路径/清残留）。
     ApplyAutorunRegistry(backend_.CurrentSettings().autorun);
 
-    // 复刻 VB6 frmShadow：关掉 DWM 软阴影，改用主窗后方的硬边偏移剪影。
-    {
-        const DWMNCRENDERINGPOLICY policy = DWMNCRP_DISABLED;
-        ::DwmSetWindowAttribute(m_hWnd, DWMWA_NCRENDERING_POLICY, &policy, sizeof(policy));
-    }
-    shadow_window_.Attach(m_hWnd);
-    shadow_window_.Sync();
-
     __InitWindow();
 
     bHandled = TRUE;
@@ -337,7 +329,6 @@ LRESULT AppWindow::MessageHandler(UINT uMsg, WPARAM wParam, LPARAM lParam, bool&
                        suggested->right - suggested->left, suggested->bottom - suggested->top,
                        SWP_NOZORDER | SWP_NOACTIVATE);
         appui::AlignPaintManagerDpi(m_pm, m_hWnd);
-        shadow_window_.Sync();
         bHandled = true;
         return 0;
     }
