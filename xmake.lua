@@ -79,6 +79,8 @@ target("mlaunch")
         set_symbols("debug")
         set_optimize("none")
         add_deps("micon_dynamic")
+        -- 仅 Debug 构建启用控制台输出（main.cpp 据此决定是否 AllocConsole）。
+        add_defines("MLAUNCH_DEV_CONSOLE")
     else
         set_optimize("faster")
         add_deps("micon_embed")
