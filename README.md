@@ -35,7 +35,10 @@ xmake run tools_tests
 同一份工具注册表（`src/tools/tool_registry.h`）服务两个入口：
 
 - **搜索框**（给人）：搜索模式输入 `ts 1788670404`、`b64 e 文本`、`md5 文本`、
-  `url d %E4%B8%AD`、`uuid` 等，实时预览结果，回车复制选中行。
+  `url d %E4%B8%AD`、`uuid`、`sine --f0 2 --fs 64 --points 32`（ASCII 波形图预览）、
+  `font 中`（点阵字形预览）等，实时预览结果，回车复制选中行。
+  `sine` 兼容老工具 sin_config.txt（`sine --config 路径 --data`）；`font` 与
+  PCtoLCD2002 取模结果逐字节一致（'中'字 16x16 golden 测试锁定）。
 - **mtool.exe**（给 AI / 脚本）：`mtool ts 1788670404`；stdout 出结果（UTF-8）、
   stderr 出错误、exit 0/1/2 区分成功/失败/用法错误；`mtool --help` 列出全部工具。
 
