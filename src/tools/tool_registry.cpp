@@ -12,6 +12,7 @@ const std::vector<ToolDef>& Registry() {
         BuildSha256Tool(),
         BuildUrlTool(),
         BuildUuidTool(),
+        BuildSineTool(),
     };
     return registry;
 }

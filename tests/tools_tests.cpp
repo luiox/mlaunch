@@ -4,10 +4,18 @@
 
 #include "libca/uuid/uuid.hpp"
 
+#include <algorithm>
+#include <cstdlib>
 #include <set>
 #include <string>
+#include <vector>
 
 #include <gtest/gtest.h>
+
+// 老工具 sin_data.txt 的 golden 数据（裸字符串字面量序列，见 sine_golden.inc 头注释）。
+static const char kGoldenSinData[] =
+#include "sine_golden.inc"
+    ;
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
@@ -211,6 +219,82 @@ TEST(UuidToolTest, BatchCount) {
         ids.insert(out.lines[i].copy_text);
     }
     EXPECT_EQ(ids.size(), 5u);
+}
+
+// —— 正弦波（golden：老工具 sin_data.txt，A=2048 f0=10 fs=500 phi=0 t=1，500 点）——
+
+namespace {
+// 逐值比对，返回 {一致点数, 最大偏差}。
+std::pair<int, int> CompareGolden(const std::string& joined, const char* golden) {
+    std::vector<int> got;
+    std::size_t begin = 0;
+    while (begin <= joined.size()) {
+        const std::size_t comma = joined.find(',', begin);
+        const std::string tok = joined.substr(begin, comma == std::string::npos ? std::string::npos : comma - begin);
+        if (tok.empty()) break;
+        got.push_back(std::atoi(tok.c_str()));
+        if (comma == std::string::npos) break;
+        begin = comma + 1;
+    }
+
+    std::vector<int> want;
+    begin = 0;
+    const std::string g(golden);
+    while (begin <= g.size()) {
+        const std::size_t comma = g.find(',', begin);
+        const std::string tok = g.substr(begin, comma == std::string::npos ? std::string::npos : comma - begin);
+        if (tok.empty()) break;
+        want.push_back(std::atoi(tok.c_str()));
+        if (comma == std::string::npos) break;
+        begin = comma + 1;
+    }
+
+    if (got.size() != want.size()) {
+        return {0, 1 << 30};
+    }
+    int match = 0;
+    int max_delta = 0;
+    for (std::size_t i = 0; i < want.size(); ++i) {
+        const int delta = std::abs(got[i] - want[i]);
+        max_delta = std::max(max_delta, delta);
+        if (delta == 0) ++match;
+    }
+    return {match, max_delta};
+}
+} // namespace
+
+TEST(SineToolTest, GoldenAlignment) {
+    // 老工具的浮点指纹：3 处过零点相差 1 LSB（2047 vs 2048），其余位级一致。
+    // 锁定"点数一致 + 至少 495 点位级一致 + 最大偏差 ≤ 1"，
+    // 任何公式退化（幅度错、相位错、钳位错）都会被最大偏差/一致率抓住。
+    const ToolOutput out = RunTool("sine", "--amp 2048 --f0 10 --fs 500 --phi 0 --t 1 --data");
+    ASSERT_TRUE(out.ok);
+    const auto [match, max_delta] = CompareGolden(out.primary, kGoldenSinData);
+    EXPECT_EQ(match, 497);
+    EXPECT_EQ(max_delta, 1);
+}
+
+TEST(SineToolTest, SampleCountFromFsTimesT) {
+    const ToolOutput out = RunTool("sine", "--fs 100 --f0 1 --t 2 --points 0 --data");
+    ASSERT_TRUE(out.ok);
+    EXPECT_EQ(std::count(out.primary.begin(), out.primary.end(), ',') + 1, 200u);
+}
+
+TEST(SineToolTest, PointsOverride) {
+    const ToolOutput out = RunTool("sine", "--points 8 --data");
+    ASSERT_TRUE(out.ok);
+    // 缺省 f0=10 fs=500 → 每周期 50 点，8 点落在首周期上升段，单调不减。
+    EXPECT_EQ(out.primary, "2048,2304,2557,2801,3034,3251,3449,3626");
+}
+
+TEST(SineToolTest, DefaultOutputHasArtAndCopyLine) {
+    const ToolOutput out = RunTool("sine", "");
+    ASSERT_TRUE(out.ok);
+    ASSERT_GE(out.lines.size(), 4u);
+    // 首行参数摘要；末行可复制完整数据。
+    EXPECT_NE(out.lines[0].text.find("A=2048"), std::string::npos);
+    EXPECT_EQ(out.lines.back().selectable, true);
+    EXPECT_EQ(out.lines.back().copy_text.size(), out.primary.size());
 }
 
 } // namespace

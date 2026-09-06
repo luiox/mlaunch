@@ -2,12 +2,31 @@
 
 // 工具实现内部共用的小函数。不对外暴露（CLI 与 UI 只依赖 tool_registry.h）。
 
+// windows.h 的 min/max 宏会打坏 std::min/std::max/std::clamp。
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+
 #include <cctype>
 #include <string>
 
 #include "tool_registry.h"
 
 namespace tools::internal {
+
+// UTF-8 → UTF-16。工具需要打开文件时用（std::ifstream 接受宽 path）。
+inline std::wstring Utf8ToWide(const std::string& utf8) {
+    if (utf8.empty()) {
+        return {};
+    }
+    const int size = ::MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(),
+                                           static_cast<int>(utf8.size()), nullptr, 0);
+    std::wstring wide(static_cast<std::size_t>(size), L'\0');
+    ::MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), static_cast<int>(utf8.size()),
+                          wide.data(), size);
+    return wide;
+}
 
 inline std::string Trim(const std::string& s) {
     std::size_t begin = 0;
