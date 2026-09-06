@@ -69,6 +69,26 @@ target("mlaunch-core")
     -- MD5 走 CryptoAPI
     add_syslinks("advapi32")
 
+-- 小工具插件层：纯函数，mtool.exe CLI 与 mlaunch 搜索框共用同一注册表。
+target("mlaunch-tools")
+    set_kind("static")
+    set_languages("cxx17")
+    add_cxxflags("/utf-8")
+
+    if is_mode("debug") then
+        set_symbols("debug")
+        set_optimize("none")
+    else
+        set_optimize("faster")
+    end
+
+    add_defines("UNICODE", "_UNICODE", "WIN32", "_WINDOWS")
+    add_includedirs("src/tools", {public = true})
+    add_files("src/tools/*.cpp")
+    add_deps("libca_crypto", "libca_uuid")
+    -- base64 解码与 uuid 随机源依赖 bcrypt（libca_crypto 的 syslinks 不传递，需显式声明）。
+    add_syslinks("bcrypt")
+
 -- DuiLib UI 层：窗口、控制器、渲染、shell 服务实现。
 target("mlaunch")
     set_kind("binary")
@@ -93,15 +113,34 @@ target("mlaunch")
     add_headerfiles("src/ui/*.h")
     add_packages("nlohmann_json")
     add_deps("mlaunch-core")
+    add_deps("mlaunch-tools")
     add_deps("DuiLibLite")
 
-    add_syslinks("user32", "gdi32", "comctl32", "comdlg32", "ole32", "oleaut32", "imm32", "winmm", "version", "uxtheme", "shell32", "advapi32", "dwmapi")
+    add_syslinks("user32", "gdi32", "comctl32", "comdlg32", "ole32", "oleaut32", "imm32", "winmm", "version", "uxtheme", "shell32", "advapi32", "dwmapi", "bcrypt")
 
     after_build(function (target)
         if is_mode("debug") then
             os.cp(path.join(os.scriptdir(), "third_party", "micon", "icons"), path.join(target:targetdir(), "icons"))
         end
     end)
+
+-- 小工具 CLI：mtool <关键字> [参数]，给 AI / 脚本 / 管道用。
+target("mtool")
+    set_kind("binary")
+    set_languages("cxx17")
+    add_cxxflags("/utf-8")
+
+    if is_mode("debug") then
+        set_symbols("debug")
+        set_optimize("none")
+    else
+        set_optimize("faster")
+    end
+
+    add_defines("UNICODE", "_UNICODE", "WIN32", "_WINDOWS")
+    add_files("tools/mtool_main.cpp")
+    add_deps("mlaunch-tools")
+    add_syslinks("shell32", "bcrypt")
 
 -- 纯核心测试：不链接 DuiLib / shell32 / ole32，注入 fake 执行器。
 target("core_tests")
@@ -121,3 +160,22 @@ target("core_tests")
     add_packages("gtest")
     add_deps("mlaunch-core")
     add_syslinks("advapi32")
+
+-- 小工具层测试：golden 值 + 往返一致性，不链接 DuiLib / shell32。
+target("tools_tests")
+    set_kind("binary")
+    set_languages("cxx17")
+    add_cxxflags("/utf-8")
+
+    if is_mode("debug") then
+        set_symbols("debug")
+        set_optimize("none")
+    else
+        set_optimize("faster")
+    end
+
+    add_defines("UNICODE", "_UNICODE", "WIN32", "_WINDOWS")
+    add_files("tests/tools_tests.cpp")
+    add_packages("gtest")
+    add_deps("mlaunch-tools")
+    add_syslinks("bcrypt")

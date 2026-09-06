@@ -17,6 +17,10 @@ constexpr int kBaidu = 6;
 
 constexpr char kSearchCmdPrefix[] = "__cmd__";
 
+/// @brief 搜索框工具插件（src/tools 注册表）的结果行前缀。
+/// item_id 格式：__tool__<keyword>:<行号>，回车复制对应行的 copy_text。
+constexpr char kToolCmdPrefix[] = "__tool__";
+
 namespace command {
 constexpr UINT kGroupAdd = 1001;
 constexpr UINT kGroupRename = 1002;

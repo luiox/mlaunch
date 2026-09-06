@@ -16,6 +16,7 @@
 #include "list_controller.h"
 #include "logger.h"
 #include "search_controller.h"
+#include "tool_registry.h"
 #include "utils/string_util.h"
 
 using namespace DuiLib;
@@ -712,6 +713,28 @@ bool AppWindow::ShowSelectedItemShellMenu() {
     return launched;
 }
 
+bool AppWindow::CopyTextToClipboard(const std::wstring& text, const char* error_hint) {
+    if (!OpenClipboard(m_hWnd)) {
+        status_.Error(error_hint);
+        return false;
+    }
+
+    EmptyClipboard();
+    const std::size_t bytes = (text.size() + 1) * sizeof(wchar_t);
+    HGLOBAL buffer = GlobalAlloc(GMEM_MOVEABLE, bytes);
+    if (buffer == nullptr) {
+        CloseClipboard();
+        status_.Error(error_hint);
+        return false;
+    }
+    void* ptr = GlobalLock(buffer);
+    memcpy(ptr, text.c_str(), bytes);
+    GlobalUnlock(buffer);
+    SetClipboardData(CF_UNICODETEXT, buffer);
+    CloseClipboard();
+    return true;
+}
+
 bool AppWindow::CopySelectedItemPath() {
     const core::LaunchItem* item = FindSelectedItem();
     if (item == nullptr) {
@@ -723,25 +746,9 @@ bool AppWindow::CopySelectedItemPath() {
         return false;
     }
 
-    const std::wstring text = launcher::util::Utf8ToWide(item->target_path);
-    if (!OpenClipboard(m_hWnd)) {
-        status_.Error("复制路径失败");
+    if (!CopyTextToClipboard(launcher::util::Utf8ToWide(item->target_path),  "复制路径失败")) {
         return false;
     }
-
-    EmptyClipboard();
-    const std::size_t bytes = (text.size() + 1) * sizeof(wchar_t);
-    HGLOBAL buffer = GlobalAlloc(GMEM_MOVEABLE, bytes);
-    if (buffer == nullptr) {
-        CloseClipboard();
-        status_.Error("复制路径失败");
-        return false;
-    }
-    void* ptr = GlobalLock(buffer);
-    memcpy(ptr, text.c_str(), bytes);
-    GlobalUnlock(buffer);
-    SetClipboardData(CF_UNICODETEXT, buffer);
-    CloseClipboard();
 
     status_.Info("路径已复制");
     return true;
@@ -777,6 +784,8 @@ bool AppWindow::MoveSelectedItemToGroup(const std::string& target_group_id) {
 void AppWindow::ExecuteSearchCommand(const std::string& item_id) {
     const std::string prefix = launcher::constants::kSearchCmdPrefix;
     if (item_id.rfind(prefix, 0) != 0) {
+        // 工具插件结果行走独立分发（__tool__<kw>:<行号>）。
+        ExecuteToolCommand(item_id);
         return;
     }
 
@@ -841,6 +850,34 @@ void AppWindow::ExecuteSearchCommand(const std::string& item_id) {
     default:
         break;
     }
+}
+
+void AppWindow::ExecuteToolCommand(const std::string& item_id) {
+    const std::string prefix = launcher::constants::kToolCmdPrefix;
+    if (item_id.rfind(prefix, 0) != 0) {
+        return;
+    }
+
+    // item_id 格式：__tool__<keyword>:<行号>；从缓存的工具输出取该行 copy_text。
+    const std::string& keyword = search_controller_.GetToolKeyword();
+    const std::size_t sep = item_id.rfind(':');
+    if (sep == std::string::npos || item_id.substr(prefix.size(), sep - prefix.size()) != keyword) {
+        status_.Warn("工具结果已过期，请重新输入");
+        return;
+    }
+
+    const int line_index = std::atoi(item_id.c_str() + sep + 1);
+    const tools::ToolOutput& out = search_controller_.GetToolOutput();
+    if (line_index < 0 || static_cast<std::size_t>(line_index) >= out.lines.size()) {
+        status_.Warn("工具结果已过期，请重新输入");
+        return;
+    }
+
+    const tools::ToolLine& line = out.lines[static_cast<std::size_t>(line_index)];
+    if (!CopyTextToClipboard(launcher::util::Utf8ToWide(line.copy_text),  "复制失败")) {
+        return;
+    }
+    status_.Info("已复制");
 }
 
 void AppWindow::AddPresetSystemItem(UINT command_id) {

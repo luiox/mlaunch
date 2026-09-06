@@ -51,10 +51,17 @@ void SearchController::ToggleSearchMode() {
         owner_.search_input_->SetText(_T(""));
         active_command_ = launcher::constants::search_cmd::kNone;
         baidu_keyword_.clear();
+        ClearToolState();
     }
     UpdateSearchUi();
     owner_.RenderItems();
     // 对齐原版：切换搜索模式不弹 toast。
+}
+
+void SearchController::ClearToolState() {
+    tool_keyword_.clear();
+    tool_args_.clear();
+    tool_output_ = tools::ToolOutput{};
 }
 
 std::string SearchController::CommandIdToItemId(int cmd_id) {
@@ -119,6 +126,24 @@ void SearchController::HandleInputChanged() {
     std::string keyword;
     active_command_ = ParseCommand(input, &keyword);
     baidu_keyword_ = keyword;
+
+    // 工具插件识别：系统命令未命中时，按首词匹配 src/tools 注册表关键字。
+    // 关键字不与系统命令重叠；命中即执行并缓存结果供渲染 / 回车复制。
+    ClearToolState();
+    if (active_command_ == launcher::constants::search_cmd::kNone) {
+        std::string trimmed = input;
+        trimmed.erase(trimmed.begin(), std::find_if(trimmed.begin(), trimmed.end(),
+            [](unsigned char ch) { return !std::isspace(ch); }));
+        trimmed.erase(std::find_if(trimmed.rbegin(), trimmed.rend(),
+            [](unsigned char ch) { return !std::isspace(ch); }).base(), trimmed.end());
+        const std::size_t space = trimmed.find_first_of(" \t");
+        const std::string head = space == std::string::npos ? trimmed : trimmed.substr(0, space);
+        if (const tools::ToolDef* tool = tools::FindByKeyword(head)) {
+            tool_keyword_ = head;
+            tool_args_ = space == std::string::npos ? std::string() : trimmed.substr(space + 1);
+            tool_output_ = tool->run(tool_args_);
+        }
+    }
 
     owner_.RenderItems();
 }

@@ -134,6 +134,12 @@ void AppWindow::LaunchSelectedItem() {
         return;
     }
 
+    // 工具插件结果行：回车复制该行结果。
+    if (selected_item_id_.rfind(launcher::constants::kToolCmdPrefix, 0) == 0) {
+        ExecuteToolCommand(selected_item_id_);
+        return;
+    }
+
     // 分隔条只做选中，不触发启动，避免单击时弹出错误提示。
     const core::LaunchItem* clicked = FindSelectedItem();
     if (clicked != nullptr && clicked->item_type == "separator") {

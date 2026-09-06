@@ -5,6 +5,7 @@
 #include "app_window.h"
 #include "file_icon_control.h"
 #include "search_controller.h"
+#include "tool_registry.h"
 #include "ui_controls.h"
 #include "utils/string_util.h"
 
@@ -203,6 +204,61 @@ void ListController::RenderItems() {
             }
             // 命令行即唯一结果：自动选中，回车直接执行。
             owner_.SelectItemByIndex(0);
+            return;
+        }
+
+        // 工具插件结果：首行 usage 提示（灰），随后工具输出行——selectable 行
+        // 蓝色可选中（回车复制 copy_text），预览行灰色禁选。
+        const std::string& tool_kw = owner_.search_controller_.GetToolKeyword();
+        if (!tool_kw.empty()) {
+            const tools::ToolDef* tool = tools::FindByKeyword(tool_kw);
+            const tools::ToolOutput& out = owner_.search_controller_.GetToolOutput();
+
+            auto add_tool_row = [&](const std::wstring& text, unsigned long color, bool selectable, const std::string& item_id) {
+                auto* row = new CListContainerElementUI();
+                row->SetFixedHeight(28);
+                row->SetAttribute(_T("inset"), _T("4,0,4,0"));
+                row->SetAttribute(_T("childvalign"), _T("vcenter"));
+                if (!selectable) {
+                    row->SetEnabled(false);
+                }
+
+                auto* label = new CLabelUI();
+                label->SetText(text.c_str());
+                label->SetTextColor(color);
+                label->SetTextStyle(DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+                row->Add(label);
+
+                owner_.items_list_->Add(row);
+                owner_.item_ids_.push_back(item_id);
+                owner_.item_group_ids_.push_back("");
+            };
+
+            add_tool_row(launcher::util::Utf8ToWide(tool != nullptr ? tool->usage : tool_kw),
+                         0xFF808689, false, "");
+
+            if (!out.ok) {
+                add_tool_row(launcher::util::Utf8ToWide(out.error), 0xFFFF7A7A, false, "");
+            } else {
+                int first_selectable = -1;
+                for (std::size_t i = 0; i < out.lines.size(); ++i) {
+                    const tools::ToolLine& line = out.lines[i];
+                    if (!line.selectable) {
+                        add_tool_row(launcher::util::Utf8ToWide(line.text), 0xFF808689, false, "");
+                        continue;
+                    }
+                    if (first_selectable < 0) {
+                        first_selectable = static_cast<int>(owner_.item_ids_.size());
+                    }
+                    const std::string id = std::string(launcher::constants::kToolCmdPrefix) +
+                                           tool_kw + ":" + std::to_string(i);
+                    add_tool_row(launcher::util::Utf8ToWide(line.text), 0xFF1A73E8, true, id);
+                }
+                // 与命令行一致：首个结果行自动选中，回车直接复制。
+                if (first_selectable >= 0) {
+                    owner_.SelectItemByIndex(first_selectable);
+                }
+            }
             return;
         }
 

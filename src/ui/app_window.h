@@ -98,6 +98,8 @@ private:
     void ExecuteGroupCommand(UINT command_id);
     void ExecuteItemCommand(UINT command_id);
     void ExecuteSearchCommand(const std::string& item_id);
+    /** @brief 工具插件结果行回车：解析 __tool__<kw>:<行号>，复制该行 copy_text。 */
+    void ExecuteToolCommand(const std::string& item_id);
     void OpenGroupDialog(bool rename_mode, const std::string& group_id);
     void CloseGroupDialog();
     void ConfirmGroupDialog();
@@ -117,6 +119,8 @@ private:
     bool OpenSelectedItemFolder();
     bool ShowSelectedItemShellMenu();
     bool CopySelectedItemPath();
+    /** @brief 通用文本复制（CF_UNICODETEXT）。失败时 Toast error_hint（UTF-8）。 */
+    bool CopyTextToClipboard(const std::wstring& text, const char* error_hint);
     bool ImportPonerFile(const std::filesystem::path& path);
 
     void OpenItemDialog(bool edit_mode);
