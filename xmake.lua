@@ -86,8 +86,9 @@ target("mlaunch-tools")
     add_includedirs("src/tools", {public = true})
     add_files("src/tools/*.cpp")
     add_deps("libca_crypto", "libca_uuid")
-    -- base64 解码与 uuid 随机源依赖 bcrypt（libca_crypto 的 syslinks 不传递，需显式声明）。
-    add_syslinks("bcrypt")
+    -- font 工具的 GDI 渲染需要 gdi32/user32；bcrypt 给 base64/uuid 随机源
+    -- （libca_crypto 的 syslinks 不传递，需显式声明）。
+    add_syslinks("gdi32", "user32", "bcrypt")
 
 -- DuiLib UI 层：窗口、控制器、渲染、shell 服务实现。
 target("mlaunch")
@@ -140,7 +141,7 @@ target("mtool")
     add_defines("UNICODE", "_UNICODE", "WIN32", "_WINDOWS")
     add_files("tools/mtool_main.cpp")
     add_deps("mlaunch-tools")
-    add_syslinks("shell32", "bcrypt")
+    add_syslinks("shell32", "gdi32", "user32", "bcrypt")
 
 -- 纯核心测试：不链接 DuiLib / shell32 / ole32，注入 fake 执行器。
 target("core_tests")
@@ -178,4 +179,5 @@ target("tools_tests")
     add_files("tests/tools_tests.cpp")
     add_packages("gtest")
     add_deps("mlaunch-tools")
-    add_syslinks("bcrypt")
+    -- font 工具测试走 GDI 渲染
+    add_syslinks("gdi32", "user32", "bcrypt")

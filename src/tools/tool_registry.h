@@ -51,5 +51,6 @@ ToolDef BuildSha256Tool();      // sha256 <text>
 ToolDef BuildUrlTool();         // url
 ToolDef BuildUuidTool();        // uuid
 ToolDef BuildSineTool();        // sine
+ToolDef BuildFontTool();        // font
 
 } // namespace tools

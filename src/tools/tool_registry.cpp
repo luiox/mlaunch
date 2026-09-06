@@ -13,6 +13,7 @@ const std::vector<ToolDef>& Registry() {
         BuildUrlTool(),
         BuildUuidTool(),
         BuildSineTool(),
+        BuildFontTool(),
     };
     return registry;
 }

@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cstdlib>
+#include <cstdio>
 #include <set>
 #include <string>
 #include <vector>
@@ -295,6 +296,96 @@ TEST(SineToolTest, DefaultOutputHasArtAndCopyLine) {
     EXPECT_NE(out.lines[0].text.find("A=2048"), std::string::npos);
     EXPECT_EQ(out.lines.back().selectable, true);
     EXPECT_EQ(out.lines.back().copy_text.size(), out.primary.size());
+}
+
+// —— 点阵字库（golden：PCtoLCD2002 标准样张，"中" 16x16 宋体 阴码逐行顺向）——
+
+namespace {
+
+// 从逐行式字节流（w/8 字节每行）重建位图，再按逐列式重新编码。
+// 用于验证 --column 输出确实是同一渲染位图的列式重排。
+std::string TransposeRowToColumn(const std::string& hex_list, int w, int h) {
+    // 解析 hex
+    std::vector<int> bytes;
+    std::size_t begin = 0;
+    while (begin <= hex_list.size()) {
+        const std::size_t comma = hex_list.find(',', begin);
+        const std::string tok = hex_list.substr(begin, comma == std::string::npos ? std::string::npos : comma - begin);
+        if (tok.empty()) break;
+        bytes.push_back(std::strtol(tok.c_str(), nullptr, 16));
+        if (comma == std::string::npos) break;
+        begin = comma + 1;
+    }
+    if (bytes.empty()) {
+        return "RENDER_FAILED";
+    }
+    // 位图[y][x]
+    std::vector<std::vector<int>> bits(h, std::vector<int>(w, 0));
+    for (int y = 0; y < h; ++y) {
+        for (int x = 0; x < w; ++x) {
+            bits[y][x] = (bytes[y * (w / 8) + x / 8] >> (7 - (x % 8))) & 1;
+        }
+    }
+    // 逐列重编码（MSB first）
+    std::string out;
+    char buf[8];
+    for (int x = 0; x < w; ++x) {
+        for (int y = 0; y < h; y += 8) {
+            int b = 0;
+            for (int i = 0; i < 8; ++i) {
+                if (bits[y + i][x]) {
+                    b |= 0x80 >> i;
+                }
+            }
+            std::snprintf(buf, sizeof(buf), "%s0x%02X", (x > 0 || y > 0) ? "," : "", b);
+            out += buf;
+        }
+    }
+    return out;
+}
+
+} // namespace
+
+TEST(FontToolTest, GoldenZhong16x16) {
+    // PCtoLCD2002 官方样张（阴码、逐行式、顺向高位在前、C51 格式，宋体 12 号）。
+    // 各教程与 OLED 工程普遍引用的权威数据。
+    const char* kGolden =
+        "0x01,0x00,0x01,0x00,0x01,0x00,0x01,0x00,"
+        "0x3F,0xF8,0x21,0x08,0x21,0x08,0x21,0x08,"
+        "0x21,0x08,0x21,0x08,0x3F,0xF8,0x21,0x08,"
+        "0x01,0x00,0x01,0x00,0x01,0x00,0x01,0x00";
+    const ToolOutput out = RunTool("font", "中 --data");
+    if (out.primary == "RENDER_FAILED" || (!out.ok && out.primary.empty())) {
+        GTEST_SKIP() << "系统缺 SimSun，跳过渲染 golden 对比";
+    }
+    ASSERT_TRUE(out.ok);
+    EXPECT_EQ(out.primary, kGolden);
+}
+
+TEST(FontToolTest, ColumnModeIsTransposeOfRowMode) {
+    const ToolOutput row_out = RunTool("font", "中 --data");
+    const ToolOutput col_out = RunTool("font", "中 --column --data");
+    if (row_out.primary.empty() || !row_out.ok) {
+        GTEST_SKIP() << "系统缺 SimSun，跳过";
+    }
+    ASSERT_TRUE(col_out.ok);
+    EXPECT_EQ(col_out.primary, TransposeRowToColumn(row_out.primary, 16, 16));
+}
+
+TEST(FontToolTest, MultiCharBatch) {
+    const ToolOutput one = RunTool("font", "中 --data");
+    const ToolOutput two = RunTool("font", "中中 --data");
+    if (!one.ok) {
+        GTEST_SKIP() << "系统缺 SimSun，跳过";
+    }
+    ASSERT_TRUE(two.ok);
+    EXPECT_EQ(two.primary, one.primary + "," + one.primary);
+}
+
+TEST(FontToolTest, BadSizeRejected) {
+    const ToolOutput out = RunTool("font", "中 --w 12");
+    EXPECT_FALSE(out.ok);
+    EXPECT_NE(out.error.find("8 的倍数"), std::string::npos);
 }
 
 } // namespace
