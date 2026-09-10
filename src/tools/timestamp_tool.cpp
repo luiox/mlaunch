@@ -32,16 +32,15 @@ bool AllDigits(const std::string& s) {
 // epoch → "yyyy-MM-dd HH:mm:ss"。utc=false 时走本地时区。
 std::string FormatEpoch(long long epoch, bool utc) {
     const std::time_t t = static_cast<std::time_t>(epoch);
-    std::tm tm {};
+    std::tm tm{};
     if (utc) {
         gmtime_s(&tm, &t);
     } else {
         localtime_s(&tm, &t);
     }
     char buf[32];
-    std::snprintf(buf, sizeof(buf), "%04d-%02d-%02d %02d:%02d:%02d",
-                  tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
-                  tm.tm_hour, tm.tm_min, tm.tm_sec);
+    std::snprintf(buf, sizeof(buf), "%04d-%02d-%02d %02d:%02d:%02d", tm.tm_year + 1900,
+                  tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
     return buf;
 }
 
@@ -54,16 +53,17 @@ std::string WeekdayCn(int tm_wday) {
 // 缺省时间视为当天 00:00:00；mktime 依赖系统时区，行为与用户直觉一致。
 bool ParseLocalToEpoch(const std::string& text, long long* out_epoch) {
     int y = 0, mo = 0, d = 0, h = 0, mi = 0, s = 0;
-    const int consumed = std::sscanf(text.c_str(), "%d-%d-%d%*[T ]%d:%d:%d", &y, &mo, &d, &h, &mi, &s);
+    const int consumed =
+        std::sscanf(text.c_str(), "%d-%d-%d%*[T ]%d:%d:%d", &y, &mo, &d, &h, &mi, &s);
     // 允许：完整 6 字段 / 5 字段（无秒）/ 3 字段（仅日期）。
     if (consumed != 6 && consumed != 5 && consumed != 3) {
         return false;
     }
-    if (y < 1970 || mo < 1 || mo > 12 || d < 1 || d > 31 ||
-        h < 0 || h > 23 || mi < 0 || mi > 59 || s < 0 || s > 59) {
+    if (y < 1970 || mo < 1 || mo > 12 || d < 1 || d > 31 || h < 0 || h > 23 || mi < 0 || mi > 59 ||
+        s < 0 || s > 59) {
         return false;
     }
-    std::tm tm {};
+    std::tm tm{};
     tm.tm_year = y - 1900;
     tm.tm_mon = mo - 1;
     tm.tm_mday = d;
@@ -97,7 +97,7 @@ ToolOutput Run(const std::string& raw_args) {
     if (args.empty() || args == "now") {
         const std::time_t now = std::time(nullptr);
         const long long epoch = static_cast<long long>(now);
-        std::tm local {};
+        std::tm local{};
         localtime_s(&local, &now);
         out.lines.push_back(CopyLine("时间戳", std::to_string(epoch)));
         out.lines.push_back(LocalLine(epoch, local));
@@ -108,7 +108,7 @@ ToolOutput Run(const std::string& raw_args) {
         // 13 位数字已超过 2286 年的秒级范围，按毫秒解释（Java/JS 惯例）。
         const long long epoch = args.size() >= 13 ? value / 1000 : value;
         const std::time_t t = static_cast<std::time_t>(epoch);
-        std::tm local {};
+        std::tm local{};
         localtime_s(&local, &t);
         out.lines.push_back(LocalLine(epoch, local));
         out.lines.push_back(CopyLine("UTC", FormatEpoch(epoch, true)));

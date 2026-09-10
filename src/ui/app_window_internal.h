@@ -33,7 +33,8 @@ struct UiStateSnapshot {
 inline std::filesystem::path GetAppBaseDir() {
     PWSTR local_app_data = nullptr;
     std::filesystem::path out = std::filesystem::current_path() / "data";
-    if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, nullptr, &local_app_data)) && local_app_data != nullptr) {
+    if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, nullptr, &local_app_data)) &&
+        local_app_data != nullptr) {
         out = std::filesystem::path(local_app_data) / "nassistant";
         CoTaskMemFree(local_app_data);
     }
@@ -64,12 +65,15 @@ inline std::filesystem::path GetUiStatePath() {
     return GetAppBaseDir() / "ui_state.ini";
 }
 
-inline bool ReadIniInt(const std::filesystem::path& ini_path, const wchar_t* section, const wchar_t* key, int* out) {
+inline bool ReadIniInt(const std::filesystem::path& ini_path, const wchar_t* section,
+                       const wchar_t* key, int* out) {
     if (out == nullptr) {
         return false;
     }
     wchar_t buffer[64]{};
-    const DWORD size = GetPrivateProfileStringW(section, key, L"", buffer, static_cast<DWORD>(std::size(buffer)), ini_path.wstring().c_str());
+    const DWORD size =
+        GetPrivateProfileStringW(section, key, L"", buffer, static_cast<DWORD>(std::size(buffer)),
+                                 ini_path.wstring().c_str());
     if (size == 0) {
         return false;
     }
@@ -82,16 +86,20 @@ inline bool ReadIniInt(const std::filesystem::path& ini_path, const wchar_t* sec
     return true;
 }
 
-inline bool WriteIniInt(const std::filesystem::path& ini_path, const wchar_t* section, const wchar_t* key, int value) {
+inline bool WriteIniInt(const std::filesystem::path& ini_path, const wchar_t* section,
+                        const wchar_t* key, int value) {
     const std::wstring value_text = std::to_wstring(value);
-    return ::WritePrivateProfileStringW(section, key, value_text.c_str(), ini_path.wstring().c_str()) != FALSE;
+    return ::WritePrivateProfileStringW(section, key, value_text.c_str(),
+                                        ini_path.wstring().c_str()) != FALSE;
 }
 
 inline bool FlushIniFile(const std::filesystem::path& ini_path) {
-    return ::WritePrivateProfileStringW(nullptr, nullptr, nullptr, ini_path.wstring().c_str()) != FALSE;
+    return ::WritePrivateProfileStringW(nullptr, nullptr, nullptr, ini_path.wstring().c_str()) !=
+           FALSE;
 }
 
-inline bool WriteUiStateAtomically(const std::filesystem::path& ini_path, const UiStateSnapshot& snapshot) {
+inline bool WriteUiStateAtomically(const std::filesystem::path& ini_path,
+                                   const UiStateSnapshot& snapshot) {
     // 说明：曾尝试“写 tmp + MoveFileEx 原子替换”，但 kernel32 对 INI 文件
     // 有进程内句柄/写缓存，tmp 冲刷与替换在多种时序下都会失败（实测
     // ERROR_FILE_NOT_FOUND / 共享冲突），导致保存永久失败。
@@ -103,8 +111,8 @@ inline bool WriteUiStateAtomically(const std::filesystem::path& ini_path, const 
     std::filesystem::create_directories(ini_path.parent_path(), ec);
     if (!std::filesystem::exists(ini_path, ec)) {
         if (HANDLE handle = ::CreateFileW(ini_path.wstring().c_str(), GENERIC_WRITE,
-                                          FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
-                                          CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr)) {
+                                          FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, CREATE_NEW,
+                                          FILE_ATTRIBUTE_NORMAL, nullptr)) {
             ::CloseHandle(handle);
         }
     }

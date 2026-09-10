@@ -19,12 +19,11 @@ std::string WideToUtf8(const std::wstring& wide) {
     if (wide.empty()) {
         return {};
     }
-    const int size = ::WideCharToMultiByte(CP_UTF8, 0, wide.c_str(),
-                                           static_cast<int>(wide.size()),
+    const int size = ::WideCharToMultiByte(CP_UTF8, 0, wide.c_str(), static_cast<int>(wide.size()),
                                            nullptr, 0, nullptr, nullptr);
     std::string result(static_cast<std::size_t>(size), '\0');
-    ::WideCharToMultiByte(CP_UTF8, 0, wide.c_str(), static_cast<int>(wide.size()),
-                          result.data(), size, nullptr, nullptr);
+    ::WideCharToMultiByte(CP_UTF8, 0, wide.c_str(), static_cast<int>(wide.size()), result.data(),
+                          size, nullptr, nullptr);
     return result;
 }
 

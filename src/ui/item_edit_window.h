@@ -18,19 +18,13 @@ class AppWindow;
  */
 class ItemEditWindow : public DuiLib::WindowImplBase {
 public:
-    using DoneCallback = std::function<void(bool confirmed,
-                                            const std::string& item_id,
-                                            const std::string& name,
-                                            const std::string& target_path,
-                                            const std::string& arguments,
-                                            const std::string& icon_location,
-                                            const std::string& working_dir)>;
+    using DoneCallback =
+        std::function<void(bool confirmed, const std::string& item_id, const std::string& name,
+                           const std::string& target_path, const std::string& arguments,
+                           const std::string& icon_location, const std::string& working_dir)>;
 
-    ItemEditWindow(AppWindow& owner,
-                   bool edit_mode,
-                   const std::string& group_id,
-                   const std::string& item_id,
-                   const core::LaunchItem* initial,
+    ItemEditWindow(AppWindow& owner, bool edit_mode, const std::string& group_id,
+                   const std::string& item_id, const core::LaunchItem* initial,
                    DoneCallback on_done);
 
     LPCTSTR GetWindowClassName() const override { return _T("MLaunchItemEditWindow"); }

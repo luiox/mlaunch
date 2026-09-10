@@ -31,7 +31,8 @@ std::vector<std::string> LauncherBackend::SplitWindowsArgs(const std::string& ar
     return out;
 }
 
-LaunchResult LauncherBackend::Launch(const std::string& group_id, const std::string& item_id, std::string* error) {
+LaunchResult LauncherBackend::Launch(const std::string& group_id, const std::string& item_id,
+                                     std::string* error) {
     LaunchResult result;
     if (!EnsureLoaded(error)) {
         result.message = error ? *error : "backend not loaded";
@@ -50,7 +51,8 @@ LaunchResult LauncherBackend::Launch(const std::string& group_id, const std::str
         return result;
     }
 
-    auto it = std::find_if(group->items.begin(), group->items.end(), [&](const LaunchItem& item) { return item.id == item_id; });
+    auto it = std::find_if(group->items.begin(), group->items.end(),
+                           [&](const LaunchItem& item) { return item.id == item_id; });
     if (it == group->items.end()) {
         SetError(error, "item not found");
         result.message = "item not found";
@@ -109,7 +111,8 @@ LaunchResult LauncherBackend::Launch(const std::string& group_id, const std::str
     it->launch_count++;
     SaveData(nullptr);
 
-    AppendJournal("launch", "id=" + it->id + " name=" + it->name + " count=" + std::to_string(it->launch_count));
+    AppendJournal("launch", "id=" + it->id + " name=" + it->name +
+                                " count=" + std::to_string(it->launch_count));
 
     result.ok = true;
     result.message = "launched: " + it->name;

@@ -5,8 +5,8 @@
 #include "libca/uuid/uuid.hpp"
 
 #include <algorithm>
-#include <cstdlib>
 #include <cstdio>
+#include <cstdlib>
 #include <set>
 #include <string>
 #include <vector>
@@ -231,10 +231,13 @@ std::pair<int, int> CompareGolden(const std::string& joined, const char* golden)
     std::size_t begin = 0;
     while (begin <= joined.size()) {
         const std::size_t comma = joined.find(',', begin);
-        const std::string tok = joined.substr(begin, comma == std::string::npos ? std::string::npos : comma - begin);
-        if (tok.empty()) break;
+        const std::string tok =
+            joined.substr(begin, comma == std::string::npos ? std::string::npos : comma - begin);
+        if (tok.empty())
+            break;
         got.push_back(std::atoi(tok.c_str()));
-        if (comma == std::string::npos) break;
+        if (comma == std::string::npos)
+            break;
         begin = comma + 1;
     }
 
@@ -243,10 +246,13 @@ std::pair<int, int> CompareGolden(const std::string& joined, const char* golden)
     const std::string g(golden);
     while (begin <= g.size()) {
         const std::size_t comma = g.find(',', begin);
-        const std::string tok = g.substr(begin, comma == std::string::npos ? std::string::npos : comma - begin);
-        if (tok.empty()) break;
+        const std::string tok =
+            g.substr(begin, comma == std::string::npos ? std::string::npos : comma - begin);
+        if (tok.empty())
+            break;
         want.push_back(std::atoi(tok.c_str()));
-        if (comma == std::string::npos) break;
+        if (comma == std::string::npos)
+            break;
         begin = comma + 1;
     }
 
@@ -258,7 +264,8 @@ std::pair<int, int> CompareGolden(const std::string& joined, const char* golden)
     for (std::size_t i = 0; i < want.size(); ++i) {
         const int delta = std::abs(got[i] - want[i]);
         max_delta = std::max(max_delta, delta);
-        if (delta == 0) ++match;
+        if (delta == 0)
+            ++match;
     }
     return {match, max_delta};
 }
@@ -310,10 +317,13 @@ std::string TransposeRowToColumn(const std::string& hex_list, int w, int h) {
     std::size_t begin = 0;
     while (begin <= hex_list.size()) {
         const std::size_t comma = hex_list.find(',', begin);
-        const std::string tok = hex_list.substr(begin, comma == std::string::npos ? std::string::npos : comma - begin);
-        if (tok.empty()) break;
+        const std::string tok =
+            hex_list.substr(begin, comma == std::string::npos ? std::string::npos : comma - begin);
+        if (tok.empty())
+            break;
         bytes.push_back(std::strtol(tok.c_str(), nullptr, 16));
-        if (comma == std::string::npos) break;
+        if (comma == std::string::npos)
+            break;
         begin = comma + 1;
     }
     if (bytes.empty()) {
@@ -349,11 +359,10 @@ std::string TransposeRowToColumn(const std::string& hex_list, int w, int h) {
 TEST(FontToolTest, GoldenZhong16x16) {
     // PCtoLCD2002 官方样张（阴码、逐行式、顺向高位在前、C51 格式，宋体 12 号）。
     // 各教程与 OLED 工程普遍引用的权威数据。
-    const char* kGolden =
-        "0x01,0x00,0x01,0x00,0x01,0x00,0x01,0x00,"
-        "0x3F,0xF8,0x21,0x08,0x21,0x08,0x21,0x08,"
-        "0x21,0x08,0x21,0x08,0x3F,0xF8,0x21,0x08,"
-        "0x01,0x00,0x01,0x00,0x01,0x00,0x01,0x00";
+    const char* kGolden = "0x01,0x00,0x01,0x00,0x01,0x00,0x01,0x00,"
+                          "0x3F,0xF8,0x21,0x08,0x21,0x08,0x21,0x08,"
+                          "0x21,0x08,0x21,0x08,0x3F,0xF8,0x21,0x08,"
+                          "0x01,0x00,0x01,0x00,0x01,0x00,0x01,0x00";
     const ToolOutput out = RunTool("font", "中 --data");
     if (out.primary == "RENDER_FAILED" || (!out.ok && out.primary.empty())) {
         GTEST_SKIP() << "系统缺 SimSun，跳过渲染 golden 对比";

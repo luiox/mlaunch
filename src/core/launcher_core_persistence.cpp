@@ -96,7 +96,8 @@ bool LauncherBackend::Load(std::string* error) {
 
             data_.version = GetInt(root, "version", kSupportedDataVersion);
             if (data_.version != kSupportedDataVersion) {
-                launcher::log::Warn("incompatible launcher.v2.json version=" + std::to_string(data_.version));
+                launcher::log::Warn("incompatible launcher.v2.json version=" +
+                                    std::to_string(data_.version));
                 if (!recover_with_defaults()) {
                     return false;
                 }
@@ -115,7 +116,8 @@ bool LauncherBackend::Load(std::string* error) {
                     g.name = GetStr(jg, "name", std::string("Common"));
                     g.order = GetInt(jg, "order", 0);
                     g.hidden = GetBool(jg, "hidden", false);
-                    if (const auto* items = FindField(jg, "items"); items != nullptr && items->is_array()) {
+                    if (const auto* items = FindField(jg, "items");
+                        items != nullptr && items->is_array()) {
                         for (const auto& ji : items->as_array()) {
                             LaunchItem item;
                             item.id = GetStr(ji, "id", GenerateId("item"));
@@ -174,7 +176,10 @@ bool LauncherBackend::Load(std::string* error) {
                             item.icon_location = GetStr(ji, "IconLocation", std::string());
                             item.arguments = GetStr(ji, "Arguments", std::string());
                             item.launch_count = GetU64(ji, "Count", 0);
-                            item.item_type = IsSeparatorItem(item.name, item.target_path, item.icon_location) ? "separator" : "app";
+                            item.item_type =
+                                IsSeparatorItem(item.name, item.target_path, item.icon_location)
+                                    ? "separator"
+                                    : "app";
                             item.enabled = true;
                             group.items.push_back(std::move(item));
                         }
@@ -217,9 +222,11 @@ bool LauncherBackend::Load(std::string* error) {
             settings_.start_hidden = GetBool(root, "startHidden", false);
             settings_.close_minimize = GetBool(root, "closeMinimize", false);
             settings_.double_click_launch = GetBool(root, "doubleClickLaunch", false);
-            settings_.backup_rolling_count = static_cast<int>(GetInt(root, "backupRollingCount", 5));
+            settings_.backup_rolling_count =
+                static_cast<int>(GetInt(root, "backupRollingCount", 5));
             settings_.backup_daily_days = static_cast<int>(GetInt(root, "backupDailyDays", 30));
-            if (const auto* cg = FindField(root, "currentGroup"); cg != nullptr && cg->is_string()) {
+            if (const auto* cg = FindField(root, "currentGroup");
+                cg != nullptr && cg->is_string()) {
                 settings_.current_group = ToStdString(cg->as_string());
             }
             settings_.group_panel_width = GetF64(root, "groupPanelWidth", 220.0);
@@ -330,7 +337,7 @@ void LauncherBackend::RotateBackupsBeforeSave() const {
     auto copy_backup = [&](const std::string& file_name) {
         std::error_code copy_ec;
         std::filesystem::copy_file(data_path_, backup_dir / file_name,
-            std::filesystem::copy_options::overwrite_existing, copy_ec);
+                                   std::filesystem::copy_options::overwrite_existing, copy_ec);
         if (copy_ec) {
             launcher::log::Warn("backup copy failed: " + file_name + " error=" + copy_ec.message());
         }
@@ -339,8 +346,7 @@ void LauncherBackend::RotateBackupsBeforeSave() const {
     copy_backup("launcher.v2." + FormatFileStamp(now) + ".json");
     copy_backup("launcher.v2." + FormatDateStamp(now) + ".json");
 
-    PruneBackups(backup_dir,
-                 static_cast<std::size_t>(settings_.backup_rolling_count),
+    PruneBackups(backup_dir, static_cast<std::size_t>(settings_.backup_rolling_count),
                  static_cast<std::size_t>(settings_.backup_daily_days));
 }
 
@@ -353,13 +359,15 @@ void LauncherBackend::AppendJournal(const std::string& action, const std::string
         launcher::log::Warn("open operations.log failed");
         return;
     }
-    out << FormatJournalTimestamp(std::chrono::system_clock::now()) << " | " << action << " | " << detail << "\n";
+    out << FormatJournalTimestamp(std::chrono::system_clock::now()) << " | " << action << " | "
+        << detail << "\n";
     if (!out.good()) {
         launcher::log::Warn("write operations.log failed");
     }
 }
 
-std::size_t LauncherBackend::ImportPonerData(const std::filesystem::path& legacy_json_path, std::string* error) {
+std::size_t LauncherBackend::ImportPonerData(const std::filesystem::path& legacy_json_path,
+                                             std::string* error) {
     if (!EnsureLoaded(error)) {
         return 0;
     }
@@ -425,7 +433,10 @@ std::size_t LauncherBackend::ImportPonerData(const std::filesystem::path& legacy
             incoming.icon_location = GetStr(ji, "IconLocation", std::string());
             incoming.arguments = GetStr(ji, "Arguments", std::string());
             incoming.launch_count = GetU64(ji, "Count", 0);
-            incoming.item_type = IsSeparatorItem(incoming.name, incoming.target_path, incoming.icon_location) ? "separator" : "app";
+            incoming.item_type =
+                IsSeparatorItem(incoming.name, incoming.target_path, incoming.icon_location)
+                    ? "separator"
+                    : "app";
             incoming.enabled = true;
 
             if (incoming.item_type == "separator") {
@@ -473,7 +484,8 @@ std::size_t LauncherBackend::ImportPonerData(const std::filesystem::path& legacy
     }
 
     if (merged > 0) {
-        AppendJournal("import_poner", "file=" + legacy_json_path.filename().string() + " merged=" + std::to_string(merged));
+        AppendJournal("import_poner", "file=" + legacy_json_path.filename().string() +
+                                          " merged=" + std::to_string(merged));
         if (!SaveData(error)) {
             return 0;
         }
@@ -519,17 +531,17 @@ bool LauncherBackend::UpdateSettings(const Settings& settings, std::string* erro
 
     settings_ = std::move(next);
 
-    AppendJournal("update_settings",
-        "hotkey=" + settings_.hotkey +
-        " execute_hide=" + (settings_.execute_hide ? "1" : "0") +
-        " locked=" + (settings_.locked ? "1" : "0") +
-        " auto_hide=" + (settings_.auto_hide ? "1" : "0") +
-        " autorun=" + (settings_.autorun ? "1" : "0") +
-        " start_hidden=" + (settings_.start_hidden ? "1" : "0") +
-        " close_minimize=" + (settings_.close_minimize ? "1" : "0") +
-        " double_click=" + (settings_.double_click_launch ? "1" : "0") +
-        " backups=" + std::to_string(settings_.backup_rolling_count) + "/" + std::to_string(settings_.backup_daily_days) +
-        " panel_width=" + std::to_string(static_cast<int>(settings_.group_panel_width)));
+    AppendJournal(
+        "update_settings",
+        "hotkey=" + settings_.hotkey + " execute_hide=" + (settings_.execute_hide ? "1" : "0") +
+            " locked=" + (settings_.locked ? "1" : "0") + " auto_hide=" +
+            (settings_.auto_hide ? "1" : "0") + " autorun=" + (settings_.autorun ? "1" : "0") +
+            " start_hidden=" + (settings_.start_hidden ? "1" : "0") +
+            " close_minimize=" + (settings_.close_minimize ? "1" : "0") +
+            " double_click=" + (settings_.double_click_launch ? "1" : "0") +
+            " backups=" + std::to_string(settings_.backup_rolling_count) + "/" +
+            std::to_string(settings_.backup_daily_days) +
+            " panel_width=" + std::to_string(static_cast<int>(settings_.group_panel_width)));
     return SaveSettings(error);
 }
 
@@ -556,20 +568,20 @@ std::vector<BackupEntry> LauncherBackend::ListBackups() const {
         item.kind = kind;
         const auto mtime = std::filesystem::last_write_time(entry.path(), ec);
         if (!ec) {
-            item.modified_time = std::chrono::duration_cast<std::chrono::seconds>(
-                mtime.time_since_epoch()).count();
+            item.modified_time =
+                std::chrono::duration_cast<std::chrono::seconds>(mtime.time_since_epoch()).count();
         }
         item.size = entry.file_size(ec);
         out.push_back(std::move(item));
     }
 
-    std::sort(out.begin(), out.end(), [](const BackupEntry& lhs, const BackupEntry& rhs) {
-        return lhs.name > rhs.name;
-    });
+    std::sort(out.begin(), out.end(),
+              [](const BackupEntry& lhs, const BackupEntry& rhs) { return lhs.name > rhs.name; });
     return out;
 }
 
-bool LauncherBackend::RestoreFromBackup(const std::filesystem::path& backup_path, std::string* error) {
+bool LauncherBackend::RestoreFromBackup(const std::filesystem::path& backup_path,
+                                        std::string* error) {
     if (!EnsureLoaded(error)) {
         return false;
     }

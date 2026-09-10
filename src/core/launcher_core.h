@@ -79,20 +79,20 @@ struct ItemInput {
     std::optional<bool> enabled;
 };
 
-    /** @brief Result returned by Launch operation. */
-    struct LaunchResult {
-        bool ok = false;
-        std::string message;
-    };
+/** @brief Result returned by Launch operation. */
+struct LaunchResult {
+    bool ok = false;
+    std::string message;
+};
 
-    /** @brief A backup file discovered under backups/. */
-    struct BackupEntry {
-        std::filesystem::path path;
-        std::string name;
-        std::string kind; // "rolling" or "daily"
-        std::int64_t modified_time = 0;
-        std::uintmax_t size = 0;
-    };
+/** @brief A backup file discovered under backups/. */
+struct BackupEntry {
+    std::filesystem::path path;
+    std::string name;
+    std::string kind; // "rolling" or "daily"
+    std::int64_t modified_time = 0;
+    std::uintmax_t size = 0;
+};
 
 /**
  * @brief Abstraction over process launching, injected so core stays shell-free.
@@ -101,7 +101,7 @@ class LaunchExecutor {
 public:
     virtual ~LaunchExecutor() = default;
     virtual bool Launch(const std::string& target_path, const std::string& arguments,
-                         const std::string& working_dir, std::string* error) = 0;
+                        const std::string& working_dir, std::string* error) = 0;
 };
 
 /**
@@ -110,7 +110,8 @@ public:
 class ShortcutResolver {
 public:
     virtual ~ShortcutResolver() = default;
-    virtual std::optional<std::pair<std::string, std::string>> Resolve(const std::string& shortcut_path) = 0;
+    virtual std::optional<std::pair<std::string, std::string>>
+    Resolve(const std::string& shortcut_path) = 0;
 };
 
 /**
@@ -119,10 +120,8 @@ public:
 class LauncherBackend {
 public:
     /// @param launch_executor required for Launch(); @param shortcut_resolver required for .lnk drops.
-    LauncherBackend(std::filesystem::path base_dir,
-                    std::filesystem::path legacy_root,
-                    LaunchExecutor* launch_executor,
-                    ShortcutResolver* shortcut_resolver);
+    LauncherBackend(std::filesystem::path base_dir, std::filesystem::path legacy_root,
+                    LaunchExecutor* launch_executor, ShortcutResolver* shortcut_resolver);
 
     /** @brief Load data and settings; recovers from incompatible/corrupted JSON when possible. */
     bool Load(std::string* error = nullptr);
@@ -138,15 +137,24 @@ public:
      * @return New group id, or empty string on failure.
      */
     std::string AddGroup(const std::string& name, std::string* error = nullptr);
-    bool RenameGroup(const std::string& group_id, const std::string& name, std::string* error = nullptr);
-    bool DeleteGroup(const std::string& group_id, const std::string& target_group_id, std::string* error = nullptr);
-    bool UpsertItem(const std::string& group_id, const ItemInput& input, std::string* error = nullptr);
-    bool DeleteItem(const std::string& group_id, const std::string& item_id, std::string* error = nullptr);
-    bool MoveItem(const std::string& group_id, const std::string& item_id, const std::string& target_group_id, std::string* error = nullptr);
+    bool RenameGroup(const std::string& group_id, const std::string& name,
+                     std::string* error = nullptr);
+    bool DeleteGroup(const std::string& group_id, const std::string& target_group_id,
+                     std::string* error = nullptr);
+    bool UpsertItem(const std::string& group_id, const ItemInput& input,
+                    std::string* error = nullptr);
+    bool DeleteItem(const std::string& group_id, const std::string& item_id,
+                    std::string* error = nullptr);
+    bool MoveItem(const std::string& group_id, const std::string& item_id,
+                  const std::string& target_group_id, std::string* error = nullptr);
     bool ReorderGroup(const std::string& group_id, int target_index, std::string* error = nullptr);
-    bool ReorderItemInGroup(const std::string& group_id, const std::string& item_id, int target_index, std::string* error = nullptr);
-    LaunchResult Launch(const std::string& group_id, const std::string& item_id, std::string* error = nullptr);
-    std::size_t CreateItemsFromDroppedPaths(const std::string& group_id, const std::vector<std::string>& paths, std::string* error = nullptr);
+    bool ReorderItemInGroup(const std::string& group_id, const std::string& item_id,
+                            int target_index, std::string* error = nullptr);
+    LaunchResult Launch(const std::string& group_id, const std::string& item_id,
+                        std::string* error = nullptr);
+    std::size_t CreateItemsFromDroppedPaths(const std::string& group_id,
+                                            const std::vector<std::string>& paths,
+                                            std::string* error = nullptr);
 
     /** @brief Undo the most recent soft delete; returns the item to its original group and index. */
     bool UndoLastDelete(std::string* error = nullptr);
@@ -158,13 +166,15 @@ public:
      * re-run while Poner is still in daily use.
      * @return Number of items merged (updated + appended).
      */
-    std::size_t ImportPonerData(const std::filesystem::path& legacy_json_path, std::string* error = nullptr);
+    std::size_t ImportPonerData(const std::filesystem::path& legacy_json_path,
+                                std::string* error = nullptr);
     /** @brief Sort one group's items by display name (case-insensitive, stable). */
     bool SortGroupItemsByName(const std::string& group_id, std::string* error = nullptr);
     /** @brief 按启动次数降序稳定排序（次数相同保持原顺序）。 */
     bool SortGroupItemsByLaunchCount(const std::string& group_id, std::string* error = nullptr);
     /** @brief 启用/禁用条目；禁用项渲染置灰且不可启动。 */
-    bool SetItemEnabled(const std::string& group_id, const std::string& item_id, bool enabled, std::string* error = nullptr);
+    bool SetItemEnabled(const std::string& group_id, const std::string& item_id, bool enabled,
+                        std::string* error = nullptr);
     /** @brief Write the current dataset to an arbitrary path without touching backups. */
     bool ExportData(const std::filesystem::path& target_path, std::string* error = nullptr);
     /** @brief Validate, apply and persist new settings (clamps sizes, trims hotkey). */
@@ -205,7 +215,8 @@ public:
 private:
     static std::string Trim(const std::string& value);
     static std::string ToLowerAscii(std::string value);
-    static bool IsSeparatorItem(const std::string& name, const std::string& target, const std::string& icon);
+    static bool IsSeparatorItem(const std::string& name, const std::string& target,
+                                const std::string& icon);
     static std::vector<std::string> SplitWindowsArgs(const std::string& arguments);
     static std::string BasenameNoExt(const std::string& path);
     static std::string NormalizeDroppedPath(const std::string& raw_path);

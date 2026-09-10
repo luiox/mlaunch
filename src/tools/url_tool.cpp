@@ -15,8 +15,8 @@ using internal::CopyLine;
 using internal::SplitCommand;
 
 bool IsUnreserved(unsigned char ch) {
-    return (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') ||
-           (ch >= '0' && ch <= '9') || ch == '-' || ch == '_' || ch == '.' || ch == '~';
+    return (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') ||
+           ch == '-' || ch == '_' || ch == '.' || ch == '~';
 }
 
 std::string PercentEncode(const std::string& text) {
@@ -36,9 +36,18 @@ std::string PercentEncode(const std::string& text) {
 }
 
 bool HexValue(char ch, int* out_value) {
-    if (ch >= '0' && ch <= '9') { *out_value = ch - '0'; return true; }
-    if (ch >= 'a' && ch <= 'f') { *out_value = ch - 'a' + 10; return true; }
-    if (ch >= 'A' && ch <= 'F') { *out_value = ch - 'A' + 10; return true; }
+    if (ch >= '0' && ch <= '9') {
+        *out_value = ch - '0';
+        return true;
+    }
+    if (ch >= 'a' && ch <= 'f') {
+        *out_value = ch - 'a' + 10;
+        return true;
+    }
+    if (ch >= 'A' && ch <= 'F') {
+        *out_value = ch - 'A' + 10;
+        return true;
+    }
     return false;
 }
 

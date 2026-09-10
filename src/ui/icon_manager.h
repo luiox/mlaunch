@@ -5,8 +5,8 @@
 #include <filesystem>
 #include <string>
 
-#include "launcher_core.h"
 #include "icons.h"
+#include "launcher_core.h"
 
 class IconManager {
 public:
@@ -18,7 +18,8 @@ public:
     DuiLib::CDuiString MakeScrollbarThumbAttr() const;
 
 private:
-    static void ReplaceAllInPlace(std::string* text, const std::string& from, const std::string& to);
+    static void ReplaceAllInPlace(std::string* text, const std::string& from,
+                                  const std::string& to);
     static std::string ApplyIconThemeColor(std::string svg_text);
     static bool WriteThemedSvg(const std::filesystem::path& out_path, const std::string& raw_svg);
     std::filesystem::path BuildThemedIconPath(const std::filesystem::path& source_or_name) const;

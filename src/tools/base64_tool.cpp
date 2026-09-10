@@ -32,7 +32,8 @@ ToolOutput Run(const std::string& raw_args) {
     } else if (mode == "d" || mode == "decode") {
         const auto result = ca::crypto::base64_decode(text);
         if (result.is_err()) {
-            out.error = std::string("base64 解码失败：") + ca::crypto::to_string(result.unwrap_err());
+            out.error =
+                std::string("base64 解码失败：") + ca::crypto::to_string(result.unwrap_err());
             return out;
         }
         // libca Bytes 是引用计数共享存储，拷出到连续 string 供展示/复制。
@@ -54,7 +55,8 @@ ToolOutput Run(const std::string& raw_args) {
         } else {
             // 二进制内容直接显示会打乱列表，预览行只给字节摘要，复制仍是原文。
             ToolLine raw;
-            raw.text = "解码  <" + std::to_string(decoded.size()) + " 字节二进制数据，回车复制原文>";
+            raw.text =
+                "解码  <" + std::to_string(decoded.size()) + " 字节二进制数据，回车复制原文>";
             raw.selectable = true;
             raw.copy_text = decoded;
             out.lines.push_back(raw);

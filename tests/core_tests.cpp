@@ -29,13 +29,16 @@ public:
 // 测试用假解析器：对 .lnk 返回固定目标。
 class FakeShortcutResolver : public core::ShortcutResolver {
 public:
-    std::optional<std::pair<std::string, std::string>> Resolve(const std::string& shortcut_path) override {
-        return std::make_pair(std::string("C:\\resolved\\target.exe"), std::string("/resolved-arg"));
+    std::optional<std::pair<std::string, std::string>>
+    Resolve(const std::string& shortcut_path) override {
+        return std::make_pair(std::string("C:\\resolved\\target.exe"),
+                              std::string("/resolved-arg"));
     }
 };
 
 std::filesystem::path MakeTempDir(const char* name) {
-    const auto root = std::filesystem::temp_directory_path() / "nassistant_cpp_backend_tests" / name;
+    const auto root =
+        std::filesystem::temp_directory_path() / "nassistant_cpp_backend_tests" / name;
     std::error_code ec;
     std::filesystem::remove_all(root, ec);
     std::filesystem::create_directories(root, ec);
@@ -79,8 +82,10 @@ std::size_t CountBackups(const std::filesystem::path& base, const std::string& k
         const auto stamp = name.substr(12, name.size() - 17);
         const bool rolling = stamp.size() == 15 && stamp[8] == '-';
         const bool daily = stamp.size() == 8;
-        if (kind == "rolling" && rolling) ++count;
-        if (kind == "daily" && daily) ++count;
+        if (kind == "rolling" && rolling)
+            ++count;
+        if (kind == "daily" && daily)
+            ++count;
     }
     return count;
 }
@@ -192,8 +197,10 @@ TEST(BackendTest, MoveItemAcrossGroups) {
     std::size_t c1 = 0;
     std::size_t c2 = 0;
     for (const auto& g : b.Data().groups) {
-        if (g.id == g1) c1 = g.items.size();
-        if (g.id == g2) c2 = g.items.size();
+        if (g.id == g1)
+            c1 = g.items.size();
+        if (g.id == g2)
+            c2 = g.items.size();
     }
     EXPECT_EQ(c1, 0u);
     EXPECT_EQ(c2, 1u);
@@ -274,7 +281,8 @@ TEST(BackendTest, SoftDeleteMovesItemIntoHiddenRecycleBin) {
 
     const auto gid = b.AddGroup("Tools", &error);
     ASSERT_FALSE(gid.empty()) << error;
-    ASSERT_TRUE(b.UpsertItem(gid, MakeItemInput("Procmon", "C:\\Tools\\Procmon.exe"), &error)) << error;
+    ASSERT_TRUE(b.UpsertItem(gid, MakeItemInput("Procmon", "C:\\Tools\\Procmon.exe"), &error))
+        << error;
 
     std::string item_id;
     for (const auto& g : b.Data().groups) {
@@ -390,7 +398,8 @@ TEST(BackendTest, RecycleBinIsProtectedFromDirectModification) {
     EXPECT_FALSE(b.DeleteGroup(core::kRecycleBinGroupId, gid, &guard_error));
     EXPECT_FALSE(b.MoveItem(gid, remaining_id, core::kRecycleBinGroupId, &guard_error));
     EXPECT_FALSE(b.RenameGroup(core::kRecycleBinGroupId, "NotBin", &guard_error));
-    EXPECT_FALSE(b.UpsertItem(core::kRecycleBinGroupId, MakeItemInput("X", "C:\\x.exe"), &guard_error));
+    EXPECT_FALSE(
+        b.UpsertItem(core::kRecycleBinGroupId, MakeItemInput("X", "C:\\x.exe"), &guard_error));
     EXPECT_FALSE(b.ReorderGroup(core::kRecycleBinGroupId, 0, &guard_error));
 }
 
@@ -459,7 +468,8 @@ TEST(BackendTest, JournalRecordsMutatingOperations) {
 
     const auto gid = b.AddGroup("Tools", &error);
     ASSERT_FALSE(gid.empty()) << error;
-    ASSERT_TRUE(b.UpsertItem(gid, MakeItemInput("Procmon", "C:\\Tools\\Procmon.exe"), &error)) << error;
+    ASSERT_TRUE(b.UpsertItem(gid, MakeItemInput("Procmon", "C:\\Tools\\Procmon.exe"), &error))
+        << error;
 
     std::string item_id;
     for (const auto& g : b.Data().groups) {
@@ -516,7 +526,8 @@ TEST(BackendTest, LaunchUsesInjectedExecutor) {
 
     const auto gid = b.AddGroup("Tools", &error);
     ASSERT_FALSE(gid.empty()) << error;
-    ASSERT_TRUE(b.UpsertItem(gid, MakeItemInput("Procmon", "C:\\Tools\\Procmon.exe"), &error)) << error;
+    ASSERT_TRUE(b.UpsertItem(gid, MakeItemInput("Procmon", "C:\\Tools\\Procmon.exe"), &error))
+        << error;
 
     std::string item_id;
     for (const auto& g : b.Data().groups) {
@@ -572,14 +583,19 @@ TEST(BackendTest, DropImportShortcutNameKeepsUtf8AndExeDropsStripExt) {
     const auto gid = b.AddGroup("Tools", &error);
     ASSERT_FALSE(gid.empty()) << error;
 
-    ASSERT_EQ(b.CreateItemsFromDroppedPaths(gid, {"C:\\drop\\\xE8\x85\xBE\xE8\xAE\xAF\xE4\xBC\x9A\xE8\xAE\xAE.lnk"}, &error), 1u) << error;
-    ASSERT_EQ(b.CreateItemsFromDroppedPaths(gid, {"C:\\drop\\Everything.exe"}, &error), 1u) << error;
+    ASSERT_EQ(b.CreateItemsFromDroppedPaths(
+                  gid, {"C:\\drop\\\xE8\x85\xBE\xE8\xAE\xAF\xE4\xBC\x9A\xE8\xAE\xAE.lnk"}, &error),
+              1u)
+        << error;
+    ASSERT_EQ(b.CreateItemsFromDroppedPaths(gid, {"C:\\drop\\Everything.exe"}, &error), 1u)
+        << error;
 
     const auto* group = FindGroupById(b, gid);
     ASSERT_NE(group, nullptr);
     ASSERT_EQ(group->items.size(), 2u);
     // 中文名快捷方式不经 ACP 转换，原样保留 UTF-8 字节。
-    const std::string utf8_name = reinterpret_cast<const char*>("\xE8\x85\xBE\xE8\xAE\xAF\xE4\xBC\x9A\xE8\xAE\xAE");
+    const std::string utf8_name =
+        reinterpret_cast<const char*>("\xE8\x85\xBE\xE8\xAE\xAF\xE4\xBC\x9A\xE8\xAE\xAE");
     EXPECT_EQ(group->items[0].name, utf8_name);
     EXPECT_EQ(group->items[1].name, "Everything");
 }
@@ -607,7 +623,8 @@ TEST(BackendTest, ImportPonerDataIsIdempotent) {
 
     const auto* group = FindGroupById(b, [&] {
         for (const auto& g : b.Data().groups) {
-            if (g.name == "Common") return g.id;
+            if (g.name == "Common")
+                return g.id;
         }
         return std::string();
     }());
@@ -616,7 +633,10 @@ TEST(BackendTest, ImportPonerDataIsIdempotent) {
     std::size_t app_items = 0;
     std::size_t separators = 0;
     for (const auto& item : group->items) {
-        if (item.item_type == "separator") ++separators; else ++app_items;
+        if (item.item_type == "separator")
+            ++separators;
+        else
+            ++app_items;
     }
     EXPECT_EQ(app_items, 1u) << "duplicate import must not append";
     EXPECT_EQ(separators, 1u) << "separator must be deduped by name";
@@ -654,7 +674,8 @@ TEST(BackendTest, ImportPonerDataUpdatesCountAndAppendsNew) {
 
     const auto* common = FindGroupById(b, [&] {
         for (const auto& g : b.Data().groups) {
-            if (g.name == "Common") return g.id;
+            if (g.name == "Common")
+                return g.id;
         }
         return std::string();
     }());
@@ -665,7 +686,8 @@ TEST(BackendTest, ImportPonerDataUpdatesCountAndAppendsNew) {
 
     const auto* ide = FindGroupById(b, [&] {
         for (const auto& g : b.Data().groups) {
-            if (g.name == "IDE") return g.id;
+            if (g.name == "IDE")
+                return g.id;
         }
         return std::string();
     }());
@@ -677,7 +699,8 @@ TEST(BackendTest, ImportPonerDataUpdatesCountAndAppendsNew) {
     std::size_t backups = 0;
     std::error_code ec;
     for (const auto& entry : std::filesystem::directory_iterator(base / "backups", ec)) {
-        if (entry.is_regular_file()) ++backups;
+        if (entry.is_regular_file())
+            ++backups;
     }
     EXPECT_GT(backups, 0u);
 }
@@ -742,7 +765,8 @@ TEST(BackendTest, ItemEnabledToggleAndLaunchBlocked) {
     ASSERT_TRUE(b.UpsertItem(gid, input, &error)) << error;
     std::string item_id;
     for (const auto& g : b.Data().groups) {
-        if (g.id == gid && !g.items.empty()) item_id = g.items[0].id;
+        if (g.id == gid && !g.items.empty())
+            item_id = g.items[0].id;
     }
     ASSERT_FALSE(item_id.empty());
 
@@ -759,7 +783,8 @@ TEST(BackendTest, ItemEnabledToggleAndLaunchBlocked) {
     ASSERT_TRUE(b2.Load(&error)) << error;
     for (const auto& g : b2.Data().groups) {
         for (const auto& i : g.items) {
-            if (i.id == item_id) EXPECT_FALSE(i.enabled);
+            if (i.id == item_id)
+                EXPECT_FALSE(i.enabled);
         }
     }
 
@@ -793,7 +818,8 @@ TEST(BackendTest, SortGroupItemsByLaunchCountDescendingStable) {
         // 手动设置次数：找到该条目引用并累加后统一 SaveData。
         for (auto& g : const_cast<std::vector<core::Group>&>(b.Data().groups)) {
             for (auto& i : g.items) {
-                if (i.name == nm) i.launch_count = static_cast<std::uint64_t>(cnt);
+                if (i.name == nm)
+                    i.launch_count = static_cast<std::uint64_t>(cnt);
             }
         }
     }
@@ -830,7 +856,8 @@ TEST(BackendTest, SortGroupItemsByNameIsCaseInsensitiveAndJournaled) {
 
     const core::Group* group = nullptr;
     for (const auto& g : b.Data().groups) {
-        if (g.id == gid) group = &g;
+        if (g.id == gid)
+            group = &g;
     }
     ASSERT_NE(group, nullptr);
     ASSERT_EQ(group->items.size(), 4u);
@@ -841,7 +868,8 @@ TEST(BackendTest, SortGroupItemsByNameIsCaseInsensitiveAndJournaled) {
 
     // journal 记录 sort_group 动作。
     std::ifstream journal(base / "operations.log");
-    std::string content((std::istreambuf_iterator<char>(journal)), std::istreambuf_iterator<char>());
+    std::string content((std::istreambuf_iterator<char>(journal)),
+                        std::istreambuf_iterator<char>());
     EXPECT_NE(content.find("sort_group"), std::string::npos);
 }
 
@@ -872,7 +900,8 @@ TEST(BackendTest, ExportDataWritesStandaloneSnapshot) {
     bool found = false;
     for (const auto& g : b2.Data().groups) {
         for (const auto& i : g.items) {
-            if (g.name == "Exported" && i.name == "Tool") found = true;
+            if (g.name == "Exported" && i.name == "Tool")
+                found = true;
         }
     }
     EXPECT_TRUE(found);
@@ -893,7 +922,7 @@ TEST(BackendTest, UpdateSettingsPersistsAndClamps) {
     core::Settings next = b.CurrentSettings();
     next.hotkey = "  Ctrl+Alt+Space ";
     next.execute_hide = false;
-    next.group_panel_width = 9999.0;   // 应钳到 600
+    next.group_panel_width = 9999.0; // 应钳到 600
     next.main_window_width = 1200.0;
     next.main_window_height = 800.0;
     EXPECT_TRUE(b.UpdateSettings(next, &error)) << error;
@@ -945,8 +974,8 @@ TEST(BackendTest, NewBehaviorSettingsPersistAndClamp) {
     next.start_hidden = true;
     next.close_minimize = true;
     next.double_click_launch = true;
-    next.backup_rolling_count = 99;  // 钳到 20
-    next.backup_daily_days = 1;      // 钳到 3
+    next.backup_rolling_count = 99; // 钳到 20
+    next.backup_daily_days = 1;     // 钳到 3
     ASSERT_TRUE(b.UpdateSettings(next, &error)) << error;
 
     EXPECT_TRUE(b.CurrentSettings().start_hidden);
@@ -995,7 +1024,8 @@ TEST(BackendTest, BackupRetentionFollowsSettings) {
         if (name.rfind("launcher.v2.") != 0) {
             continue;
         }
-        const auto stamp = name.substr(strlen("launcher.v2."), name.size() - strlen("launcher.v2.") - strlen(".json"));
+        const auto stamp = name.substr(strlen("launcher.v2."),
+                                       name.size() - strlen("launcher.v2.") - strlen(".json"));
         if (stamp.size() == 15 && stamp[8] == '-') {
             ++rolling_count;
         }
@@ -1026,7 +1056,7 @@ TEST(BackendTest, ConvertItemPathsRoundTripAndIdempotent) {
         {"app-dir-root", "D:\\Apps\\mlaunch\\portable.exe", "%pr%\\portable.exe"},
         {"same-drive", "D:\\Utils\\helper.exe", "%cr%Utils\\helper.exe"},
         {"other-drive", "C:\\Windows\\notepad.exe", "C:\\Windows\\notepad.exe"}, // 不同盘不动
-        {"already-relative", "%pr%\\x.exe", "%pr%\\x.exe"},                     // 幂等
+        {"already-relative", "%pr%\\x.exe", "%pr%\\x.exe"},                      // 幂等
     };
     for (const auto& c : cases) {
         core::ItemInput input;
@@ -1062,10 +1092,14 @@ TEST(BackendTest, ConvertItemPathsRoundTripAndIdempotent) {
     const auto* tools_abs = FindGroupById(b, gid);
     ASSERT_NE(tools_abs, nullptr);
     for (const auto& i : tools_abs->items) {
-        if (i.name == "in-app-dir") EXPECT_EQ(i.target_path, "D:\\Apps\\mlaunch\\tools\\tool.exe");
-        if (i.name == "app-dir-root") EXPECT_EQ(i.target_path, "D:\\Apps\\mlaunch\\portable.exe");
-        if (i.name == "same-drive") EXPECT_EQ(i.target_path, "D:\\Utils\\helper.exe");
-        if (i.name == "other-drive") EXPECT_EQ(i.target_path, "C:\\Windows\\notepad.exe");
+        if (i.name == "in-app-dir")
+            EXPECT_EQ(i.target_path, "D:\\Apps\\mlaunch\\tools\\tool.exe");
+        if (i.name == "app-dir-root")
+            EXPECT_EQ(i.target_path, "D:\\Apps\\mlaunch\\portable.exe");
+        if (i.name == "same-drive")
+            EXPECT_EQ(i.target_path, "D:\\Utils\\helper.exe");
+        if (i.name == "other-drive")
+            EXPECT_EQ(i.target_path, "C:\\Windows\\notepad.exe");
     }
 
     // icon_location 同样参与转换（前四个条目转回相对 + IconCase 新增 = 5）。

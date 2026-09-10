@@ -10,15 +10,12 @@
 
 namespace core {
 
-LauncherBackend::LauncherBackend(std::filesystem::path base_dir,
-                                std::filesystem::path legacy_root,
-                                LaunchExecutor* launch_executor,
-                                ShortcutResolver* shortcut_resolver)
-    : base_dir_(std::move(base_dir)),
-      legacy_root_(std::move(legacy_root)),
+LauncherBackend::LauncherBackend(std::filesystem::path base_dir, std::filesystem::path legacy_root,
+                                 LaunchExecutor* launch_executor,
+                                 ShortcutResolver* shortcut_resolver)
+    : base_dir_(std::move(base_dir)), legacy_root_(std::move(legacy_root)),
       data_path_(base_dir_ / "launcher.v2.json"),
-      settings_path_(base_dir_ / "nassistant.settings.json"),
-      launch_executor_(launch_executor),
+      settings_path_(base_dir_ / "nassistant.settings.json"), launch_executor_(launch_executor),
       shortcut_resolver_(shortcut_resolver) {}
 
 void LauncherBackend::SetAppDir(std::filesystem::path dir) {
@@ -26,8 +23,11 @@ void LauncherBackend::SetAppDir(std::filesystem::path dir) {
 }
 
 std::string LauncherBackend::Trim(const std::string& value) {
-    const auto begin = std::find_if_not(value.begin(), value.end(), [](unsigned char ch) { return std::isspace(ch); });
-    const auto end = std::find_if_not(value.rbegin(), value.rend(), [](unsigned char ch) { return std::isspace(ch); }).base();
+    const auto begin = std::find_if_not(value.begin(), value.end(),
+                                        [](unsigned char ch) { return std::isspace(ch); });
+    const auto end = std::find_if_not(value.rbegin(), value.rend(), [](unsigned char ch) {
+                         return std::isspace(ch);
+                     }).base();
     if (begin >= end) {
         return {};
     }
@@ -35,29 +35,35 @@ std::string LauncherBackend::Trim(const std::string& value) {
 }
 
 std::string LauncherBackend::ToLowerAscii(std::string value) {
-    std::transform(value.begin(), value.end(), value.begin(), [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+    std::transform(value.begin(), value.end(), value.begin(),
+                   [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
     return value;
 }
 
-bool LauncherBackend::IsSeparatorItem(const std::string& name, const std::string& target, const std::string& icon) {
+bool LauncherBackend::IsSeparatorItem(const std::string& name, const std::string& target,
+                                      const std::string& icon) {
     const auto trimmed = Trim(name);
     return (Trim(target).empty() && Trim(icon).empty()) ||
-           (trimmed.rfind("----", 0) == 0 && trimmed.size() >= 8 && trimmed.substr(trimmed.size() - 4) == "----");
+           (trimmed.rfind("----", 0) == 0 && trimmed.size() >= 8 &&
+            trimmed.substr(trimmed.size() - 4) == "----");
 }
 
 std::string LauncherBackend::GenerateId(const std::string& prefix) {
     const auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::system_clock::now().time_since_epoch()).count();
+                         std::chrono::system_clock::now().time_since_epoch())
+                         .count();
     return prefix + "_" + std::to_string(now) + "_" + std::to_string(id_counter_++);
 }
 
 Group* LauncherBackend::FindGroup(const std::string& group_id) {
-    auto it = std::find_if(data_.groups.begin(), data_.groups.end(), [&](const Group& g) { return g.id == group_id; });
+    auto it = std::find_if(data_.groups.begin(), data_.groups.end(),
+                           [&](const Group& g) { return g.id == group_id; });
     return it == data_.groups.end() ? nullptr : &(*it);
 }
 
 const Group* LauncherBackend::FindGroup(const std::string& group_id) const {
-    auto it = std::find_if(data_.groups.begin(), data_.groups.end(), [&](const Group& g) { return g.id == group_id; });
+    auto it = std::find_if(data_.groups.begin(), data_.groups.end(),
+                           [&](const Group& g) { return g.id == group_id; });
     return it == data_.groups.end() ? nullptr : &(*it);
 }
 
@@ -108,8 +114,9 @@ bool LauncherBackend::UndoLastDelete(std::string* error) {
         return false;
     }
 
-    auto it = std::find_if(bin->items.begin(), bin->items.end(),
-        [&](const LaunchItem& item) { return item.id == last_deleted_.item.id; });
+    auto it = std::find_if(bin->items.begin(), bin->items.end(), [&](const LaunchItem& item) {
+        return item.id == last_deleted_.item.id;
+    });
     if (it == bin->items.end()) {
         has_last_deleted_ = false;
         SetError(error, "deleted item is no longer in recycle bin");
@@ -126,9 +133,11 @@ bool LauncherBackend::UndoLastDelete(std::string* error) {
     bin->items.erase(it);
 
     const auto index = std::min(last_deleted_.index, target->items.size());
-    target->items.insert(target->items.begin() + static_cast<std::ptrdiff_t>(index), std::move(restored));
+    target->items.insert(target->items.begin() + static_cast<std::ptrdiff_t>(index),
+                         std::move(restored));
 
-    AppendJournal("undo_delete", "name=" + last_deleted_.item.name + " group=" + last_deleted_.from_group_name);
+    AppendJournal("undo_delete",
+                  "name=" + last_deleted_.item.name + " group=" + last_deleted_.from_group_name);
     has_last_deleted_ = false;
     return SaveData(error);
 }
@@ -150,11 +159,12 @@ bool LauncherBackend::SortGroupItemsByName(const std::string& group_id, std::str
 
     // stable_sort：同名条目（如分隔条）保持原有相对顺序。
     std::stable_sort(group->items.begin(), group->items.end(),
-        [](const LaunchItem& lhs, const LaunchItem& rhs) {
-            return ToLowerAscii(lhs.name) < ToLowerAscii(rhs.name);
-        });
+                     [](const LaunchItem& lhs, const LaunchItem& rhs) {
+                         return ToLowerAscii(lhs.name) < ToLowerAscii(rhs.name);
+                     });
 
-    AppendJournal("sort_group", "id=" + group->id + " name=" + group->name + " count=" + std::to_string(group->items.size()));
+    AppendJournal("sort_group", "id=" + group->id + " name=" + group->name +
+                                    " count=" + std::to_string(group->items.size()));
     return SaveData(error);
 }
 
@@ -175,15 +185,17 @@ bool LauncherBackend::SortGroupItemsByLaunchCount(const std::string& group_id, s
 
     // stable_sort 降序：次数相同的条目保持原有相对顺序。
     std::stable_sort(group->items.begin(), group->items.end(),
-        [](const LaunchItem& lhs, const LaunchItem& rhs) {
-            return lhs.launch_count > rhs.launch_count;
-        });
+                     [](const LaunchItem& lhs, const LaunchItem& rhs) {
+                         return lhs.launch_count > rhs.launch_count;
+                     });
 
-    AppendJournal("sort_group_by_count", "id=" + group->id + " name=" + group->name + " count=" + std::to_string(group->items.size()));
+    AppendJournal("sort_group_by_count", "id=" + group->id + " name=" + group->name +
+                                             " count=" + std::to_string(group->items.size()));
     return SaveData(error);
 }
 
-bool LauncherBackend::SetItemEnabled(const std::string& group_id, const std::string& item_id, bool enabled, std::string* error) {
+bool LauncherBackend::SetItemEnabled(const std::string& group_id, const std::string& item_id,
+                                     bool enabled, std::string* error) {
     if (!EnsureLoaded(error)) {
         return false;
     }
@@ -197,7 +209,8 @@ bool LauncherBackend::SetItemEnabled(const std::string& group_id, const std::str
         SetError(error, "group not found");
         return false;
     }
-    auto it = std::find_if(group->items.begin(), group->items.end(), [&](const LaunchItem& i) { return i.id == item_id; });
+    auto it = std::find_if(group->items.begin(), group->items.end(),
+                           [&](const LaunchItem& i) { return i.id == item_id; });
     if (it == group->items.end()) {
         SetError(error, "item not found");
         return false;
@@ -206,7 +219,8 @@ bool LauncherBackend::SetItemEnabled(const std::string& group_id, const std::str
         return true; // 幂等：状态未变不落盘。
     }
     it->enabled = enabled;
-    AppendJournal("set_item_enabled", "id=" + it->id + " name=" + it->name + " enabled=" + (enabled ? "1" : "0"));
+    AppendJournal("set_item_enabled",
+                  "id=" + it->id + " name=" + it->name + " enabled=" + (enabled ? "1" : "0"));
     return SaveData(error);
 }
 
@@ -227,8 +241,9 @@ bool IsDosAbsolutePath(const std::string& path) {
 }
 
 bool SameDriveNoCase(const std::string& lhs, const std::string& rhs) {
-    return lhs.size() >= 2 && rhs.size() >= 2 && lhs[1] == ':' && rhs[1] == ':'
-        && std::tolower(static_cast<unsigned char>(lhs[0])) == std::tolower(static_cast<unsigned char>(rhs[0]));
+    return lhs.size() >= 2 && rhs.size() >= 2 && lhs[1] == ':' && rhs[1] == ':' &&
+           std::tolower(static_cast<unsigned char>(lhs[0])) ==
+               std::tolower(static_cast<unsigned char>(rhs[0]));
 }
 
 /// 单个路径字段的转换；返回 true 表示该字段发生了变化并写出新值。
@@ -238,7 +253,8 @@ bool ConvertOnePath(const std::string& path, bool to_relative, const std::string
         return false;
     }
     if (to_relative) {
-        if (!IsDosAbsolutePath(path) || StartsWithNoCase(path, kPrToken) || StartsWithNoCase(path, kCrToken)) {
+        if (!IsDosAbsolutePath(path) || StartsWithNoCase(path, kPrToken) ||
+            StartsWithNoCase(path, kCrToken)) {
             return false; // 已是占位符形式 / 非绝对路径，幂等跳过
         }
         if (StartsWithNoCase(path, app_dir)) {
@@ -255,7 +271,8 @@ bool ConvertOnePath(const std::string& path, bool to_relative, const std::string
         }
         if (SameDriveNoCase(path, app_dir)) {
             const std::string rest = path.substr(2); // 保留 "\xxx" 形式，%cr% 展开即盘根
-            *out = std::string(kCrToken) + (rest.front() == '\\' || rest.front() == '/' ? rest.substr(1) : rest);
+            *out = std::string(kCrToken) +
+                   (rest.front() == '\\' || rest.front() == '/' ? rest.substr(1) : rest);
             return true;
         }
         return false; // 不同盘，转换无收益
@@ -297,7 +314,8 @@ int LauncherBackend::ConvertItemPaths(bool to_relative, std::string* error) {
 
     std::error_code ec;
     const std::string app_dir_text = std::filesystem::absolute(app_dir_, ec).string();
-    const std::string drive_root_text = std::filesystem::absolute(app_dir_, ec).root_path().string();
+    const std::string drive_root_text =
+        std::filesystem::absolute(app_dir_, ec).root_path().string();
     if (app_dir_text.empty() || drive_root_text.empty()) {
         SetError(error, "app dir resolve failed");
         return -1;
@@ -311,15 +329,18 @@ int LauncherBackend::ConvertItemPaths(bool to_relative, std::string* error) {
             }
             bool changed = false;
             std::string next;
-            if (ConvertOnePath(item.target_path, to_relative, app_dir_text, drive_root_text, &next)) {
+            if (ConvertOnePath(item.target_path, to_relative, app_dir_text, drive_root_text,
+                               &next)) {
                 item.target_path = next;
                 changed = true;
             }
-            if (ConvertOnePath(item.icon_location, to_relative, app_dir_text, drive_root_text, &next)) {
+            if (ConvertOnePath(item.icon_location, to_relative, app_dir_text, drive_root_text,
+                               &next)) {
                 item.icon_location = next;
                 changed = true;
             }
-            if (ConvertOnePath(item.working_dir, to_relative, app_dir_text, drive_root_text, &next)) {
+            if (ConvertOnePath(item.working_dir, to_relative, app_dir_text, drive_root_text,
+                               &next)) {
                 item.working_dir = next;
                 changed = true;
             }
@@ -330,8 +351,8 @@ int LauncherBackend::ConvertItemPaths(bool to_relative, std::string* error) {
     }
 
     if (converted_items > 0) {
-        AppendJournal("convert_paths",
-            "to=" + std::string(to_relative ? "relative" : "absolute") + " count=" + std::to_string(converted_items));
+        AppendJournal("convert_paths", "to=" + std::string(to_relative ? "relative" : "absolute") +
+                                           " count=" + std::to_string(converted_items));
         if (!SaveData(error)) {
             return -1;
         }
@@ -376,7 +397,8 @@ std::string LauncherBackend::AddGroup(const std::string& name, std::string* erro
     return g.id;
 }
 
-bool LauncherBackend::RenameGroup(const std::string& group_id, const std::string& name, std::string* error) {
+bool LauncherBackend::RenameGroup(const std::string& group_id, const std::string& name,
+                                  std::string* error) {
     if (!EnsureLoaded(error)) {
         return false;
     }
@@ -386,9 +408,10 @@ bool LauncherBackend::RenameGroup(const std::string& group_id, const std::string
         return false;
     }
 
-    const auto conflict = std::find_if(data_.groups.begin(), data_.groups.end(), [&](const Group& g) {
-        return !g.hidden && g.id != group_id && ToLowerAscii(g.name) == ToLowerAscii(next_name);
-    });
+    const auto conflict =
+        std::find_if(data_.groups.begin(), data_.groups.end(), [&](const Group& g) {
+            return !g.hidden && g.id != group_id && ToLowerAscii(g.name) == ToLowerAscii(next_name);
+        });
     if (conflict != data_.groups.end()) {
         SetError(error, "group already exists");
         return false;
@@ -410,7 +433,8 @@ bool LauncherBackend::RenameGroup(const std::string& group_id, const std::string
     return SaveData(error);
 }
 
-bool LauncherBackend::DeleteGroup(const std::string& group_id, const std::string& target_group_id, std::string* error) {
+bool LauncherBackend::DeleteGroup(const std::string& group_id, const std::string& target_group_id,
+                                  std::string* error) {
     if (!EnsureLoaded(error)) {
         return false;
     }
@@ -429,7 +453,8 @@ bool LauncherBackend::DeleteGroup(const std::string& group_id, const std::string
         return false;
     }
 
-    auto delete_it = std::find_if(data_.groups.begin(), data_.groups.end(), [&](const Group& g) { return g.id == group_id; });
+    auto delete_it = std::find_if(data_.groups.begin(), data_.groups.end(),
+                                  [&](const Group& g) { return g.id == group_id; });
     if (delete_it == data_.groups.end()) {
         SetError(error, "group not found");
         return false;
@@ -457,9 +482,8 @@ bool LauncherBackend::DeleteGroup(const std::string& group_id, const std::string
     for (auto& group : data_.groups) {
         ordered.push_back(&group);
     }
-    std::sort(ordered.begin(), ordered.end(), [](const Group* lhs, const Group* rhs) {
-        return lhs->order < rhs->order;
-    });
+    std::sort(ordered.begin(), ordered.end(),
+              [](const Group* lhs, const Group* rhs) { return lhs->order < rhs->order; });
     for (int i = 0; i < static_cast<int>(ordered.size()); ++i) {
         ordered[i]->order = i;
     }
@@ -468,11 +492,13 @@ bool LauncherBackend::DeleteGroup(const std::string& group_id, const std::string
         settings_.current_group = target_group_id;
     }
 
-    AppendJournal("delete_group", "id=" + group_id + " name=" + deleted_name + " merged_into=" + target_group_id);
+    AppendJournal("delete_group",
+                  "id=" + group_id + " name=" + deleted_name + " merged_into=" + target_group_id);
     return SaveData(error);
 }
 
-bool LauncherBackend::UpsertItem(const std::string& group_id, const ItemInput& input, std::string* error) {
+bool LauncherBackend::UpsertItem(const std::string& group_id, const ItemInput& input,
+                                 std::string* error) {
     if (!EnsureLoaded(error)) {
         return false;
     }
@@ -486,17 +512,23 @@ bool LauncherBackend::UpsertItem(const std::string& group_id, const ItemInput& i
         return false;
     }
 
-    const auto item_type = input.item_type.has_value() ? *input.item_type :
-        (IsSeparatorItem(input.name, input.target_path, input.icon_location) ? "separator" : "app");
+    const auto item_type =
+        input.item_type.has_value()
+            ? *input.item_type
+            : (IsSeparatorItem(input.name, input.target_path, input.icon_location) ? "separator"
+                                                                                   : "app");
     const auto target = Trim(input.target_path);
-    const auto icon = (item_type == "app" && Trim(input.icon_location).empty()) ? target : Trim(input.icon_location);
+    const auto icon = (item_type == "app" && Trim(input.icon_location).empty())
+                          ? target
+                          : Trim(input.icon_location);
     const auto args = Trim(input.arguments);
     const auto working_dir = Trim(input.working_dir);
     const auto name = Trim(input.name);
     const auto enabled = input.enabled.value_or(true);
 
     if (input.id.has_value()) {
-        auto it = std::find_if(group->items.begin(), group->items.end(), [&](const LaunchItem& i) { return i.id == *input.id; });
+        auto it = std::find_if(group->items.begin(), group->items.end(),
+                               [&](const LaunchItem& i) { return i.id == *input.id; });
         if (it != group->items.end()) {
             it->item_type = item_type;
             it->name = name;
@@ -505,7 +537,8 @@ bool LauncherBackend::UpsertItem(const std::string& group_id, const ItemInput& i
             it->arguments = args;
             it->working_dir = working_dir;
             it->enabled = enabled;
-            AppendJournal("update_item", "id=" + it->id + " name=" + name + " group=" + group->name);
+            AppendJournal("update_item",
+                          "id=" + it->id + " name=" + name + " group=" + group->name);
         } else {
             LaunchItem item;
             item.id = *input.id;
@@ -536,7 +569,8 @@ bool LauncherBackend::UpsertItem(const std::string& group_id, const ItemInput& i
     return SaveData(error);
 }
 
-bool LauncherBackend::DeleteItem(const std::string& group_id, const std::string& item_id, std::string* error) {
+bool LauncherBackend::DeleteItem(const std::string& group_id, const std::string& item_id,
+                                 std::string* error) {
     if (!EnsureLoaded(error)) {
         return false;
     }
@@ -549,7 +583,7 @@ bool LauncherBackend::DeleteItem(const std::string& group_id, const std::string&
             return false;
         }
         auto item_it = std::find_if(bin->items.begin(), bin->items.end(),
-            [&](const LaunchItem& item) { return item.id == item_id; });
+                                    [&](const LaunchItem& item) { return item.id == item_id; });
         if (item_it == bin->items.end()) {
             SetError(error, "item not found");
             return false;
@@ -577,7 +611,7 @@ bool LauncherBackend::DeleteItem(const std::string& group_id, const std::string&
     }
 
     auto item_it = std::find_if(group->items.begin(), group->items.end(),
-        [&](const LaunchItem& item) { return item.id == item_id; });
+                                [&](const LaunchItem& item) { return item.id == item_id; });
     if (item_it == group->items.end()) {
         SetError(error, "item not found");
         return false;
@@ -595,12 +629,14 @@ bool LauncherBackend::DeleteItem(const std::string& group_id, const std::string&
     last_deleted_ = std::move(snapshot);
     has_last_deleted_ = true;
 
-    AppendJournal("delete_item", "id=" + last_deleted_.item.id + " name=" + last_deleted_.item.name +
-        " from=" + last_deleted_.from_group_name + " to=recycle_bin");
+    AppendJournal("delete_item", "id=" + last_deleted_.item.id +
+                                     " name=" + last_deleted_.item.name +
+                                     " from=" + last_deleted_.from_group_name + " to=recycle_bin");
     return SaveData(error);
 }
 
-bool LauncherBackend::MoveItem(const std::string& group_id, const std::string& item_id, const std::string& target_group_id, std::string* error) {
+bool LauncherBackend::MoveItem(const std::string& group_id, const std::string& item_id,
+                               const std::string& target_group_id, std::string* error) {
     if (!EnsureLoaded(error)) {
         return false;
     }
@@ -628,7 +664,8 @@ bool LauncherBackend::MoveItem(const std::string& group_id, const std::string& i
         return false;
     }
 
-    auto it = std::find_if(from->items.begin(), from->items.end(), [&](const LaunchItem& item) { return item.id == item_id; });
+    auto it = std::find_if(from->items.begin(), from->items.end(),
+                           [&](const LaunchItem& item) { return item.id == item_id; });
     if (it == from->items.end()) {
         SetError(error, "item not found");
         return false;
@@ -642,7 +679,8 @@ bool LauncherBackend::MoveItem(const std::string& group_id, const std::string& i
     return SaveData(error);
 }
 
-bool LauncherBackend::ReorderGroup(const std::string& group_id, int target_index, std::string* error) {
+bool LauncherBackend::ReorderGroup(const std::string& group_id, int target_index,
+                                   std::string* error) {
     if (!EnsureLoaded(error)) {
         return false;
     }
@@ -662,13 +700,11 @@ bool LauncherBackend::ReorderGroup(const std::string& group_id, int target_index
             ordered.push_back(&group);
         }
     }
-    std::sort(ordered.begin(), ordered.end(), [](const Group* lhs, const Group* rhs) {
-        return lhs->order < rhs->order;
-    });
+    std::sort(ordered.begin(), ordered.end(),
+              [](const Group* lhs, const Group* rhs) { return lhs->order < rhs->order; });
 
-    const auto from_it = std::find_if(ordered.begin(), ordered.end(), [&](const Group* group) {
-        return group->id == group_id;
-    });
+    const auto from_it = std::find_if(ordered.begin(), ordered.end(),
+                                      [&](const Group* group) { return group->id == group_id; });
     if (from_it == ordered.end()) {
         SetError(error, "group not found");
         return false;
@@ -686,9 +722,11 @@ bool LauncherBackend::ReorderGroup(const std::string& group_id, int target_index
     }
 
     if (from_index < target_index) {
-        std::rotate(ordered.begin() + from_index, ordered.begin() + from_index + 1, ordered.begin() + target_index + 1);
+        std::rotate(ordered.begin() + from_index, ordered.begin() + from_index + 1,
+                    ordered.begin() + target_index + 1);
     } else {
-        std::rotate(ordered.begin() + target_index, ordered.begin() + from_index, ordered.begin() + from_index + 1);
+        std::rotate(ordered.begin() + target_index, ordered.begin() + from_index,
+                    ordered.begin() + from_index + 1);
     }
 
     for (int i = 0; i < static_cast<int>(ordered.size()); ++i) {
@@ -699,7 +737,8 @@ bool LauncherBackend::ReorderGroup(const std::string& group_id, int target_index
     return SaveData(error);
 }
 
-bool LauncherBackend::ReorderItemInGroup(const std::string& group_id, const std::string& item_id, int target_index, std::string* error) {
+bool LauncherBackend::ReorderItemInGroup(const std::string& group_id, const std::string& item_id,
+                                         int target_index, std::string* error) {
     if (!EnsureLoaded(error)) {
         return false;
     }
@@ -720,9 +759,8 @@ bool LauncherBackend::ReorderItemInGroup(const std::string& group_id, const std:
         return false;
     }
 
-    const auto from_it = std::find_if(group->items.begin(), group->items.end(), [&](const LaunchItem& item) {
-        return item.id == item_id;
-    });
+    const auto from_it = std::find_if(group->items.begin(), group->items.end(),
+                                      [&](const LaunchItem& item) { return item.id == item_id; });
     if (from_it == group->items.end()) {
         SetError(error, "item not found");
         return false;
@@ -734,12 +772,15 @@ bool LauncherBackend::ReorderItemInGroup(const std::string& group_id, const std:
     }
 
     if (from_index < target_index) {
-        std::rotate(group->items.begin() + from_index, group->items.begin() + from_index + 1, group->items.begin() + target_index + 1);
+        std::rotate(group->items.begin() + from_index, group->items.begin() + from_index + 1,
+                    group->items.begin() + target_index + 1);
     } else {
-        std::rotate(group->items.begin() + target_index, group->items.begin() + from_index, group->items.begin() + from_index + 1);
+        std::rotate(group->items.begin() + target_index, group->items.begin() + from_index,
+                    group->items.begin() + from_index + 1);
     }
 
-    AppendJournal("reorder_item", "id=" + item_id + " group=" + group->name + " to_index=" + std::to_string(target_index));
+    AppendJournal("reorder_item", "id=" + item_id + " group=" + group->name +
+                                      " to_index=" + std::to_string(target_index));
     return SaveData(error);
 }
 
@@ -787,7 +828,9 @@ std::string LauncherBackend::NormalizeDroppedPath(const std::string& raw_path) {
     return value;
 }
 
-std::size_t LauncherBackend::CreateItemsFromDroppedPaths(const std::string& group_id, const std::vector<std::string>& paths, std::string* error) {
+std::size_t LauncherBackend::CreateItemsFromDroppedPaths(const std::string& group_id,
+                                                         const std::vector<std::string>& paths,
+                                                         std::string* error) {
     if (!EnsureLoaded(error)) {
         return 0;
     }

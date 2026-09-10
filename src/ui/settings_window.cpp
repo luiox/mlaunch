@@ -23,7 +23,8 @@ constexpr UINT kFocusEditMsg = WM_APP + 0x1B;
 
 std::string TrimCopy(const std::string& value) {
     auto out = value;
-    out.erase(out.begin(), std::find_if(out.begin(), out.end(), [](unsigned char ch) { return !std::isspace(ch); }));
+    out.erase(out.begin(), std::find_if(out.begin(), out.end(),
+                                        [](unsigned char ch) { return !std::isspace(ch); }));
     while (!out.empty() && std::isspace(static_cast<unsigned char>(out.back()))) {
         out.pop_back();
     }
@@ -98,19 +99,27 @@ bool IsModifierKey(WPARAM vk) {
 
 UINT CollectModifiers() {
     UINT mods = 0;
-    if ((::GetKeyState(VK_CONTROL) & 0x8000) != 0) mods |= MOD_CONTROL;
-    if ((::GetKeyState(VK_MENU) & 0x8000) != 0) mods |= MOD_ALT;
-    if ((::GetKeyState(VK_SHIFT) & 0x8000) != 0) mods |= MOD_SHIFT;
-    if (((::GetKeyState(VK_LWIN) & 0x8000) != 0) || ((::GetKeyState(VK_RWIN) & 0x8000) != 0)) mods |= MOD_WIN;
+    if ((::GetKeyState(VK_CONTROL) & 0x8000) != 0)
+        mods |= MOD_CONTROL;
+    if ((::GetKeyState(VK_MENU) & 0x8000) != 0)
+        mods |= MOD_ALT;
+    if ((::GetKeyState(VK_SHIFT) & 0x8000) != 0)
+        mods |= MOD_SHIFT;
+    if (((::GetKeyState(VK_LWIN) & 0x8000) != 0) || ((::GetKeyState(VK_RWIN) & 0x8000) != 0))
+        mods |= MOD_WIN;
     return mods;
 }
 
 std::wstring ModifierPrefix(UINT mods) {
     std::wstring out;
-    if (mods & MOD_CONTROL) out += L"Ctrl+";
-    if (mods & MOD_SHIFT) out += L"Shift+";
-    if (mods & MOD_ALT) out += L"Alt+";
-    if (mods & MOD_WIN) out += L"Win+";
+    if (mods & MOD_CONTROL)
+        out += L"Ctrl+";
+    if (mods & MOD_SHIFT)
+        out += L"Shift+";
+    if (mods & MOD_ALT)
+        out += L"Alt+";
+    if (mods & MOD_WIN)
+        out += L"Win+";
     return out;
 }
 
@@ -125,42 +134,69 @@ std::wstring VirtualKeyName(WPARAM vk) {
         return buf;
     }
     switch (vk) {
-    case VK_SPACE: return L"Space";
-    case VK_TAB: return L"Tab";
-    case VK_ESCAPE: return L"Esc";
-    case VK_RETURN: return L"Enter";
-    case VK_BACK: return L"Back";
-    case VK_PRIOR: return L"PgUp";
-    case VK_NEXT: return L"PgDn";
-    case VK_HOME: return L"Home";
-    case VK_END: return L"End";
-    case VK_INSERT: return L"Ins";
-    case VK_DELETE: return L"Del";
-    case VK_PAUSE: return L"Pause";
-    case VK_CAPITAL: return L"CapsLock";
-    case VK_NUMLOCK: return L"NumLock";
-    case VK_SCROLL: return L"ScrollLock";
-    case VK_SNAPSHOT: return L"PrintScreen";
-    case VK_OEM_3: return L"`";
-    case VK_OEM_MINUS: return L"-";
-    case VK_OEM_PLUS: return L"=";
-    case VK_OEM_4: return L"[";
-    case VK_OEM_6: return L"]";
-    case VK_OEM_5: return L"\\";
-    case VK_OEM_1: return L";";
-    case VK_OEM_7: return L"'";
-    case VK_OEM_COMMA: return L",";
-    case VK_OEM_PERIOD: return L".";
-    case VK_OEM_2: return L"/";
-    default: return L"";
+    case VK_SPACE:
+        return L"Space";
+    case VK_TAB:
+        return L"Tab";
+    case VK_ESCAPE:
+        return L"Esc";
+    case VK_RETURN:
+        return L"Enter";
+    case VK_BACK:
+        return L"Back";
+    case VK_PRIOR:
+        return L"PgUp";
+    case VK_NEXT:
+        return L"PgDn";
+    case VK_HOME:
+        return L"Home";
+    case VK_END:
+        return L"End";
+    case VK_INSERT:
+        return L"Ins";
+    case VK_DELETE:
+        return L"Del";
+    case VK_PAUSE:
+        return L"Pause";
+    case VK_CAPITAL:
+        return L"CapsLock";
+    case VK_NUMLOCK:
+        return L"NumLock";
+    case VK_SCROLL:
+        return L"ScrollLock";
+    case VK_SNAPSHOT:
+        return L"PrintScreen";
+    case VK_OEM_3:
+        return L"`";
+    case VK_OEM_MINUS:
+        return L"-";
+    case VK_OEM_PLUS:
+        return L"=";
+    case VK_OEM_4:
+        return L"[";
+    case VK_OEM_6:
+        return L"]";
+    case VK_OEM_5:
+        return L"\\";
+    case VK_OEM_1:
+        return L";";
+    case VK_OEM_7:
+        return L"'";
+    case VK_OEM_COMMA:
+        return L",";
+    case VK_OEM_PERIOD:
+        return L".";
+    case VK_OEM_2:
+        return L"/";
+    default:
+        return L"";
     }
 }
 
 } // namespace
 
 SettingsWindow::SettingsWindow(const core::Settings& initial, DoneCallback on_done)
-    : on_done_(std::move(on_done)),
-      draft_(initial) {
+    : on_done_(std::move(on_done)), draft_(initial) {
     draft_.hotkey = TrimCopy(draft_.hotkey);
 }
 
@@ -205,7 +241,8 @@ LRESULT SettingsWindow::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& 
     content->SetAttribute(_T("childpadding"), _T("6"));
 
     // —— 分页内容工厂 ——
-    auto make_check_row = [&](CVerticalLayoutUI* page, LPCTSTR name, LPCTSTR text, bool checked) -> appui::CheckBoxUI* {
+    auto make_check_row = [&](CVerticalLayoutUI* page, LPCTSTR name, LPCTSTR text,
+                              bool checked) -> appui::CheckBoxUI* {
         auto* row = new CHorizontalLayoutUI();
         row->SetFixedHeight(24);
         row->SetAttribute(_T("childpadding"), _T("4"));
@@ -218,7 +255,8 @@ LRESULT SettingsWindow::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& 
         page->Add(row);
         return box;
     };
-    auto make_num_row = [&](CVerticalLayoutUI* page, LPCTSTR label_text, CEditUI*& input, LPCTSTR name) {
+    auto make_num_row = [&](CVerticalLayoutUI* page, LPCTSTR label_text, CEditUI*& input,
+                            LPCTSTR name) {
         auto* row = new CHorizontalLayoutUI();
         row->SetFixedHeight(24);
         row->SetAttribute(_T("childpadding"), _T("4"));
@@ -233,18 +271,27 @@ LRESULT SettingsWindow::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& 
     // —— 行为页 ——
     auto* page_behavior = new CVerticalLayoutUI();
     content->Add(page_behavior);
-    hide_check_ = make_check_row(page_behavior, _T("settings_hide_check"), _T("启动条目后最小化窗口（原版行为）"), draft_.execute_hide);
-    dblclick_check_ = make_check_row(page_behavior, _T("settings_dblclick_check"), _T("双击启动条目（关闭后单击仅选中）"), draft_.double_click_launch);
-    closemin_check_ = make_check_row(page_behavior, _T("settings_closemin_check"), _T("关闭按钮最小化而非退出（退出走菜单）"), draft_.close_minimize);
-    lock_check_ = make_check_row(page_behavior, _T("settings_lock_check"), _T("锁定布局（禁用拖动/缩放/重排/宽度滚轮）"), draft_.locked);
-    autohide_check_ = make_check_row(page_behavior, _T("settings_autohide_check"), _T("失焦自动隐藏（热键唤回）"), draft_.auto_hide);
+    hide_check_ = make_check_row(page_behavior, _T("settings_hide_check"),
+                                 _T("启动条目后最小化窗口（原版行为）"), draft_.execute_hide);
+    dblclick_check_ =
+        make_check_row(page_behavior, _T("settings_dblclick_check"),
+                       _T("双击启动条目（关闭后单击仅选中）"), draft_.double_click_launch);
+    closemin_check_ =
+        make_check_row(page_behavior, _T("settings_closemin_check"),
+                       _T("关闭按钮最小化而非退出（退出走菜单）"), draft_.close_minimize);
+    lock_check_ = make_check_row(page_behavior, _T("settings_lock_check"),
+                                 _T("锁定布局（禁用拖动/缩放/重排/宽度滚轮）"), draft_.locked);
+    autohide_check_ = make_check_row(page_behavior, _T("settings_autohide_check"),
+                                     _T("失焦自动隐藏（热键唤回）"), draft_.auto_hide);
 
     // —— 启动页 ——
     auto* page_startup = new CVerticalLayoutUI();
     page_startup->SetVisible(false);
     content->Add(page_startup);
-    autorun_check_ = make_check_row(page_startup, _T("settings_autorun_check"), _T("开机自启（当前用户注册表）"), draft_.autorun);
-    starthidden_check_ = make_check_row(page_startup, _T("settings_starthidden_check"), _T("启动时隐藏主窗（热键唤出）"), draft_.start_hidden);
+    autorun_check_ = make_check_row(page_startup, _T("settings_autorun_check"),
+                                    _T("开机自启（当前用户注册表）"), draft_.autorun);
+    starthidden_check_ = make_check_row(page_startup, _T("settings_starthidden_check"),
+                                        _T("启动时隐藏主窗（热键唤出）"), draft_.start_hidden);
     {
         auto* hotkey_row = new CHorizontalLayoutUI();
         hotkey_row->SetFixedHeight(24);
@@ -254,7 +301,8 @@ LRESULT SettingsWindow::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& 
         hotkey_input_->SetReadOnly(true);
         hotkey_row->Add(hotkey_input_);
         page_startup->Add(hotkey_row);
-        page_startup->Add(MakeHint(_T("点击输入框后按下组合键（需含 Ctrl/Alt/Shift/Win）；留空禁用")));
+        page_startup->Add(
+            MakeHint(_T("点击输入框后按下组合键（需含 Ctrl/Alt/Shift/Win）；留空禁用")));
     }
 
     // —— 窗口页 ——
@@ -283,9 +331,12 @@ LRESULT SettingsWindow::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& 
     auto* page_backup = new CVerticalLayoutUI();
     page_backup->SetVisible(false);
     content->Add(page_backup);
-    make_num_row(page_backup, _T("滚动快照保留份数"), backup_rolling_input_, _T("settings_rolling_input"));
-    make_num_row(page_backup, _T("每日快照保留天数"), backup_daily_input_, _T("settings_daily_input"));
-    page_backup->Add(MakeHint(_T("保留范围：滚动 2-20 份、每日 3-90 天，越界边框变红并在确定时钳制")));
+    make_num_row(page_backup, _T("滚动快照保留份数"), backup_rolling_input_,
+                 _T("settings_rolling_input"));
+    make_num_row(page_backup, _T("每日快照保留天数"), backup_daily_input_,
+                 _T("settings_daily_input"));
+    page_backup->Add(
+        MakeHint(_T("保留范围：滚动 2-20 份、每日 3-90 天，越界边框变红并在确定时钳制")));
 
     auto* spacer = new CControlUI();
     content->Add(spacer);
@@ -330,7 +381,8 @@ void SettingsWindow::CreateAndShow(HWND owner_hwnd) {
     const int owner_cy = owner_rect.bottom - owner_rect.top;
     const int x = owner_rect.left + (owner_cx > kWindowWidth ? (owner_cx - kWindowWidth) / 2 : 0);
     const int y = owner_rect.top + (owner_cy > kWindowHeight ? (owner_cy - kWindowHeight) / 2 : 0);
-    Create(nullptr, _T("MLaunchSettings"), WS_POPUP | WS_CLIPCHILDREN, WS_EX_TOOLWINDOW, x, y, kWindowWidth, kWindowHeight);
+    Create(nullptr, _T("MLaunchSettings"), WS_POPUP | WS_CLIPCHILDREN, WS_EX_TOOLWINDOW, x, y,
+           kWindowWidth, kWindowHeight);
     // 窗口按逻辑尺寸创建；对齐真实 DPI 的同时按比例放大并重新居中。
     appui::ScaleDialogToWindowDpi(m_pm, m_hWnd, owner_hwnd);
     ::ShowWindow(m_hWnd, SW_SHOW);
@@ -450,8 +502,8 @@ void SettingsWindow::CycleInputFocus() {
     const struct {
         DuiLib::CEditUI* input;
         int page;
-    } order[] = {{hotkey_input_, 1}, {width_input_, 2}, {height_input_, 2},
-                 {panel_input_, 2}, {backup_rolling_input_, 3}, {backup_daily_input_, 3}};
+    } order[] = {{hotkey_input_, 1}, {width_input_, 2},          {height_input_, 2},
+                 {panel_input_, 2},  {backup_rolling_input_, 3}, {backup_daily_input_, 3}};
     // Tab 只在当前页内轮换（其余页的输入框不可见，聚焦会落到空处）。
     for (int step = 0; step < 6; ++step) {
         focus_index_ = (focus_index_ + 1) % 6;
@@ -467,7 +519,8 @@ void SettingsWindow::CycleInputFocus() {
     }
 }
 
-LRESULT SettingsWindow::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled) {
+LRESULT SettingsWindow::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lParam,
+                                            BOOL& bHandled) {
     if (uMsg == WM_ACTIVATE && LOWORD(wParam) != WA_INACTIVE) {
         ::PostMessage(m_hWnd, kFocusEditMsg, 0, 0);
     }

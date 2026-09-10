@@ -50,8 +50,8 @@ void ScaleDialogToWindowDpi(DuiLib::CPaintManagerUI& pm, HWND hwnd, HWND owner) 
     const int owner_cy = owner_rect.bottom - owner_rect.top;
     ::SetWindowPos(hwnd, nullptr,
                    owner_rect.left + (owner_cx > self_cx ? (owner_cx - self_cx) / 2 : 0),
-                   owner_rect.top + (owner_cy > self_cy ? (owner_cy - self_cy) / 2 : 0),
-                   0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+                   owner_rect.top + (owner_cy > self_cy ? (owner_cy - self_cy) / 2 : 0), 0, 0,
+                   SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
 }
 
 } // namespace appui

@@ -68,14 +68,17 @@ void AppWindow::ResetListDragState() {
 }
 
 bool AppWindow::CommitListDragReorder() {
-    if (list_drag_from_index_ < 0 || list_drag_hover_index_ < 0 || list_drag_from_index_ == list_drag_hover_index_) {
-        DebugLog("commit skipped from=" + std::to_string(list_drag_from_index_) + " to=" + std::to_string(list_drag_hover_index_));
+    if (list_drag_from_index_ < 0 || list_drag_hover_index_ < 0 ||
+        list_drag_from_index_ == list_drag_hover_index_) {
+        DebugLog("commit skipped from=" + std::to_string(list_drag_from_index_) +
+                 " to=" + std::to_string(list_drag_hover_index_));
         return false;
     }
 
     std::string error;
     if (drag_list_kind_ == DragListKind::Groups) {
-        if (list_drag_from_index_ >= static_cast<int>(group_ids_.size()) || list_drag_hover_index_ >= static_cast<int>(group_ids_.size())) {
+        if (list_drag_from_index_ >= static_cast<int>(group_ids_.size()) ||
+            list_drag_hover_index_ >= static_cast<int>(group_ids_.size())) {
             return false;
         }
 
@@ -86,7 +89,9 @@ bool AppWindow::CommitListDragReorder() {
             return false;
         }
 
-        DebugLog("reorder groups request id=" + dragged_group_id + " from=" + std::to_string(list_drag_from_index_) + " to=" + std::to_string(list_drag_hover_index_));
+        DebugLog("reorder groups request id=" + dragged_group_id +
+                 " from=" + std::to_string(list_drag_from_index_) +
+                 " to=" + std::to_string(list_drag_hover_index_));
         if (!backend_.ReorderGroup(dragged_group_id, list_drag_hover_index_, &error)) {
             status_.Error("分组排序失败：" + error);
             return false;
@@ -95,7 +100,8 @@ bool AppWindow::CommitListDragReorder() {
         RenderGroups();
         SelectGroupByIndex(list_drag_hover_index_);
         m_pm.NeedUpdate();
-        DebugLog("commit groups from=" + std::to_string(list_drag_from_index_) + " to=" + std::to_string(list_drag_hover_index_));
+        DebugLog("commit groups from=" + std::to_string(list_drag_from_index_) +
+                 " to=" + std::to_string(list_drag_hover_index_));
         status_.Info("分组已调整顺序");
         return true;
     }
@@ -105,7 +111,8 @@ bool AppWindow::CommitListDragReorder() {
             status_.Warn("搜索模式下不可调整条目顺序");
             return false;
         }
-        if (list_drag_from_index_ >= static_cast<int>(item_ids_.size()) || list_drag_hover_index_ >= static_cast<int>(item_ids_.size())) {
+        if (list_drag_from_index_ >= static_cast<int>(item_ids_.size()) ||
+            list_drag_hover_index_ >= static_cast<int>(item_ids_.size())) {
             return false;
         }
         if (active_group_id_.empty()) {
@@ -113,8 +120,11 @@ bool AppWindow::CommitListDragReorder() {
         }
 
         const std::string dragged_item_id = item_ids_[list_drag_from_index_];
-        DebugLog("reorder items request id=" + dragged_item_id + " from=" + std::to_string(list_drag_from_index_) + " to=" + std::to_string(list_drag_hover_index_));
-        if (!backend_.ReorderItemInGroup(active_group_id_, dragged_item_id, list_drag_hover_index_, &error)) {
+        DebugLog("reorder items request id=" + dragged_item_id +
+                 " from=" + std::to_string(list_drag_from_index_) +
+                 " to=" + std::to_string(list_drag_hover_index_));
+        if (!backend_.ReorderItemInGroup(active_group_id_, dragged_item_id, list_drag_hover_index_,
+                                         &error)) {
             status_.Error("条目排序失败：" + error);
             return false;
         }
@@ -124,13 +134,15 @@ bool AppWindow::CommitListDragReorder() {
         if (items_list_ != nullptr) {
             items_list_->SelectItem(list_drag_hover_index_, false);
         }
-        if (list_drag_hover_index_ >= 0 && list_drag_hover_index_ < static_cast<int>(item_ids_.size())) {
+        if (list_drag_hover_index_ >= 0 &&
+            list_drag_hover_index_ < static_cast<int>(item_ids_.size())) {
             selected_item_id_ = item_ids_[list_drag_hover_index_];
             if (list_drag_hover_index_ < static_cast<int>(item_group_ids_.size())) {
                 selected_item_group_id_ = item_group_ids_[list_drag_hover_index_];
             }
         }
-        DebugLog("commit items from=" + std::to_string(list_drag_from_index_) + " to=" + std::to_string(list_drag_hover_index_));
+        DebugLog("commit items from=" + std::to_string(list_drag_from_index_) +
+                 " to=" + std::to_string(list_drag_hover_index_));
         status_.Info("条目已调整顺序");
         return true;
     }
@@ -187,12 +199,13 @@ LRESULT AppWindow::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, 
         return pt;
     };
 
-    if (uMsg == WM_ACTIVATE && LOWORD(wParam) == WA_INACTIVE && auto_hide_
-        && ::IsWindowVisible(m_hWnd) && !::IsIconic(m_hWnd)) {
+    if (uMsg == WM_ACTIVATE && LOWORD(wParam) == WA_INACTIVE && auto_hide_ &&
+        ::IsWindowVisible(m_hWnd) && !::IsIconic(m_hWnd)) {
         // 失焦自动隐藏：新激活窗口属于本线程（设置/编辑弹窗、确认框、
         // 原生菜单、文件对话框）时不隐藏，否则交给热键唤回。
         const HWND activating = reinterpret_cast<HWND>(lParam);
-        const DWORD activating_tid = activating != nullptr ? ::GetWindowThreadProcessId(activating, nullptr) : 0;
+        const DWORD activating_tid =
+            activating != nullptr ? ::GetWindowThreadProcessId(activating, nullptr) : 0;
         if (activating_tid != ::GetCurrentThreadId()) {
             ::ShowWindow(m_hWnd, SW_HIDE);
         }
@@ -223,7 +236,8 @@ LRESULT AppWindow::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, 
         // 分组对话框输入框延迟聚焦：先 UpdateWindow 让对话框 rect 算出来
         //（float 控件靠重排定位），再创建原生 EDIT，见 kFocusGroupDialogMsg 注释。
         ::UpdateWindow(m_hWnd);
-        if (group_dialog_ != nullptr && group_dialog_->IsVisible() && group_dialog_input_ != nullptr) {
+        if (group_dialog_ != nullptr && group_dialog_->IsVisible() &&
+            group_dialog_input_ != nullptr) {
             group_dialog_input_->SetFocus();
             const int text_len = group_dialog_input_->GetText().GetLength();
             group_dialog_input_->SetSel(text_len, text_len);
@@ -252,8 +266,10 @@ LRESULT AppWindow::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, 
         auto* info = reinterpret_cast<MINMAXINFO*>(lParam);
         if (info != nullptr) {
             // 最小尺寸存 96 基准逻辑值，按当前渲染 DPI 换算成物理像素钳制。
-            const int min_w = m_pm.GetDPIObj()->ScaleInt(launcher::constants::layout::kMinWindowWidth);
-            const int min_h = m_pm.GetDPIObj()->ScaleInt(launcher::constants::layout::kMinWindowHeight);
+            const int min_w =
+                m_pm.GetDPIObj()->ScaleInt(launcher::constants::layout::kMinWindowWidth);
+            const int min_h =
+                m_pm.GetDPIObj()->ScaleInt(launcher::constants::layout::kMinWindowHeight);
             info->ptMinTrackSize.x = min_w;
             info->ptMinTrackSize.y = min_h;
             bHandled = TRUE;
@@ -262,8 +278,8 @@ LRESULT AppWindow::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, 
     }
 
     // 分隔条是透明窄条，悬停时给出左右调整光标作为可拖拽的提示。
-    if (uMsg == WM_SETCURSOR && LOWORD(lParam) == HTCLIENT
-        && !layout_locked_ && panel_splitter_ != nullptr) {
+    if (uMsg == WM_SETCURSOR && LOWORD(lParam) == HTCLIENT && !layout_locked_ &&
+        panel_splitter_ != nullptr) {
         const DWORD cursor_pos = ::GetMessagePos();
         POINT pt{static_cast<short>(LOWORD(cursor_pos)), static_cast<short>(HIWORD(cursor_pos))};
         ::ScreenToClient(m_hWnd, &pt);
@@ -311,7 +327,8 @@ LRESULT AppWindow::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, 
             }
         }
 
-        DebugLog("down g=" + std::to_string(HitTestListIndex(groups_list_, pt)) + " i=" + std::to_string(HitTestListIndex(items_list_, pt)));
+        DebugLog("down g=" + std::to_string(HitTestListIndex(groups_list_, pt)) +
+                 " i=" + std::to_string(HitTestListIndex(items_list_, pt)));
 
         // 优先命中分隔条，避免与列表拖拽冲突；锁定布局时禁用分隔条拖动。
         if (!layout_locked_ && panel_splitter_ != nullptr && group_panel_ != nullptr) {
@@ -324,7 +341,8 @@ LRESULT AppWindow::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, 
                 splitter_drag_start_x_ = x;
                 // GetFixedWidth 是缩放后的物理值，反算回逻辑值再参与拖拽运算，
                 // SetFixedWidth 存逻辑值，直接混用会在非 100% 缩放下翻倍。
-                splitter_start_width_ = m_pm.GetDPIObj()->ScaleIntBack(group_panel_->GetFixedWidth());
+                splitter_start_width_ =
+                    m_pm.GetDPIObj()->ScaleIntBack(group_panel_->GetFixedWidth());
                 splitter_pending_width_ = splitter_start_width_;
                 splitter_last_update_tick_ = ::GetTickCount();
                 SetCapture(m_hWnd);
@@ -354,7 +372,8 @@ LRESULT AppWindow::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, 
     }
 
     if (uMsg == WM_MOUSEMOVE && list_dragging_) {
-        const POINT pt = normalize_point(static_cast<short>(LOWORD(lParam)), static_cast<short>(HIWORD(lParam)));
+        const POINT pt =
+            normalize_point(static_cast<short>(LOWORD(lParam)), static_cast<short>(HIWORD(lParam)));
         CListUI* target_list = nullptr;
         if (drag_list_kind_ == DragListKind::Groups) {
             target_list = groups_list_;
@@ -384,7 +403,8 @@ LRESULT AppWindow::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, 
         const int total_width = dpi->ScaleIntBack(client.right - client.left);
         const int min_group = launcher::constants::layout::kMinGroupPanelWidth;
         const int min_items = launcher::constants::layout::kMinItemsPanelWidth;
-        const int max_group = (total_width - min_items - 12 > min_group) ? (total_width - min_items - 12) : min_group;
+        const int max_group =
+            (total_width - min_items - 12 > min_group) ? (total_width - min_items - 12) : min_group;
 
         if (next_width < min_group) {
             next_width = min_group;
@@ -414,8 +434,9 @@ LRESULT AppWindow::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, 
     if (uMsg == WM_LBUTTONUP && splitter_dragging_) {
         splitter_dragging_ = false;
         ReleaseCapture();
-        if (group_panel_ != nullptr && splitter_pending_width_ >= 0
-            && m_pm.GetDPIObj()->ScaleIntBack(group_panel_->GetFixedWidth()) != splitter_pending_width_) {
+        if (group_panel_ != nullptr && splitter_pending_width_ >= 0 &&
+            m_pm.GetDPIObj()->ScaleIntBack(group_panel_->GetFixedWidth()) !=
+                splitter_pending_width_) {
             group_panel_->SetFixedWidth(splitter_pending_width_);
             m_pm.NeedUpdate();
         }
@@ -440,8 +461,9 @@ LRESULT AppWindow::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, 
 
     if (uMsg == WM_CAPTURECHANGED && splitter_dragging_) {
         splitter_dragging_ = false;
-        if (group_panel_ != nullptr && splitter_pending_width_ >= 0
-            && m_pm.GetDPIObj()->ScaleIntBack(group_panel_->GetFixedWidth()) != splitter_pending_width_) {
+        if (group_panel_ != nullptr && splitter_pending_width_ >= 0 &&
+            m_pm.GetDPIObj()->ScaleIntBack(group_panel_->GetFixedWidth()) !=
+                splitter_pending_width_) {
             group_panel_->SetFixedWidth(splitter_pending_width_);
             m_pm.NeedUpdate();
         }
@@ -466,7 +488,10 @@ LRESULT AppWindow::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, 
 
     // WM_ENTRYSIZEMOVE(0x0231)/WM_EXITSIZEMOVE(0x0232)：部分 SDK 头未暴露，用字面量。
     if (uMsg == 0x0231) {
-        // 对齐原版：拖拽/缩放期间挂起重绘（DWM 显示旧帧），结束后统一重排去闪烁。
+        // 对齐原版：拖拽/缩放期间挂起重绘（控件不重排、不重绘），结束后统一重排
+        // 去闪烁。库侧（fork KNOWN_ISSUES #2/#21）会在锁定期对"扩大"新暴露的
+        // 条带按根背景色补底送显，且后备位图随尺寸保留旧内容，因此这里无需
+        // 自行处理新暴露区域的显示，也不必在 WM_SIZE 期间触发重排。
         m_pm.LockUpdate(true);
     }
 
@@ -575,7 +600,8 @@ LRESULT AppWindow::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, 
         POINT client_point = screen_point;
         ScreenToClient(m_hWnd, &client_point);
 
-        const bool over_group = SelectListRowFromPoint(groups_list_, group_ids_, client_point, &active_group_id_);
+        const bool over_group =
+            SelectListRowFromPoint(groups_list_, group_ids_, client_point, &active_group_id_);
         if (over_group) {
             RenderItems();
             ShowGroupContextMenu(screen_point);
@@ -583,7 +609,8 @@ LRESULT AppWindow::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, 
             return 0;
         }
 
-        const bool over_item = SelectListRowFromPoint(items_list_, item_ids_, client_point, &selected_item_id_);
+        const bool over_item =
+            SelectListRowFromPoint(items_list_, item_ids_, client_point, &selected_item_id_);
         if (over_item) {
             const int index = items_list_ != nullptr ? items_list_->GetCurSel() : -1;
             if (index >= 0 && index < static_cast<int>(item_group_ids_.size())) {
@@ -601,11 +628,11 @@ LRESULT AppWindow::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, 
     }
 
     if (uMsg == WM_KEYDOWN) {
-        if (wParam == VK_APPS ||
-            (wParam == 'M' && (::GetKeyState(VK_CONTROL) & 0x8000) != 0)) {
+        if (wParam == VK_APPS || (wParam == 'M' && (::GetKeyState(VK_CONTROL) & 0x8000) != 0)) {
             // 键盘菜单入口：与右键同一条路由（光标处命中分组/条目/主菜单）。
             // 部分 DuiLib fork 会吞掉 Shift+F10 的 DefWindowProc 转换，这里主动补发。
-            ::PostMessage(m_hWnd, WM_CONTEXTMENU, reinterpret_cast<WPARAM>(m_hWnd), static_cast<LPARAM>(-1));
+            ::PostMessage(m_hWnd, WM_CONTEXTMENU, reinterpret_cast<WPARAM>(m_hWnd),
+                          static_cast<LPARAM>(-1));
             bHandled = TRUE;
             return 0;
         }

@@ -92,12 +92,14 @@ public:
     LPCTSTR GetClass() const override { return _T("AppGroupRow"); }
 
 protected:
-    bool DoPaint(DuiLib::UIRender* pRender, const DuiLib::CDuiRect& rcPaint, DuiLib::CControlUI* pStopControl) override;
+    bool DoPaint(DuiLib::UIRender* pRender, const DuiLib::CDuiRect& rcPaint,
+                 DuiLib::CControlUI* pStopControl) override;
 };
 
 // 启用列表竖向滚动条并配置为参考图的极简样式：
 // 12px 宽、无箭头按钮、轨道纯色、滑块用带 1px 描边的九宫格图。
-void ApplyFlatScrollbar(DuiLib::CListUI* list, const DuiLib::CDuiString& thumb_attr, DWORD track_bkcolor);
+void ApplyFlatScrollbar(DuiLib::CListUI* list, const DuiLib::CDuiString& thumb_attr,
+                        DWORD track_bkcolor);
 
 class SearchBoxUI : public DuiLib::CEditUI {
 public:

@@ -24,7 +24,8 @@ constexpr UINT kFocusEditMsg = WM_APP + 0x1A;
 
 std::string TrimCopy(const std::string& value) {
     auto out = value;
-    out.erase(out.begin(), std::find_if(out.begin(), out.end(), [](unsigned char ch) { return !std::isspace(ch); }));
+    out.erase(out.begin(), std::find_if(out.begin(), out.end(),
+                                        [](unsigned char ch) { return !std::isspace(ch); }));
     while (!out.empty() && std::isspace(static_cast<unsigned char>(out.back()))) {
         out.pop_back();
     }
@@ -64,16 +65,10 @@ CLabelUI* MakeFieldLabel(LPCTSTR text) {
 
 } // namespace
 
-ItemEditWindow::ItemEditWindow(AppWindow& owner,
-                               bool edit_mode,
-                               const std::string& group_id,
-                               const std::string& item_id,
-                               const core::LaunchItem* initial,
+ItemEditWindow::ItemEditWindow(AppWindow& owner, bool edit_mode, const std::string& group_id,
+                               const std::string& item_id, const core::LaunchItem* initial,
                                DoneCallback on_done)
-    : owner_(owner),
-      on_done_(std::move(on_done)),
-      edit_mode_(edit_mode),
-      item_id_(item_id) {
+    : owner_(owner), on_done_(std::move(on_done)), edit_mode_(edit_mode), item_id_(item_id) {
     if (initial != nullptr) {
         initial_name_ = initial->name;
         initial_target_ = initial->target_path;
@@ -203,7 +198,8 @@ void ItemEditWindow::CreateAndShow(HWND owner_hwnd) {
     const int owner_cy = owner_rect.bottom - owner_rect.top;
     const int x = owner_rect.left + (owner_cx > kWindowWidth ? (owner_cx - kWindowWidth) / 2 : 0);
     const int y = owner_rect.top + (owner_cy > kWindowHeight ? (owner_cy - kWindowHeight) / 2 : 0);
-    Create(nullptr, _T("MLaunchItemEdit"), WS_POPUP | WS_CLIPCHILDREN, WS_EX_TOOLWINDOW, x, y, kWindowWidth, kWindowHeight);
+    Create(nullptr, _T("MLaunchItemEdit"), WS_POPUP | WS_CLIPCHILDREN, WS_EX_TOOLWINDOW, x, y,
+           kWindowWidth, kWindowHeight);
     // 窗口按逻辑尺寸创建；对齐真实 DPI 的同时按比例放大并重新居中。
     appui::ScaleDialogToWindowDpi(m_pm, m_hWnd, owner_hwnd);
     ::ShowWindow(m_hWnd, SW_SHOW);
@@ -222,7 +218,8 @@ void ItemEditWindow::RefreshIcon() {
     probe.icon_location = icon_location_;
     icon_preview_->SetIconPath(launcher::util::Utf8ToWide(owner_.IconSourceForItem(probe)));
     m_pm.NeedUpdate();
-}bool ItemEditWindow::PointOnEditableControl(POINT pt) const {
+}
+bool ItemEditWindow::PointOnEditableControl(POINT pt) const {
     CControlUI* control = m_pm.FindControl(pt);
     if (control == nullptr) {
         return false;
@@ -240,9 +237,11 @@ void ItemEditWindow::RefreshIcon() {
 
 void ItemEditWindow::Confirm() {
     const std::string name = TrimCopy(launcher::util::WideToUtf8(name_input_->GetText().GetData()));
-    const std::string target = TrimCopy(launcher::util::WideToUtf8(target_input_->GetText().GetData()));
+    const std::string target =
+        TrimCopy(launcher::util::WideToUtf8(target_input_->GetText().GetData()));
     const std::string args = launcher::util::WideToUtf8(args_input_->GetText().GetData());
-    const std::string workdir = TrimCopy(launcher::util::WideToUtf8(workdir_input_->GetText().GetData()));
+    const std::string workdir =
+        TrimCopy(launcher::util::WideToUtf8(workdir_input_->GetText().GetData()));
 
     if (name.empty()) {
         ::MessageBoxW(m_hWnd, L"名称不能为空", L"MLaunch", MB_ICONWARNING);
@@ -271,7 +270,8 @@ void ItemEditWindow::CycleInputFocus() {
     }
 }
 
-LRESULT ItemEditWindow::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled) {
+LRESULT ItemEditWindow::HandleCustomMessage(UINT uMsg, WPARAM wParam, LPARAM lParam,
+                                            BOOL& bHandled) {
     if (uMsg == WM_ACTIVATE && LOWORD(wParam) != WA_INACTIVE) {
         // 激活序列尚未结束（随后还有系统 WM_SETFOCUS 抢回焦点），
         // 延迟到自定义消息里再聚焦原生 EDIT。
@@ -365,7 +365,8 @@ void ItemEditWindow::Notify(TNotifyUI& msg) {
             return;
         }
         if (name == _T("item_dialog_browse")) {
-            const std::wstring file = core::PickOpenPath(m_hWnd, L"可执行文件 (*.exe)\0*.exe\0所有文件 (*.*)\0*.*\0");
+            const std::wstring file =
+                core::PickOpenPath(m_hWnd, L"可执行文件 (*.exe)\0*.exe\0所有文件 (*.*)\0*.*\0");
             if (!file.empty()) {
                 target_input_->SetText(file.c_str());
                 RefreshIcon();
@@ -378,7 +379,8 @@ void ItemEditWindow::Notify(TNotifyUI& msg) {
             return;
         }
         if (name == _T("item_dialog_icon_change")) {
-            const std::wstring file = core::PickOpenPath(m_hWnd, L"图标来源 (*.ico;*.exe;*.dll)\0*.ico;*.exe;*.dll\0所有文件 (*.*)\0*.*\0");
+            const std::wstring file = core::PickOpenPath(
+                m_hWnd, L"图标来源 (*.ico;*.exe;*.dll)\0*.ico;*.exe;*.dll\0所有文件 (*.*)\0*.*\0");
             if (!file.empty()) {
                 icon_location_ = launcher::util::WideToUtf8(file);
                 RefreshIcon();

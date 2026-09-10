@@ -20,19 +20,21 @@ inline std::wstring Utf8ToWide(const std::string& utf8) {
     if (utf8.empty()) {
         return {};
     }
-    const int size = ::MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(),
-                                           static_cast<int>(utf8.size()), nullptr, 0);
+    const int size =
+        ::MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), static_cast<int>(utf8.size()), nullptr, 0);
     std::wstring wide(static_cast<std::size_t>(size), L'\0');
-    ::MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), static_cast<int>(utf8.size()),
-                          wide.data(), size);
+    ::MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), static_cast<int>(utf8.size()), wide.data(),
+                          size);
     return wide;
 }
 
 inline std::string Trim(const std::string& s) {
     std::size_t begin = 0;
     std::size_t end = s.size();
-    while (begin < end && std::isspace(static_cast<unsigned char>(s[begin]))) ++begin;
-    while (end > begin && std::isspace(static_cast<unsigned char>(s[end - 1]))) --end;
+    while (begin < end && std::isspace(static_cast<unsigned char>(s[begin])))
+        ++begin;
+    while (end > begin && std::isspace(static_cast<unsigned char>(s[end - 1])))
+        --end;
     return s.substr(begin, end - begin);
 }
 

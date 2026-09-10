@@ -25,15 +25,17 @@ HICON FileIconControl::LoadShellIcon(const std::wstring& path, bool prefer_large
 
     if (!path.empty()) {
         const DWORD attributes = GetFileAttributesW(path.c_str());
-        const DWORD use_flags = (attributes == INVALID_FILE_ATTRIBUTES)
-            ? (flags | SHGFI_USEFILEATTRIBUTES)
-            : flags;
-        if (SHGetFileInfoW(path.c_str(), FILE_ATTRIBUTE_NORMAL, &file_info, sizeof(file_info), use_flags) != 0 && file_info.hIcon != nullptr) {
+        const DWORD use_flags =
+            (attributes == INVALID_FILE_ATTRIBUTES) ? (flags | SHGFI_USEFILEATTRIBUTES) : flags;
+        if (SHGetFileInfoW(path.c_str(), FILE_ATTRIBUTE_NORMAL, &file_info, sizeof(file_info),
+                           use_flags) != 0 &&
+            file_info.hIcon != nullptr) {
             return file_info.hIcon;
         }
     }
 
-    if (SHGetFileInfoW(L".exe", FILE_ATTRIBUTE_NORMAL, &file_info, sizeof(file_info), flags | SHGFI_USEFILEATTRIBUTES) != 0) {
+    if (SHGetFileInfoW(L".exe", FILE_ATTRIBUTE_NORMAL, &file_info, sizeof(file_info),
+                       flags | SHGFI_USEFILEATTRIBUTES) != 0) {
         return file_info.hIcon;
     }
 
@@ -42,7 +44,8 @@ HICON FileIconControl::LoadShellIcon(const std::wstring& path, bool prefer_large
 
 void FileIconControl::SetIconPath(const std::wstring& path) {
     ResetIcon();
-    const bool prefer_large = (GetManager() != nullptr && GetManager()->GetDPIObj()->GetScale() > 100);
+    const bool prefer_large =
+        (GetManager() != nullptr && GetManager()->GetDPIObj()->GetScale() > 100);
     icon_ = LoadShellIcon(path, prefer_large);
     NeedUpdate();
 }

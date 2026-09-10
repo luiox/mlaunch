@@ -14,7 +14,8 @@ public:
     void RenderGroups();
     void RenderItems();
     void SelectGroupByIndex(int index);
-    bool SelectListRowFromPoint(DuiLib::CListUI* list, const std::vector<std::string>& ids, const POINT& client_point, std::string* selected_id);
+    bool SelectListRowFromPoint(DuiLib::CListUI* list, const std::vector<std::string>& ids,
+                                const POINT& client_point, std::string* selected_id);
 
 private:
     AppWindow& owner_;

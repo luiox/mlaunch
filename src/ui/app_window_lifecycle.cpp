@@ -48,8 +48,9 @@ void AppWindow::RestoreUiState() {
 
     // 1) 先完成全部读取。未保存过布局时回退到设置里的分组栏宽度。
     int splitter_width = static_cast<int>(backend_.CurrentSettings().group_panel_width);
-    const bool has_splitter = group_panel_ != nullptr &&
-                              appwin::ReadIniInt(ini_path, L"layout", L"splitter_width", &splitter_width);
+    const bool has_splitter =
+        group_panel_ != nullptr &&
+        appwin::ReadIniInt(ini_path, L"layout", L"splitter_width", &splitter_width);
 
     // 兼容两种格式：
     // 1) 老格式：left/top/right/bottom
@@ -121,14 +122,12 @@ void AppWindow::RestoreUiState() {
     {
         RECT restored{left, top, left + width, top + height};
         RECT virtual_rect{
-            ::GetSystemMetrics(SM_XVIRTUALSCREEN),
-            ::GetSystemMetrics(SM_YVIRTUALSCREEN),
+            ::GetSystemMetrics(SM_XVIRTUALSCREEN), ::GetSystemMetrics(SM_YVIRTUALSCREEN),
             ::GetSystemMetrics(SM_XVIRTUALSCREEN) + ::GetSystemMetrics(SM_CXVIRTUALSCREEN),
             ::GetSystemMetrics(SM_YVIRTUALSCREEN) + ::GetSystemMetrics(SM_CYVIRTUALSCREEN)};
         RECT intersect{};
         if (!::IntersectRect(&intersect, &restored, &virtual_rect) ||
-            (intersect.right - intersect.left) < 100 ||
-            (intersect.bottom - intersect.top) < 100) {
+            (intersect.right - intersect.left) < 100 || (intersect.bottom - intersect.top) < 100) {
             launcher::log::Warn("ui_state window rect off-screen, ignored");
             return;
         }
@@ -194,7 +193,8 @@ void AppWindow::ScheduleUiStateSave() {
     if (ui_state_timer_active_) {
         ::KillTimer(m_hWnd, launcher::constants::timer::kUiStateSave);
     }
-    ::SetTimer(m_hWnd, launcher::constants::timer::kUiStateSave, launcher::constants::kUiStateSaveDelayMs, nullptr);
+    ::SetTimer(m_hWnd, launcher::constants::timer::kUiStateSave,
+               launcher::constants::kUiStateSaveDelayMs, nullptr);
     ui_state_timer_active_ = true;
 }
 
@@ -254,16 +254,43 @@ bool AppWindow::ParseHotkeyString(const std::string& text, UINT* modifiers, UINT
     }
 
     static const std::map<std::string, UINT> kNamedKeys = {
-        {"SPACE", VK_SPACE}, {"TAB", VK_TAB}, {"ESC", VK_ESCAPE}, {"ESCAPE", VK_ESCAPE},
-        {"ENTER", VK_RETURN}, {"RETURN", VK_RETURN}, {"BACK", VK_BACK}, {"BACKSPACE", VK_BACK},
-        {"UP", VK_UP}, {"DOWN", VK_DOWN}, {"LEFT", VK_LEFT}, {"RIGHT", VK_RIGHT},
-        {"PGUP", VK_PRIOR}, {"PGDN", VK_NEXT}, {"HOME", VK_HOME}, {"END", VK_END},
-        {"INS", VK_INSERT}, {"INSERT", VK_INSERT}, {"DEL", VK_DELETE}, {"DELETE", VK_DELETE},
-        {"PAUSE", VK_PAUSE}, {"CAPSLOCK", VK_CAPITAL}, {"NUMLOCK", VK_NUMLOCK},
-        {"SCROLLLOCK", VK_SCROLL}, {"PRINTSCREEN", VK_SNAPSHOT},
-        {"`", VK_OEM_3}, {"~", VK_OEM_3}, {"-", VK_OEM_MINUS}, {"=", VK_OEM_PLUS},
-        {"[", VK_OEM_4}, {"]", VK_OEM_6}, {"\\", VK_OEM_5}, {";", VK_OEM_1},
-        {"'", VK_OEM_7}, {",", VK_OEM_COMMA}, {".", VK_OEM_PERIOD}, {"/", VK_OEM_2},
+        {"SPACE", VK_SPACE},
+        {"TAB", VK_TAB},
+        {"ESC", VK_ESCAPE},
+        {"ESCAPE", VK_ESCAPE},
+        {"ENTER", VK_RETURN},
+        {"RETURN", VK_RETURN},
+        {"BACK", VK_BACK},
+        {"BACKSPACE", VK_BACK},
+        {"UP", VK_UP},
+        {"DOWN", VK_DOWN},
+        {"LEFT", VK_LEFT},
+        {"RIGHT", VK_RIGHT},
+        {"PGUP", VK_PRIOR},
+        {"PGDN", VK_NEXT},
+        {"HOME", VK_HOME},
+        {"END", VK_END},
+        {"INS", VK_INSERT},
+        {"INSERT", VK_INSERT},
+        {"DEL", VK_DELETE},
+        {"DELETE", VK_DELETE},
+        {"PAUSE", VK_PAUSE},
+        {"CAPSLOCK", VK_CAPITAL},
+        {"NUMLOCK", VK_NUMLOCK},
+        {"SCROLLLOCK", VK_SCROLL},
+        {"PRINTSCREEN", VK_SNAPSHOT},
+        {"`", VK_OEM_3},
+        {"~", VK_OEM_3},
+        {"-", VK_OEM_MINUS},
+        {"=", VK_OEM_PLUS},
+        {"[", VK_OEM_4},
+        {"]", VK_OEM_6},
+        {"\\", VK_OEM_5},
+        {";", VK_OEM_1},
+        {"'", VK_OEM_7},
+        {",", VK_OEM_COMMA},
+        {".", VK_OEM_PERIOD},
+        {"/", VK_OEM_2},
     };
 
     const std::string key = tokens.back();
@@ -309,7 +336,8 @@ void AppWindow::RegisterConfiguredHotkey() {
         return;
     }
     if (!::RegisterHotKey(m_hWnd, launcher::constants::kAppHotkeyId, mods | MOD_NOREPEAT, vk)) {
-        launcher::log::Warn("register hotkey failed: " + hotkey_text + " err=" + std::to_string(::GetLastError()));
+        launcher::log::Warn("register hotkey failed: " + hotkey_text +
+                            " err=" + std::to_string(::GetLastError()));
         status_.Warn("全局热键注册失败（可能被占用）：" + hotkey_text);
         return;
     }

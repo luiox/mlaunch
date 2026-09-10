@@ -11,11 +11,11 @@
 
 using namespace DuiLib;
 
-DialogManager::DialogManager(AppWindow& owner)
-    : owner_(owner) {}
+DialogManager::DialogManager(AppWindow& owner) : owner_(owner) {}
 
 void DialogManager::OpenGroupDialog(bool rename_mode, const std::string& group_id) {
-    if (owner_.group_dialog_ == nullptr || owner_.group_dialog_input_ == nullptr || owner_.group_dialog_title_ == nullptr) {
+    if (owner_.group_dialog_ == nullptr || owner_.group_dialog_input_ == nullptr ||
+        owner_.group_dialog_title_ == nullptr) {
         owner_.status_.Error("分组对话框不可用");
         return;
     }
@@ -64,11 +64,14 @@ void DialogManager::ConfirmGroupDialog() {
         return;
     }
 
-    const std::string raw_input = launcher::util::WideToUtf8(owner_.group_dialog_input_->GetText().GetData());
+    const std::string raw_input =
+        launcher::util::WideToUtf8(owner_.group_dialog_input_->GetText().GetData());
 
     std::string name = raw_input;
     std::string trimmed = name;
-    trimmed.erase(trimmed.begin(), std::find_if(trimmed.begin(), trimmed.end(), [](unsigned char ch) { return !std::isspace(ch); }));
+    trimmed.erase(trimmed.begin(),
+                  std::find_if(trimmed.begin(), trimmed.end(),
+                               [](unsigned char ch) { return !std::isspace(ch); }));
     while (!trimmed.empty() && std::isspace(static_cast<unsigned char>(trimmed.back()))) {
         trimmed.pop_back();
     }
@@ -105,8 +108,8 @@ void DialogManager::ConfirmGroupDialog() {
     }
 }
 
-
-void DialogManager::OpenItemDialog(bool edit_mode, const std::string& group_id, const std::string& item_id) {
+void DialogManager::OpenItemDialog(bool edit_mode, const std::string& group_id,
+                                   const std::string& item_id) {
     if (item_edit_window_ != nullptr) {
         // 已打开则置前，避免多份编辑窗。
         ::SetForegroundWindow(*item_edit_window_);
@@ -117,11 +120,16 @@ void DialogManager::OpenItemDialog(bool edit_mode, const std::string& group_id, 
     if (edit_mode) {
         const core::LaunchItem* found = nullptr;
         for (const auto& g : owner_.backend_.Data().groups) {
-            if (g.id != group_id) continue;
+            if (g.id != group_id)
+                continue;
             for (const auto& i : g.items) {
-                if (i.id == item_id) { found = &i; break; }
+                if (i.id == item_id) {
+                    found = &i;
+                    break;
+                }
             }
-            if (found != nullptr) break;
+            if (found != nullptr)
+                break;
         }
         if (found == nullptr) {
             owner_.status_.Warn("条目不存在");
@@ -133,8 +141,7 @@ void DialogManager::OpenItemDialog(bool edit_mode, const std::string& group_id, 
     const std::string group_id_copy = group_id;
     const std::string item_id_copy = item_id;
     item_edit_window_ = new ItemEditWindow(
-        owner_, edit_mode, group_id_copy, item_id_copy,
-        edit_mode ? &initial : nullptr,
+        owner_, edit_mode, group_id_copy, item_id_copy, edit_mode ? &initial : nullptr,
         [this, group_id_copy, item_id_copy](bool confirmed, const std::string& item_id,
                                             const std::string& name, const std::string& target,
                                             const std::string& args, const std::string& icon,
@@ -158,11 +165,10 @@ void DialogManager::OpenSettingsDialog() {
         return;
     }
 
-    settings_window_ = new SettingsWindow(
-        owner_.backend_.CurrentSettings(),
-        [this](bool confirmed, const core::Settings& settings) {
-            OnSettingsDone(confirmed, settings);
-        });
+    settings_window_ = new SettingsWindow(owner_.backend_.CurrentSettings(),
+                                          [this](bool confirmed, const core::Settings& settings) {
+                                              OnSettingsDone(confirmed, settings);
+                                          });
     settings_window_->CreateAndShow(owner_.m_hWnd);
 }
 
@@ -189,9 +195,10 @@ void DialogManager::OnSettingsDone(bool confirmed, const core::Settings& setting
     owner_.status_.Info("设置已保存");
 }
 
-void DialogManager::OnItemEditDone(const std::string& group_id, bool confirmed, const std::string& item_id,
-                                   const std::string& name, const std::string& target,
-                                   const std::string& args, const std::string& icon_location,
+void DialogManager::OnItemEditDone(const std::string& group_id, bool confirmed,
+                                   const std::string& item_id, const std::string& name,
+                                   const std::string& target, const std::string& args,
+                                   const std::string& icon_location,
                                    const std::string& working_dir) {
     item_edit_window_ = nullptr;
     if (!confirmed) {

@@ -52,6 +52,7 @@ target("DuiLibLite")
 target("mlaunch-core")
     set_kind("static")
     set_languages("cxx17")
+    set_warnings("all")
     add_cxxflags("/utf-8")
 
     if is_mode("debug") then
@@ -73,6 +74,7 @@ target("mlaunch-core")
 target("mlaunch-tools")
     set_kind("static")
     set_languages("cxx17")
+    set_warnings("all")
     add_cxxflags("/utf-8")
 
     if is_mode("debug") then
@@ -94,6 +96,7 @@ target("mlaunch-tools")
 target("mlaunch")
     set_kind("binary")
     set_languages("cxx17")
+    set_warnings("all")
     add_cxxflags("/utf-8")
 
     if is_mode("debug") then
@@ -129,6 +132,7 @@ target("mlaunch")
 target("mtool")
     set_kind("binary")
     set_languages("cxx17")
+    set_warnings("all")
     add_cxxflags("/utf-8")
 
     if is_mode("debug") then
@@ -147,6 +151,7 @@ target("mtool")
 target("core_tests")
     set_kind("binary")
     set_languages("cxx17")
+    set_warnings("all")
     add_cxxflags("/utf-8")
 
     if is_mode("debug") then
@@ -166,6 +171,7 @@ target("core_tests")
 target("tools_tests")
     set_kind("binary")
     set_languages("cxx17")
+    set_warnings("all")
     add_cxxflags("/utf-8")
 
     if is_mode("debug") then

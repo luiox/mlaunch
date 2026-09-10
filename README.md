@@ -30,6 +30,13 @@ xmake build tools_tests
 xmake run tools_tests
 ```
 
+## 代码风格
+
+一方代码（`src/`、`tests/`、`tools/`）由仓库根的 `.clang-format` 约束
+（4 空格缩进、100 列、指针贴类型、include 块内字母序且 `windows.h` 恒排块首）；
+提交前跑 `clang-format -i` 即可，CI 有 format 检查 job（锁 18.1.8）。
+第三方代码（`third_party/`）不在约束范围内。
+
 ## 小工具（plugin 机制 v1）
 
 同一份工具注册表（`src/tools/tool_registry.h`）服务两个入口：

@@ -19,18 +19,24 @@ enum class Algorithm { kMd5, kSha1, kSha256 };
 
 const char* AlgorithmName(Algorithm algo) {
     switch (algo) {
-    case Algorithm::kMd5: return "MD5";
-    case Algorithm::kSha1: return "SHA1";
-    case Algorithm::kSha256: return "SHA256";
+    case Algorithm::kMd5:
+        return "MD5";
+    case Algorithm::kSha1:
+        return "SHA1";
+    case Algorithm::kSha256:
+        return "SHA256";
     }
     return "?";
 }
 
 std::string Digest(Algorithm algo, const std::string& text) {
     switch (algo) {
-    case Algorithm::kMd5: return ca::crypto::MD5()(text);
-    case Algorithm::kSha1: return ca::crypto::SHA1()(text);
-    case Algorithm::kSha256: return ca::crypto::SHA256()(text);
+    case Algorithm::kMd5:
+        return ca::crypto::MD5()(text);
+    case Algorithm::kSha1:
+        return ca::crypto::SHA1()(text);
+    case Algorithm::kSha256:
+        return ca::crypto::SHA256()(text);
     }
     return "";
 }
@@ -48,7 +54,8 @@ ToolOutput RunWith(Algorithm fixed_algo, const std::string& raw_args) {
         std::string tail;
         SplitCommand(raw_args, &head, &tail);
         if (head == "md5" || head == "sha1" || head == "sha256") {
-            algo = head == "md5" ? Algorithm::kMd5 : (head == "sha1" ? Algorithm::kSha1 : Algorithm::kSha256);
+            algo = head == "md5" ? Algorithm::kMd5
+                                 : (head == "sha1" ? Algorithm::kSha1 : Algorithm::kSha256);
             text = tail;
         }
     }
@@ -111,7 +118,9 @@ ToolDef BuildMd5Tool() {
     def.keyword = "md5";
     def.name = "MD5 摘要";
     def.usage = "md5 <文本>";
-    def.run = [](const std::string& args) { return RunWith(Algorithm::kMd5, args); };
+    def.run = [](const std::string& args) {
+        return RunWith(Algorithm::kMd5, args);
+    };
     return def;
 }
 
@@ -120,7 +129,9 @@ ToolDef BuildSha1Tool() {
     def.keyword = "sha1";
     def.name = "SHA1 摘要";
     def.usage = "sha1 <文本>";
-    def.run = [](const std::string& args) { return RunWith(Algorithm::kSha1, args); };
+    def.run = [](const std::string& args) {
+        return RunWith(Algorithm::kSha1, args);
+    };
     return def;
 }
 
@@ -129,7 +140,9 @@ ToolDef BuildSha256Tool() {
     def.keyword = "sha256";
     def.name = "SHA256 摘要";
     def.usage = "sha256 <文本>";
-    def.run = [](const std::string& args) { return RunWith(Algorithm::kSha256, args); };
+    def.run = [](const std::string& args) {
+        return RunWith(Algorithm::kSha256, args);
+    };
     return def;
 }
 

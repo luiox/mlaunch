@@ -25,7 +25,8 @@ std::string IconManager::ParseItemIconSource(const core::LaunchItem& item) const
     return item.target_path;
 }
 
-void IconManager::ReplaceAllInPlace(std::string* text, const std::string& from, const std::string& to) {
+void IconManager::ReplaceAllInPlace(std::string* text, const std::string& from,
+                                    const std::string& to) {
     if (text == nullptr || from.empty() || from == to) {
         return;
     }
@@ -45,7 +46,8 @@ std::string IconManager::ApplyIconThemeColor(std::string svg_text) {
     return svg_text;
 }
 
-bool IconManager::WriteThemedSvg(const std::filesystem::path& out_path, const std::string& raw_svg) {
+bool IconManager::WriteThemedSvg(const std::filesystem::path& out_path,
+                                 const std::string& raw_svg) {
     std::error_code ec;
     std::filesystem::create_directories(out_path.parent_path(), ec);
     std::ofstream stream(out_path, std::ios::binary | std::ios::trunc);
@@ -58,7 +60,8 @@ bool IconManager::WriteThemedSvg(const std::filesystem::path& out_path, const st
     return true;
 }
 
-std::filesystem::path IconManager::BuildThemedIconPath(const std::filesystem::path& source_or_name) const {
+std::filesystem::path
+IconManager::BuildThemedIconPath(const std::filesystem::path& source_or_name) const {
     const auto stem = source_or_name.stem().string();
     return cache_dir_ / (stem + "_128_128_128.svg");
 }
@@ -77,7 +80,8 @@ std::filesystem::path IconManager::GetDynamicIconPath(icon::Icon icon) const {
         return source;
     }
 
-    const std::string raw((std::istreambuf_iterator<char>(stream)), std::istreambuf_iterator<char>());
+    const std::string raw((std::istreambuf_iterator<char>(stream)),
+                          std::istreambuf_iterator<char>());
     const auto out = BuildThemedIconPath(source);
     if (WriteThemedSvg(out, raw)) {
         return out;
@@ -128,7 +132,8 @@ DuiLib::CDuiString IconManager::MakeScrollbarThumbAttr() const {
     if (!std::filesystem::exists(path)) {
         // 12x12：外圈 1px D7D7D7 描边 + 内部 EBEBEB 填充，配合 corner='1,1,1,1' 九宫格拉伸。
         static constexpr const char* kSvg =
-            "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"12\" height=\"12\" viewBox=\"0 0 12 12\">"
+            "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"12\" height=\"12\" viewBox=\"0 0 12 "
+            "12\">"
             "<rect x=\"0\" y=\"0\" width=\"12\" height=\"12\" fill=\"#D7D7D7\"/>"
             "<rect x=\"1\" y=\"1\" width=\"10\" height=\"10\" fill=\"#EBEBEB\"/>"
             "</svg>";

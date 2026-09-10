@@ -46,8 +46,8 @@ void SubclassNativeEdit(HWND native_edit) {
     if (native_edit == nullptr || ::GetPropW(native_edit, kOldProcProp) != nullptr) {
         return;
     }
-    WNDPROC old_proc = reinterpret_cast<WNDPROC>(
-        ::SetWindowLongPtrW(native_edit, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(EditSubclassProc)));
+    WNDPROC old_proc = reinterpret_cast<WNDPROC>(::SetWindowLongPtrW(
+        native_edit, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(EditSubclassProc)));
     if (old_proc != nullptr) {
         ::SetPropW(native_edit, kOldProcProp, reinterpret_cast<HANDLE>(old_proc));
     }

@@ -11,8 +11,7 @@
 
 using namespace DuiLib;
 
-ListController::ListController(AppWindow& owner)
-    : owner_(owner) {}
+ListController::ListController(AppWindow& owner) : owner_(owner) {}
 
 void ListController::RenderGroups() {
     if (!owner_.groups_list_) {
@@ -142,7 +141,8 @@ void ListController::RenderItems() {
         }
 
         if (active_cmd != launcher::constants::search_cmd::kNone) {
-            auto add_command_row = [&](const std::wstring& label, const std::wstring& desc, int cmd_id) {
+            auto add_command_row = [&](const std::wstring& label, const std::wstring& desc,
+                                       int cmd_id) {
                 auto* row = new CListContainerElementUI();
                 row->SetFixedHeight(28);
                 row->SetAttribute(_T("inset"), _T("4,0,4,0"));
@@ -167,7 +167,8 @@ void ListController::RenderItems() {
                     auto* desc_label = new CLabelUI();
                     desc_label->SetText(desc.c_str());
                     desc_label->SetTextColor(0xFF808689);
-                    desc_label->SetTextStyle(DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+                    desc_label->SetTextStyle(DT_LEFT | DT_VCENTER | DT_SINGLELINE |
+                                             DT_END_ELLIPSIS);
                     desc_label->SetAttribute(_T("font"), _T("1"));
                     text_layout->Add(desc_label);
                 }
@@ -199,7 +200,10 @@ void ListController::RenderItems() {
                 add_command_row(L"关闭显示器", L"screenoff", active_cmd);
                 break;
             case launcher::constants::search_cmd::kBaidu:
-                add_command_row(L"百度搜索", launcher::util::Utf8ToWide(owner_.search_controller_.GetBaiduKeyword()), active_cmd);
+                add_command_row(
+                    L"百度搜索",
+                    launcher::util::Utf8ToWide(owner_.search_controller_.GetBaiduKeyword()),
+                    active_cmd);
                 break;
             }
             // 命令行即唯一结果：自动选中，回车直接执行。
@@ -214,7 +218,8 @@ void ListController::RenderItems() {
             const tools::ToolDef* tool = tools::FindByKeyword(tool_kw);
             const tools::ToolOutput& out = owner_.search_controller_.GetToolOutput();
 
-            auto add_tool_row = [&](const std::wstring& text, unsigned long color, bool selectable, const std::string& item_id) {
+            auto add_tool_row = [&](const std::wstring& text, unsigned long color, bool selectable,
+                                    const std::string& item_id) {
                 auto* row = new CListContainerElementUI();
                 row->SetFixedHeight(28);
                 row->SetAttribute(_T("inset"), _T("4,0,4,0"));
@@ -283,11 +288,13 @@ void ListController::RenderItems() {
                 auto* icon = new FileIconControl();
                 icon->SetFixedWidth(20);
                 icon->SetFixedHeight(20);
-                icon->SetIconPath(launcher::util::Utf8ToWide(owner_.icon_manager_.ParseItemIconSource(item)));
+                icon->SetIconPath(
+                    launcher::util::Utf8ToWide(owner_.icon_manager_.ParseItemIconSource(item)));
                 row->Add(icon);
 
                 auto* name = new CLabelUI();
-                name->SetText(launcher::util::Utf8ToWide(item.name + "  [" + group.name + "]").c_str());
+                name->SetText(
+                    launcher::util::Utf8ToWide(item.name + "  [" + group.name + "]").c_str());
                 name->SetTextColor(item.enabled ? 0xFF1A1A1A : 0xFF909090);
                 name->SetTextStyle(DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
                 row->Add(name);
@@ -340,7 +347,8 @@ void ListController::RenderItems() {
         auto* icon = new FileIconControl();
         icon->SetFixedWidth(20);
         icon->SetFixedHeight(20);
-        icon->SetIconPath(launcher::util::Utf8ToWide(owner_.icon_manager_.ParseItemIconSource(item)));
+        icon->SetIconPath(
+            launcher::util::Utf8ToWide(owner_.icon_manager_.ParseItemIconSource(item)));
         row->Add(icon);
 
         auto* name = new CLabelUI();
@@ -366,7 +374,8 @@ void ListController::SelectGroupByIndex(int index) {
     RenderItems();
 }
 
-bool ListController::SelectListRowFromPoint(CListUI* list, const std::vector<std::string>& ids, const POINT& client_point, std::string* selected_id) {
+bool ListController::SelectListRowFromPoint(CListUI* list, const std::vector<std::string>& ids,
+                                            const POINT& client_point, std::string* selected_id) {
     if (list == nullptr) {
         return false;
     }

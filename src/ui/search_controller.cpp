@@ -7,8 +7,7 @@
 #include "logger.h"
 #include "utils/string_util.h"
 
-SearchController::SearchController(AppWindow& owner)
-    : owner_(owner) {}
+SearchController::SearchController(AppWindow& owner) : owner_(owner) {}
 
 bool SearchController::IsSearchMode() const {
     return owner_.search_mode_;
@@ -70,15 +69,18 @@ std::string SearchController::CommandIdToItemId(int cmd_id) {
 
 int SearchController::ParseCommand(const std::string& input, std::string* out_keyword) {
     std::string trimmed = input;
-    trimmed.erase(trimmed.begin(), std::find_if(trimmed.begin(), trimmed.end(),
-        [](unsigned char ch) { return !std::isspace(ch); }));
+    trimmed.erase(trimmed.begin(),
+                  std::find_if(trimmed.begin(), trimmed.end(),
+                               [](unsigned char ch) { return !std::isspace(ch); }));
     trimmed.erase(std::find_if(trimmed.rbegin(), trimmed.rend(),
-        [](unsigned char ch) { return !std::isspace(ch); }).base(), trimmed.end());
+                               [](unsigned char ch) { return !std::isspace(ch); })
+                      .base(),
+                  trimmed.end());
 
     auto to_lower = [](const std::string& s) {
         std::string result = s;
         std::transform(result.begin(), result.end(), result.begin(),
-            [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+                       [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
         return result;
     };
 
@@ -87,8 +89,8 @@ int SearchController::ParseCommand(const std::string& input, std::string* out_ke
     if (lower == "cmd" || lower.rfind("cmd ", 0) == 0) {
         return launcher::constants::search_cmd::kCmd;
     }
-    if (lower == "setting" || lower == "settings" ||
-        lower.rfind("setting ", 0) == 0 || lower.rfind("settings ", 0) == 0) {
+    if (lower == "setting" || lower == "settings" || lower.rfind("setting ", 0) == 0 ||
+        lower.rfind("settings ", 0) == 0) {
         return launcher::constants::search_cmd::kSettings;
     }
     if (lower == "shutdown" || lower.rfind("shutdown ", 0) == 0) {
@@ -132,10 +134,13 @@ void SearchController::HandleInputChanged() {
     ClearToolState();
     if (active_command_ == launcher::constants::search_cmd::kNone) {
         std::string trimmed = input;
-        trimmed.erase(trimmed.begin(), std::find_if(trimmed.begin(), trimmed.end(),
-            [](unsigned char ch) { return !std::isspace(ch); }));
+        trimmed.erase(trimmed.begin(),
+                      std::find_if(trimmed.begin(), trimmed.end(),
+                                   [](unsigned char ch) { return !std::isspace(ch); }));
         trimmed.erase(std::find_if(trimmed.rbegin(), trimmed.rend(),
-            [](unsigned char ch) { return !std::isspace(ch); }).base(), trimmed.end());
+                                   [](unsigned char ch) { return !std::isspace(ch); })
+                          .base(),
+                      trimmed.end());
         const std::size_t space = trimmed.find_first_of(" \t");
         const std::string head = space == std::string::npos ? trimmed : trimmed.substr(0, space);
         if (const tools::ToolDef* tool = tools::FindByKeyword(head)) {

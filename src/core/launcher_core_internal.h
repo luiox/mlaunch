@@ -62,14 +62,16 @@ inline const ca::json::JsonValue* FindField(const ca::json::JsonValue& object, c
     return object.find(ca::str::Utf8StringRef::from_cstr(key));
 }
 
-inline std::string GetStr(const ca::json::JsonValue& object, const char* key, std::string fallback) {
+inline std::string GetStr(const ca::json::JsonValue& object, const char* key,
+                          std::string fallback) {
     if (const auto* v = FindField(object, key); v != nullptr && v->is_string()) {
         return ToStdString(v->as_string());
     }
     return fallback;
 }
 
-inline std::uint64_t GetU64(const ca::json::JsonValue& object, const char* key, std::uint64_t fallback) {
+inline std::uint64_t GetU64(const ca::json::JsonValue& object, const char* key,
+                            std::uint64_t fallback) {
     if (const auto* v = FindField(object, key); v != nullptr && v->is_number()) {
         return static_cast<std::uint64_t>(v->as_int_or(static_cast<ca::i64>(fallback)));
     }
@@ -98,7 +100,8 @@ inline double GetF64(const ca::json::JsonValue& object, const char* key, double 
 }
 
 // 解析 JSON 文本；失败时返回 nullopt 并给出错误描述。
-inline std::optional<ca::json::JsonDocument> ParseJsonText(const std::string& text, std::string* parse_error) {
+inline std::optional<ca::json::JsonDocument> ParseJsonText(const std::string& text,
+                                                           std::string* parse_error) {
     auto result = ca::json::JsonReader::read(ca::str::Utf8StringRef::from_string_view(text));
     if (result.is_err()) {
         if (parse_error != nullptr) {
@@ -111,19 +114,23 @@ inline std::optional<ca::json::JsonDocument> ParseJsonText(const std::string& te
 }
 
 // 组装对象字段的便捷入口：key intern 进 arena，值 move 进 DOM。
-inline void SetStr(ca::json::JsonValue& object, ca::str::Utf8StringArena& arena, const char* key, const std::string& value) {
+inline void SetStr(ca::json::JsonValue& object, ca::str::Utf8StringArena& arena, const char* key,
+                   const std::string& value) {
     object.set(arena.intern(key), ca::json::JsonValue::make_string(arena.intern(value.c_str())));
 }
 
-inline void SetInt(ca::json::JsonValue& object, ca::str::Utf8StringArena& arena, const char* key, std::int64_t value) {
+inline void SetInt(ca::json::JsonValue& object, ca::str::Utf8StringArena& arena, const char* key,
+                   std::int64_t value) {
     object.set(arena.intern(key), ca::json::JsonValue::make_int(value));
 }
 
-inline void SetBool(ca::json::JsonValue& object, ca::str::Utf8StringArena& arena, const char* key, bool value) {
+inline void SetBool(ca::json::JsonValue& object, ca::str::Utf8StringArena& arena, const char* key,
+                    bool value) {
     object.set(arena.intern(key), ca::json::JsonValue::make_bool(value));
 }
 
-inline void SetF64(ca::json::JsonValue& object, ca::str::Utf8StringArena& arena, const char* key, double value) {
+inline void SetF64(ca::json::JsonValue& object, ca::str::Utf8StringArena& arena, const char* key,
+                   double value) {
     object.set(arena.intern(key), ca::json::JsonValue::make_float(value));
 }
 
@@ -151,7 +158,8 @@ inline std::string ReadTextFile(const std::filesystem::path& path) {
     return ss.str();
 }
 
-inline bool WriteTextAtomic(const std::filesystem::path& path, const std::string& content, std::string* error) {
+inline bool WriteTextAtomic(const std::filesystem::path& path, const std::string& content,
+                            std::string* error) {
     std::error_code ec;
     std::filesystem::create_directories(path.parent_path(), ec);
     const auto tmp = path.string() + ".tmp";
@@ -190,13 +198,16 @@ inline bool BackupCorruptedJson(const std::filesystem::path& path) {
     }
 
     const auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::system_clock::now().time_since_epoch()).count();
+                               std::chrono::system_clock::now().time_since_epoch())
+                               .count();
     const auto backup_path = path.string() + ".bad." + std::to_string(timestamp) + ".bak";
 
     std::error_code ec;
-    std::filesystem::copy_file(path, backup_path, std::filesystem::copy_options::overwrite_existing, ec);
+    std::filesystem::copy_file(path, backup_path, std::filesystem::copy_options::overwrite_existing,
+                               ec);
     if (ec) {
-        launcher::log::Warn("backup failed for corrupted json: " + path.string() + " error=" + ec.message());
+        launcher::log::Warn("backup failed for corrupted json: " + path.string() +
+                            " error=" + ec.message());
         return false;
     }
 
@@ -214,26 +225,24 @@ inline std::tm ToLocalTime(std::chrono::system_clock::time_point tp) {
 inline std::string FormatJournalTimestamp(std::chrono::system_clock::time_point tp) {
     const auto local = ToLocalTime(tp);
     char buffer[32]{};
-    std::snprintf(buffer, sizeof(buffer), "%04d-%02d-%02d %02d:%02d:%02d",
-        local.tm_year + 1900, local.tm_mon + 1, local.tm_mday,
-        local.tm_hour, local.tm_min, local.tm_sec);
+    std::snprintf(buffer, sizeof(buffer), "%04d-%02d-%02d %02d:%02d:%02d", local.tm_year + 1900,
+                  local.tm_mon + 1, local.tm_mday, local.tm_hour, local.tm_min, local.tm_sec);
     return buffer;
 }
 
 inline std::string FormatFileStamp(std::chrono::system_clock::time_point tp) {
     const auto local = ToLocalTime(tp);
     char buffer[32]{};
-    std::snprintf(buffer, sizeof(buffer), "%04d%02d%02d-%02d%02d%02d",
-        local.tm_year + 1900, local.tm_mon + 1, local.tm_mday,
-        local.tm_hour, local.tm_min, local.tm_sec);
+    std::snprintf(buffer, sizeof(buffer), "%04d%02d%02d-%02d%02d%02d", local.tm_year + 1900,
+                  local.tm_mon + 1, local.tm_mday, local.tm_hour, local.tm_min, local.tm_sec);
     return buffer;
 }
 
 inline std::string FormatDateStamp(std::chrono::system_clock::time_point tp) {
     const auto local = ToLocalTime(tp);
     char buffer[16]{};
-    std::snprintf(buffer, sizeof(buffer), "%04d%02d%02d",
-        local.tm_year + 1900, local.tm_mon + 1, local.tm_mday);
+    std::snprintf(buffer, sizeof(buffer), "%04d%02d%02d", local.tm_year + 1900, local.tm_mon + 1,
+                  local.tm_mday);
     return buffer;
 }
 
@@ -255,7 +264,8 @@ inline std::string ClassifyBackupName(const std::string& file_name) {
     if (file_name.compare(file_name.size() - suffix_length, suffix_length, kSuffix) != 0) {
         return {};
     }
-    const auto stamp = file_name.substr(prefix_length, file_name.size() - prefix_length - suffix_length);
+    const auto stamp =
+        file_name.substr(prefix_length, file_name.size() - prefix_length - suffix_length);
     if (stamp.size() == kRollingStampLength && stamp[8] == '-') {
         return "rolling";
     }
@@ -265,8 +275,7 @@ inline std::string ClassifyBackupName(const std::string& file_name) {
     return {};
 }
 
-inline void PruneBackups(const std::filesystem::path& backup_dir,
-                         std::size_t keep_rolling = 5,
+inline void PruneBackups(const std::filesystem::path& backup_dir, std::size_t keep_rolling = 5,
                          std::size_t keep_daily = 30) {
 
     std::vector<std::string> rolling;
@@ -330,7 +339,8 @@ inline std::string ComputeMd5Hex(const std::string& content, std::string* error)
         DWORD value_size = sizeof(hash_size);
         unsigned char digest[16]{};
         DWORD digest_size = sizeof(digest);
-        if (CryptGetHashParam(hash, HP_HASHSIZE, reinterpret_cast<BYTE*>(&hash_size), &value_size, 0) &&
+        if (CryptGetHashParam(hash, HP_HASHSIZE, reinterpret_cast<BYTE*>(&hash_size), &value_size,
+                              0) &&
             hash_size == sizeof(digest) &&
             CryptGetHashParam(hash, HP_HASHVAL, digest, &digest_size, 0)) {
             hex = ToHexLower(digest, sizeof(digest));

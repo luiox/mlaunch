@@ -20,7 +20,8 @@ public:
 /** @brief Resolves .lnk shortcuts via IShellLinkW (UI-side default resolver). */
 class ShellShortcutResolver : public ShortcutResolver {
 public:
-    std::optional<std::pair<std::string, std::string>> Resolve(const std::string& shortcut_path) override;
+    std::optional<std::pair<std::string, std::string>>
+    Resolve(const std::string& shortcut_path) override;
 };
 
 /** @brief Modal open-file dialog; returns wide path or empty on cancel. */

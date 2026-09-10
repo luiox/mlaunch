@@ -27,14 +27,11 @@
 using namespace DuiLib;
 
 AppWindow::AppWindow(std::filesystem::path legacy_root)
-    : launch_executor_(),
-      shortcut_resolver_(),
-      backend_(appwin::GetAppBaseDir(), std::move(legacy_root), &launch_executor_, &shortcut_resolver_),
-      icon_manager_(appwin::GetAppBaseDir()),
-      ui_builder_(*this),
-      list_controller_(*this),
-      search_controller_(*this),
-      dialog_manager_(*this) {
+    : launch_executor_(), shortcut_resolver_(),
+      backend_(appwin::GetAppBaseDir(), std::move(legacy_root), &launch_executor_,
+               &shortcut_resolver_),
+      icon_manager_(appwin::GetAppBaseDir()), ui_builder_(*this), list_controller_(*this),
+      search_controller_(*this), dialog_manager_(*this) {
     backend_.SetAppDir(GetExeDir());
     m_vctStaticName.push_back(_T("apptitlebar"));
 }
@@ -55,9 +52,8 @@ std::string AppWindow::BasenameNoExt(const std::string& path) {
 }
 
 std::string AppWindow::ToLowerAscii(std::string value) {
-    std::transform(value.begin(), value.end(), value.begin(), [](unsigned char ch) {
-        return static_cast<char>(std::tolower(ch));
-    });
+    std::transform(value.begin(), value.end(), value.begin(),
+                   [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
     return value;
 }
 
@@ -99,11 +95,11 @@ bool AppWindow::LoadBackendData() {
     launcher::log::Info("legacy import check: " + legacy_data_path.string());
     std::error_code legacy_ec;
     if (std::filesystem::exists(legacy_data_path, legacy_ec)) {
-        const int confirmed = MessageBoxW(m_hWnd,
-            L"检测到程序目录下存在旧版 Poner Data.json。\n"
-            L"是否立即导入？（按 分组+目标路径 幂等合并，可安全重复执行）",
-            L"导入 Poner 数据",
-            MB_ICONQUESTION | MB_YESNO);
+        const int confirmed =
+            MessageBoxW(m_hWnd,
+                        L"检测到程序目录下存在旧版 Poner Data.json。\n"
+                        L"是否立即导入？（按 分组+目标路径 幂等合并，可安全重复执行）",
+                        L"导入 Poner 数据", MB_ICONQUESTION | MB_YESNO);
         if (confirmed == IDYES) {
             ImportPonerFile(legacy_data_path);
         }
@@ -151,7 +147,8 @@ void AppWindow::LaunchSelectedItem() {
         return;
     }
 
-    const std::string group_id = !selected_item_group_id_.empty() ? selected_item_group_id_ : active_group_id_;
+    const std::string group_id =
+        !selected_item_group_id_.empty() ? selected_item_group_id_ : active_group_id_;
     if (group_id.empty()) {
         status_.Warn("未选中分组");
         return;
@@ -179,7 +176,8 @@ void AppWindow::DeleteSelectedItem() {
         return;
     }
 
-    const std::string group_id = !selected_item_group_id_.empty() ? selected_item_group_id_ : active_group_id_;
+    const std::string group_id =
+        !selected_item_group_id_.empty() ? selected_item_group_id_ : active_group_id_;
     if (group_id.empty()) {
         status_.Warn("未选中分组");
         return;
@@ -187,10 +185,8 @@ void AppWindow::DeleteSelectedItem() {
 
     const bool permanent = backend_.IsRecycleBinId(group_id);
     if (permanent) {
-        const int confirmed = MessageBoxW(m_hWnd,
-            L"彻底删除该条目？此后仅可通过备份找回。",
-            L"彻底删除",
-            MB_ICONWARNING | MB_YESNO);
+        const int confirmed = MessageBoxW(m_hWnd, L"彻底删除该条目？此后仅可通过备份找回。",
+                                          L"彻底删除", MB_ICONWARNING | MB_YESNO);
         if (confirmed != IDYES) {
             status_.Warn("已取消删除");
             return;
@@ -216,7 +212,8 @@ void AppWindow::ToggleSelectedItemEnabled() {
         status_.Warn("请先选择条目");
         return;
     }
-    const std::string group_id = !selected_item_group_id_.empty() ? selected_item_group_id_ : active_group_id_;
+    const std::string group_id =
+        !selected_item_group_id_.empty() ? selected_item_group_id_ : active_group_id_;
     if (group_id.empty()) {
         status_.Warn("未选中分组");
         return;
@@ -352,18 +349,17 @@ LRESULT AppWindow::TranslateAccelerator(MSG* pMsg) {
     // 原生 EDIT 子窗口内的键盘消息只到 EDIT（Win32 机制），在 fork 消息循环
     // 派发前拦截；键位→业务动作属宿主职责，不下沉进 DuiLib。
     // 返回约定见头文件：S_OK 吞掉、S_FALSE 放行。
-    if (group_rename_active_ && pMsg != nullptr && pMsg->message == WM_KEYDOWN
-        && pMsg->hwnd != nullptr && pMsg->hwnd != m_hWnd
-        && ::GetAncestor(pMsg->hwnd, GA_ROOT) == m_hWnd) {
+    if (group_rename_active_ && pMsg != nullptr && pMsg->message == WM_KEYDOWN &&
+        pMsg->hwnd != nullptr && pMsg->hwnd != m_hWnd &&
+        ::GetAncestor(pMsg->hwnd, GA_ROOT) == m_hWnd) {
         if (pMsg->wParam == VK_ESCAPE) {
             CancelGroupRename();
             return S_OK;
         }
     }
 
-    if (search_mode_ && pMsg != nullptr && pMsg->message == WM_KEYDOWN
-        && pMsg->hwnd != nullptr && pMsg->hwnd != m_hWnd
-        && ::GetAncestor(pMsg->hwnd, GA_ROOT) == m_hWnd) {
+    if (search_mode_ && pMsg != nullptr && pMsg->message == WM_KEYDOWN && pMsg->hwnd != nullptr &&
+        pMsg->hwnd != m_hWnd && ::GetAncestor(pMsg->hwnd, GA_ROOT) == m_hWnd) {
         if (pMsg->wParam == VK_ESCAPE) {
             search_controller_.ToggleSearchMode();
             return S_OK;
@@ -377,9 +373,8 @@ LRESULT AppWindow::TranslateAccelerator(MSG* pMsg) {
     // 分组面板/分隔条上的滚轮 = 调整分组栏宽度（80-600 钳制，ui_state 持久化）。
     // 必须在消息循环层拦截：fork 的 OnMouseWheel 会先把事件发给命中控件
     // （分组列表滚走），HandleCustomMessage 阶段已无法撤回。锁定布局时禁用。
-    if (pMsg != nullptr && pMsg->message == WM_MOUSEWHEEL && pMsg->hwnd == m_hWnd
-        && !layout_locked_ && !search_mode_
-        && group_panel_ != nullptr && panel_splitter_ != nullptr) {
+    if (pMsg != nullptr && pMsg->message == WM_MOUSEWHEEL && pMsg->hwnd == m_hWnd &&
+        !layout_locked_ && !search_mode_ && group_panel_ != nullptr && panel_splitter_ != nullptr) {
         POINT client{GET_X_LPARAM(pMsg->lParam), GET_Y_LPARAM(pMsg->lParam)};
         ::ScreenToClient(m_hWnd, &client);
         const RECT panel_rect = group_panel_->GetPos();
@@ -408,9 +403,8 @@ void AppWindow::SelectItemByIndex(int index) {
         return; // 搜索空输入的提示占位行不可选。
     }
     selected_item_id_ = item_ids_[index];
-    selected_item_group_id_ = index < static_cast<int>(item_group_ids_.size())
-                                  ? item_group_ids_[index]
-                                  : std::string();
+    selected_item_group_id_ =
+        index < static_cast<int>(item_group_ids_.size()) ? item_group_ids_[index] : std::string();
     items_list_->SelectItem(index, false);
     items_list_->EnsureVisible(index);
 }
@@ -452,7 +446,8 @@ void AppWindow::Notify(TNotifyUI& msg) {
         }
     }
 
-    if (_tcscmp(msg.sType, DUI_MSGTYPE_TEXTCHANGED) == 0 && msg.pSender != nullptr && msg.pSender->GetName() == _T("search_input")) {
+    if (_tcscmp(msg.sType, DUI_MSGTYPE_TEXTCHANGED) == 0 && msg.pSender != nullptr &&
+        msg.pSender->GetName() == _T("search_input")) {
         search_controller_.HandleInputChanged();
         return;
     }
@@ -514,7 +509,8 @@ void AppWindow::Notify(TNotifyUI& msg) {
     WindowImplBase::Notify(msg);
 }
 
-bool AppWindow::SelectListRowFromPoint(CListUI* list, const std::vector<std::string>& ids, const POINT& client_point, std::string* selected_id) {
+bool AppWindow::SelectListRowFromPoint(CListUI* list, const std::vector<std::string>& ids,
+                                       const POINT& client_point, std::string* selected_id) {
     return list_controller_.SelectListRowFromPoint(list, ids, client_point, selected_id);
 }
 
@@ -569,8 +565,8 @@ void AppWindow::StartGroupRename(const std::string& group_id) {
     // 重置成 (0,0) 零尺寸——必须走 Fixed 值才能稳定盖在分组行上。
     auto* dpi = m_pm.GetDPIObj();
     const RECT row_rect = row->GetPos();
-    group_rename_edit_->SetFixedXY(CDuiSize(dpi->ScaleIntBack(row_rect.left),
-                                            dpi->ScaleIntBack(row_rect.top)));
+    group_rename_edit_->SetFixedXY(
+        CDuiSize(dpi->ScaleIntBack(row_rect.left), dpi->ScaleIntBack(row_rect.top)));
     group_rename_edit_->SetFixedWidth(dpi->ScaleIntBack(row_rect.right - row_rect.left));
     group_rename_edit_->SetFixedHeight(dpi->ScaleIntBack(row_rect.bottom - row_rect.top));
     group_rename_edit_->SetText(launcher::util::Utf8ToWide(group->name).c_str());
@@ -592,8 +588,9 @@ void AppWindow::CommitGroupRename() {
     ::SetFocus(m_hWnd);
 
     std::string trimmed = launcher::util::WideToUtf8(group_rename_edit_->GetText().GetData());
-    trimmed.erase(trimmed.begin(), std::find_if(trimmed.begin(), trimmed.end(),
-        [](unsigned char ch) { return !std::isspace(ch); }));
+    trimmed.erase(trimmed.begin(),
+                  std::find_if(trimmed.begin(), trimmed.end(),
+                               [](unsigned char ch) { return !std::isspace(ch); }));
     while (!trimmed.empty() && std::isspace(static_cast<unsigned char>(trimmed.back()))) {
         trimmed.pop_back();
     }
@@ -642,7 +639,8 @@ void AppWindow::CloseSettingsDialog() {
 
 void AppWindow::OpenItemDialog(bool edit_mode) {
     if (edit_mode) {
-        const std::string group_id = !selected_item_group_id_.empty() ? selected_item_group_id_ : active_group_id_;
+        const std::string group_id =
+            !selected_item_group_id_.empty() ? selected_item_group_id_ : active_group_id_;
         if (group_id.empty() || selected_item_id_.empty()) {
             status_.Warn("请先选择条目");
             return;
@@ -693,13 +691,15 @@ void AppWindow::ApplyAutorunRegistry(bool enabled) {
         wchar_t exe_path[MAX_PATH] = {};
         const DWORD path_len = ::GetModuleFileNameW(nullptr, exe_path, MAX_PATH);
         if (path_len == 0 || path_len == MAX_PATH) {
-            launcher::log::Warn("autorun: GetModuleFileName failed err=" + std::to_string(::GetLastError()));
+            launcher::log::Warn("autorun: GetModuleFileName failed err=" +
+                                std::to_string(::GetLastError()));
             ::RegCloseKey(key);
             return;
         }
         const std::wstring value = L"\"" + std::wstring(exe_path, path_len) + L"\"";
-        const LSTATUS status = ::RegSetKeyValueW(key, nullptr, L"mlaunch", REG_SZ, value.c_str(),
-                                                 static_cast<DWORD>((value.size() + 1) * sizeof(wchar_t)));
+        const LSTATUS status =
+            ::RegSetKeyValueW(key, nullptr, L"mlaunch", REG_SZ, value.c_str(),
+                              static_cast<DWORD>((value.size() + 1) * sizeof(wchar_t)));
         if (status != ERROR_SUCCESS) {
             launcher::log::Warn("autorun: RegSetKeyValue failed err=" + std::to_string(status));
         }
@@ -757,7 +757,8 @@ std::string AppWindow::IconSourceForItem(const core::LaunchItem& item) const {
 std::string AppWindow::GenerateNewGroupName() const {
     int index = 1;
     while (true) {
-        const std::string candidate = (index == 1) ? "新建分组" : ("新建分组 " + std::to_string(index));
+        const std::string candidate =
+            (index == 1) ? "新建分组" : ("新建分组 " + std::to_string(index));
         bool exists = false;
         for (const auto& group : backend_.Data().groups) {
             if (group.name == candidate) {
@@ -782,7 +783,8 @@ const core::Group* AppWindow::FindActiveGroup() const {
 }
 
 const core::LaunchItem* AppWindow::FindSelectedItem() const {
-    const std::string group_id = !selected_item_group_id_.empty() ? selected_item_group_id_ : active_group_id_;
+    const std::string group_id =
+        !selected_item_group_id_.empty() ? selected_item_group_id_ : active_group_id_;
     const core::Group* group = nullptr;
     for (const auto& candidate : backend_.Data().groups) {
         if (candidate.id == group_id) {

@@ -92,16 +92,19 @@ void CheckBoxUI::PaintStatusImage(DuiLib::UIRender* pRender) {
     const int stroke = (dpi != nullptr) ? dpi->ScaleInt(2) : 2;
     const int border = (dpi != nullptr) ? dpi->ScaleInt(1) : 1;
     const int cy = (m_rcItem.top + m_rcItem.bottom) / 2;
-    const DuiLib::CDuiRect box{m_rcItem.left, cy - box_size / 2, m_rcItem.left + box_size, cy + box_size / 2};
+    const DuiLib::CDuiRect box{m_rcItem.left, cy - box_size / 2, m_rcItem.left + box_size,
+                               cy + box_size / 2};
     const bool hot = IsHotState() || IsPushedState();
     pRender->DrawColor(box, DuiLib::CDuiSize(0, 0), checked_ ? 0xFF1A73E8 : 0xFFFFFFFF);
     pRender->DrawRect(box, border, checked_ ? 0xFF1A73E8 : (hot ? 0xFF8A8A8A : 0xFFB8B8B8));
     if (checked_) {
         // 白色对勾（两段线，短撇 + 长捺），端点为 14 基准盒内的比例坐标。
         pRender->DrawLine(box.left + box_size * 3 / 14, box.top + box_size * 8 / 14,
-                          box.left + box_size * 6 / 14, box.top + box_size * 10 / 14, stroke, 0xFFFFFFFF);
+                          box.left + box_size * 6 / 14, box.top + box_size * 10 / 14, stroke,
+                          0xFFFFFFFF);
         pRender->DrawLine(box.left + box_size * 6 / 14, box.top + box_size * 10 / 14,
-                          box.left + box_size * 11 / 14, box.top + box_size * 3 / 14, stroke, 0xFFFFFFFF);
+                          box.left + box_size * 11 / 14, box.top + box_size * 3 / 14, stroke,
+                          0xFFFFFFFF);
     }
 }
 
@@ -186,7 +189,8 @@ TitleBarUI::TitleBarUI() {
     SetAttribute(_T("bordersize"), theme.title_border_size);
 }
 
-bool GroupRowUI::DoPaint(DuiLib::UIRender* pRender, const DuiLib::CDuiRect& rcPaint, DuiLib::CControlUI* pStopControl) {
+bool GroupRowUI::DoPaint(DuiLib::UIRender* pRender, const DuiLib::CDuiRect& rcPaint,
+                         DuiLib::CControlUI* pStopControl) {
     const bool handled = CListContainerElementUI::DoPaint(pRender, rcPaint, pStopControl);
     if (IsSelected()) {
         pRender->DrawRect(m_rcItem, 1, 0xFFCDCDCD);
@@ -194,7 +198,8 @@ bool GroupRowUI::DoPaint(DuiLib::UIRender* pRender, const DuiLib::CDuiRect& rcPa
     return handled;
 }
 
-void ApplyFlatScrollbar(DuiLib::CListUI* list, const DuiLib::CDuiString& thumb_attr, DWORD track_bkcolor) {
+void ApplyFlatScrollbar(DuiLib::CListUI* list, const DuiLib::CDuiString& thumb_attr,
+                        DWORD track_bkcolor) {
     if (list == nullptr) {
         return;
     }

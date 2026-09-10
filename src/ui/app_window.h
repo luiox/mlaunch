@@ -5,9 +5,9 @@
 #include <string>
 #include <vector>
 
-#include "launcher_core.h"
 #include "dialog_manager.h"
 #include "icon_manager.h"
+#include "launcher_core.h"
 #include "list_controller.h"
 #include "search_controller.h"
 #include "shell_services.h"
@@ -154,7 +154,8 @@ private:
     int HitTestListIndex(DuiLib::CListUI* list, const POINT& client_point) const;
     void ResetListDragState();
     bool CommitListDragReorder();
-    bool SelectListRowFromPoint(DuiLib::CListUI* list, const std::vector<std::string>& ids, const POINT& client_point, std::string* selected_id);
+    bool SelectListRowFromPoint(DuiLib::CListUI* list, const std::vector<std::string>& ids,
+                                const POINT& client_point, std::string* selected_id);
 
     static std::string BasenameNoExt(const std::string& path);
     static std::string ToLowerAscii(std::string value);

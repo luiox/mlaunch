@@ -6,9 +6,9 @@
 #include <Windows.h>
 #include <ShObjIdl.h>
 #include <Shlwapi.h>
-#include <shellapi.h>
-#include <commdlg.h>
 #include <atlbase.h>
+#include <commdlg.h>
+#include <shellapi.h>
 
 #include <utility>
 
@@ -44,14 +44,17 @@ bool ShellLaunchExecutor::Launch(const std::string& target_path, const std::stri
     return true;
 }
 
-std::optional<std::pair<std::string, std::string>> ShellShortcutResolver::Resolve(const std::string& shortcut_path) {
+std::optional<std::pair<std::string, std::string>>
+ShellShortcutResolver::Resolve(const std::string& shortcut_path) {
     CComPtr<IShellLinkW> shell_link;
-    if (FAILED(CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER, IID_IShellLinkW, reinterpret_cast<void**>(&shell_link)))) {
+    if (FAILED(CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER, IID_IShellLinkW,
+                                reinterpret_cast<void**>(&shell_link)))) {
         return std::nullopt;
     }
 
     CComPtr<IPersistFile> persist_file;
-    if (FAILED(shell_link->QueryInterface(IID_IPersistFile, reinterpret_cast<void**>(&persist_file)))) {
+    if (FAILED(shell_link->QueryInterface(IID_IPersistFile,
+                                          reinterpret_cast<void**>(&persist_file)))) {
         return std::nullopt;
     }
 
@@ -79,8 +82,8 @@ std::optional<std::pair<std::string, std::string>> ShellShortcutResolver::Resolv
 
 std::wstring PickFolderPath(HWND owner_window) {
     CComPtr<IFileDialog> dialog;
-    if (FAILED(CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER, IID_IFileDialog,
-                                reinterpret_cast<void**>(&dialog)))) {
+    if (FAILED(CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER,
+                                IID_IFileDialog, reinterpret_cast<void**>(&dialog)))) {
         return {};
     }
     DWORD options = 0;

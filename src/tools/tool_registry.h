@@ -13,25 +13,25 @@ namespace tools {
 
 // 结果列表中的一行：预览行不可选，selectable 行回车复制 copy_text。
 struct ToolLine {
-    std::string text;          // UTF-8 显示文本
-    bool selectable = false;   // true 时可选中，回车复制 copy_text
-    std::string copy_text;     // UTF-8，回车复制的内容
+    std::string text;        // UTF-8 显示文本
+    bool selectable = false; // true 时可选中，回车复制 copy_text
+    std::string copy_text;   // UTF-8，回车复制的内容
 };
 
 struct ToolOutput {
     bool ok = false;
-    std::string error;             // UTF-8，ok=false 时的错误描述
-    std::vector<ToolLine> lines;   // 预览行（无结果时可为空）
-    std::string primary;           // 主结果（CLI 单值输出 / UI 默认复制内容）
+    std::string error;           // UTF-8，ok=false 时的错误描述
+    std::vector<ToolLine> lines; // 预览行（无结果时可为空）
+    std::string primary;         // 主结果（CLI 单值输出 / UI 默认复制内容）
 };
 
 // args 为 UTF-8 关键字之后的原始输入（已 trim 前后空白）。
 using ToolRun = ToolOutput (*)(const std::string& args);
 
 struct ToolDef {
-    const char* keyword;   // 搜索关键字，全局唯一，如 "ts"
-    const char* name;      // 中文名，如 "时间戳转换"
-    const char* usage;     // 一行用法说明（含关键字本身）
+    const char* keyword; // 搜索关键字，全局唯一，如 "ts"
+    const char* name;    // 中文名，如 "时间戳转换"
+    const char* usage;   // 一行用法说明（含关键字本身）
     ToolRun run;
 };
 
@@ -42,15 +42,15 @@ const std::vector<ToolDef>& Registry();
 const ToolDef* FindByKeyword(const std::string& keyword);
 
 // —— 各工具的工厂声明（实现见同名 cpp）——
-ToolDef BuildTimestampTool();   // ts
-ToolDef BuildBase64Tool();      // b64
-ToolDef BuildHashTool();        // hash <algo> <text>
-ToolDef BuildMd5Tool();         // md5 <text>
-ToolDef BuildSha1Tool();        // sha1 <text>
-ToolDef BuildSha256Tool();      // sha256 <text>
-ToolDef BuildUrlTool();         // url
-ToolDef BuildUuidTool();        // uuid
-ToolDef BuildSineTool();        // sine
-ToolDef BuildFontTool();        // font
+ToolDef BuildTimestampTool(); // ts
+ToolDef BuildBase64Tool();    // b64
+ToolDef BuildHashTool();      // hash <algo> <text>
+ToolDef BuildMd5Tool();       // md5 <text>
+ToolDef BuildSha1Tool();      // sha1 <text>
+ToolDef BuildSha256Tool();    // sha256 <text>
+ToolDef BuildUrlTool();       // url
+ToolDef BuildUuidTool();      // uuid
+ToolDef BuildSineTool();      // sine
+ToolDef BuildFontTool();      // font
 
 } // namespace tools
