@@ -1,0 +1,51 @@
+# mlaunch C++ 风格（按 src/ tests/ tools/ 现有代码提炼，2026-09）。
+# 只约束一方代码；third_party/ 不在本配置的执行范围内。
+---
+Language: Cpp
+BasedOnStyle: LLVM
+
+# 缩进与列宽
+ColumnLimit: 100
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+AccessModifierOffset: -4
+
+# 指针/引用贴类型（const std::string& s / wchar_t** argv）
+PointerAlignment: Left
+DerivePointerAlignment: false
+
+# 大括号：函数与控制语句都贴行尾 {；else/catch 换行
+BreakBeforeBraces: Attach
+
+# 类内一行 getter 保留单行（search_controller.h 风格）；其余短语句一律拆行
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortLambdasOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortBlocksOnASingleLine: Never
+
+# include：块间空行分组保持原样，块内按字母序
+SortIncludes: CaseSensitive
+IncludeBlocks: Preserve
+# windows.h 必须先于 shellapi/commdlg 等 SDK 头（后者依赖其类型定义），
+# 字母序会把 windows.h 排到后面编译必炸，故恒排块首。
+IncludeCategories:
+  - Regex: '^<[Ww]indows\.h>$'
+    Priority: -1
+  - Regex: '.*'
+    Priority: 1
+
+# 注释不重排（中文注释行宽不管），行尾注释对齐保留
+ReflowComments: false
+AlignTrailingComments: true
+
+# namespace 不缩进，自动补 // namespace 收尾注释
+NamespaceIndentation: None
+FixNamespaceComments: true
+
+IndentCaseLabels: false
+SpaceBeforeParens: ControlStatements
+SpaceAfterCStyleCast: false
+SpaceBeforeAssignmentOperators: true

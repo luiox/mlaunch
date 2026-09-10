@@ -1,0 +1,20 @@
+# mlaunch 编辑器基础配置。行尾不在此钉死：仓库走 core.autocrlf=true + git 归一 LF。
+root = true
+
+[*]
+charset = utf-8
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+
+[*.{h,cpp,hpp,c,cc}]
+indent_size = 4
+
+[*.lua]
+indent_size = 4
+
+[*.{yml,yaml,json}]
+indent_size = 2
+
+[Makefile]
+indent_style = tab
