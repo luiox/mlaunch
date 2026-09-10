@@ -30,6 +30,11 @@ target("DuiLibLite")
     end
 
     add_defines("WIN32", "_WIN32", "WINDOWS", "_WIN64", "UNICODE", "_UNICODE", "UILIB_EXPORTS", "UILIB_STATIC")
+    -- fork 03c53b2 起 pugixml 转独立编译单元（3rd/README.md「迁移历史」/「上游合并策略」）：
+    -- glob DuiLib/**.cpp 不含 pugixml.cpp，须显式加入编译。PUGIXML_WCHAR_MODE 仅注入
+    -- 该 TU（不含 StdAfx.h）；DuiLib 各 TU 由 StdAfx.h 的 _UNICODE 条件宏提供同口径，
+    -- 不在 target 级重复定义以免 C4005 宏重定义警告。
+    add_files("third_party/DuiLib_DuiEditor/3rd/pugixml/pugixml.cpp", {defines = "PUGIXML_WCHAR_MODE"})
     add_includedirs(duilib_dir, {public = true})
     add_files(duilib_dir .. "/**.cpp")
     remove_files(
