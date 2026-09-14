@@ -6,13 +6,11 @@ add_rules("mode.debug", "mode.release")
 add_rules("plugin.compile_commands.autoupdate", {outputdir = "."})
 add_requires("gtest")
 
--- libca options: only enable C++ core, disable embedded MCU and demo
-set_config("with_core", true)
-set_config("with_em", false)
-set_config("with_demo", false)
-set_config("with_tests", false)
+-- libca: 中心包仓（luiox/luiox-repo）git 直连包，仅 C++ core 形态消费。
+-- 0.0.4 = 原 submodule 指针 d6676b8da。
+add_repositories("luiox-repo https://github.com/luiox/luiox-repo.git")
+add_requires("libca 0.0.4")
 
-includes("third_party/libca")
 includes("third_party/micon")
 
 -- directory where the DuiLib source submodule is checked out
@@ -71,7 +69,7 @@ target("mlaunch-core")
     add_includedirs("src/core", {public = true})
     add_files("src/core/*.cpp", "src/core/utils/*.cpp")
     add_packages("nlohmann_json")
-    add_deps("libca_json")
+    add_packages("libca", {public = true})
     -- MD5 走 CryptoAPI
     add_syslinks("advapi32")
 
@@ -92,9 +90,9 @@ target("mlaunch-tools")
     add_defines("UNICODE", "_UNICODE", "WIN32", "_WINDOWS")
     add_includedirs("src/tools", {public = true})
     add_files("src/tools/*.cpp")
-    add_deps("libca_crypto", "libca_uuid")
+    add_packages("libca", {public = true})
     -- font 工具的 GDI 渲染需要 gdi32/user32；bcrypt 给 base64/uuid 随机源
-    -- （libca_crypto 的 syslinks 不传递，需显式声明）。
+    -- （包定义已带 libca_crypto 的 syslinks，此处重复声明无害）。
     add_syslinks("gdi32", "user32", "bcrypt")
 
 -- DuiLib UI 层：窗口、控制器、渲染、shell 服务实现。
