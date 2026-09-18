@@ -55,8 +55,8 @@ xmake run tools_tests
 ## 依赖
 
 - [DuiLib_DuiEditor](https://github.com/luiox/DuiLib_DuiEditor)（submodule）— UI 框架
-- [libca](https://github.com/luiox/libca)（submodule）— JSON 读写（`libca_json`）等基础库
-- [micon](https://github.com/luiox/micon)（submodule）— 统一风格 SVG 图标库（顶栏图标资产）
+- [libca](https://github.com/luiox/libca)（xmake 包，[luiox-repo](https://github.com/luiox/luiox-repo)）— JSON 读写（`libca_json`）等基础库
+- [micon](https://github.com/luiox/micon)（xmake 包，[luiox-repo](https://github.com/luiox/luiox-repo)）— 统一风格 SVG 图标库（顶栏图标资产）
 - gtest — 测试框架
 
 ## 架构说明
