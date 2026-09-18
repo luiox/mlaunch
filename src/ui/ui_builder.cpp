@@ -5,6 +5,8 @@
 #include "icon_manager.h"
 #include "ui_controls.h"
 
+#include "uikit/theme/theme.h"
+
 using namespace DuiLib;
 
 UiBuilder::UiBuilder(AppWindow& owner) : owner_(owner) {}
@@ -118,9 +120,11 @@ CControlUI* UiBuilder::BuildRootUi() const {
 
     // 滚动条对齐参考图：12px 极简滑块（EBEBEB 填充 + D7D7D7 描边），
     // 条目区轨道白色（与列表底色一致，仅滑块可见），分组区轨道与面板同灰。
+    // 轨道色走 uikit 令牌（panel/surface），不再手写色值。
     const DuiLib::CDuiString thumb_attr = owner_.icon_manager_.MakeScrollbarThumbAttr();
-    appui::ApplyFlatScrollbar(groups, thumb_attr, 0xFFE6E6E6);
-    appui::ApplyFlatScrollbar(items, thumb_attr, 0xFFFFFFFF);
+    const uikit::ResolvedTheme& theme = uikit::ActiveTheme();
+    appui::ApplyFlatScrollbar(groups, thumb_attr, theme.color.panel);
+    appui::ApplyFlatScrollbar(items, thumb_attr, theme.color.surface);
 
     // 状态反馈不再占用常驻状态栏（启动器空间宝贵），改为浮动 Toast：
     // 平时隐藏，有消息时显示，由 StatusPresenter 通过定时器自动隐藏。
