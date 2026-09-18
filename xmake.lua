@@ -11,10 +11,13 @@ add_requires("gtest")
 -- micon 0.2.0（f1a5a9da）= 原 submodule 指针，零 API 变化。
 -- duilib 0.1.0（fork 03c53b2）= 原 submodule 指针；包定义指名构建 fork 根 xmake
 -- 的 DuiLib target，静态形态 syslinks 由包补齐，消费方自带 UNICODE/UILIB_STATIC。
+-- uikit 0.1.0：视觉预制层（L1 深浅令牌 / L2 主题引擎 / L3 统一控件），
+-- 整包依赖 duilib 0.1.0（与上面同包同版，包管理器自动去重）。
 add_repositories("luiox-repo https://github.com/luiox/luiox-repo.git")
 add_requires("libca 0.0.8")
 add_requires("micon 0.2.0")
 add_requires("duilib 0.1.0")
+add_requires("uikit 0.1.0")
 
 -- 纯 CRUD 核心：数据模型、JSON 持久化、备份轮转、journal、软删除/撤销。
 -- 不依赖 DuiLib / shell32 / ole32，可被 core_tests 独立链接测试。
@@ -90,6 +93,7 @@ target("mlaunch")
     add_deps("mlaunch-core")
     add_deps("mlaunch-tools")
     add_packages("duilib")
+    add_packages("uikit")
 
     add_syslinks("user32", "gdi32", "comctl32", "comdlg32", "ole32", "oleaut32", "imm32", "winmm", "version", "uxtheme", "shell32", "advapi32", "dwmapi", "bcrypt")
 
