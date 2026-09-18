@@ -21,14 +21,16 @@ using GroupRowUI = uikit::duilib::GroupRowUI;
 using uikit::duilib::MakeTextButton;
 
 // mlaunch 专属接线（应用字体/命名语义，uikit 不越界接管）：
+// SearchBox 走字体 id 1（微软雅黑 12，app_window/settings/item_edit 注册）。
 class SearchBoxUI : public uikit::duilib::SearchBoxUI {
 public:
-    SearchBoxUI();  // 走字体 id 1（微软雅黑 12，app_window/settings/item_edit 注册）
+    SearchBoxUI();
 };
 
+// TitleBar 保留历史控件名 top_bar。
 class TitleBarUI : public uikit::duilib::TitleBarUI {
 public:
-    TitleBarUI();  // 保留历史控件名 top_bar
+    TitleBarUI();
 };
 
 // 兼容旧调用序（thumb_attr 在前）；转发 uikit 版，轨道色/宽度语义不变。
