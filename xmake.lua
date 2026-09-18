@@ -6,49 +6,15 @@ add_rules("mode.debug", "mode.release")
 add_rules("plugin.compile_commands.autoupdate", {outputdir = "."})
 add_requires("gtest")
 
--- libca / micon: 中心包仓（luiox/luiox-repo）git 直连包，原 submodule 全部迁出。
+-- libca / micon / duilib: 中心包仓（luiox/luiox-repo）git 直连包，submodule 全部迁出。
 -- libca 0.0.8（560d263f3）：仅 C++ core 形态消费；em 形态已于 0.0.7 拆出至 luiox/libca-em。
 -- micon 0.2.0（f1a5a9da）= 原 submodule 指针，零 API 变化。
+-- duilib 0.1.0（fork 03c53b2）= 原 submodule 指针；包定义指名构建 fork 根 xmake
+-- 的 DuiLib target，静态形态 syslinks 由包补齐，消费方自带 UNICODE/UILIB_STATIC。
 add_repositories("luiox-repo https://github.com/luiox/luiox-repo.git")
 add_requires("libca 0.0.8")
 add_requires("micon 0.2.0")
-
--- directory where the DuiLib source submodule is checked out
-local duilib_dir = "third_party/DuiLib_DuiEditor/DuiLib"
-
-target("DuiLibLite")
-    set_kind("static")
-    set_languages("cxx17")
-
-    if is_mode("debug") then
-        set_symbols("debug")
-        set_optimize("none")
-    else
-        set_optimize("faster")
-    end
-
-    add_defines("WIN32", "_WIN32", "WINDOWS", "_WIN64", "UNICODE", "_UNICODE", "UILIB_EXPORTS", "UILIB_STATIC")
-    -- fork 03c53b2 起 pugixml 转独立编译单元（3rd/README.md「迁移历史」/「上游合并策略」）：
-    -- glob DuiLib/**.cpp 不含 pugixml.cpp，须显式加入编译。PUGIXML_WCHAR_MODE 仅注入
-    -- 该 TU（不含 StdAfx.h）；DuiLib 各 TU 由 StdAfx.h 的 _UNICODE 条件宏提供同口径，
-    -- 不在 target 级重复定义以免 C4005 宏重定义警告。
-    add_files("third_party/DuiLib_DuiEditor/3rd/pugixml/pugixml.cpp", {defines = "PUGIXML_WCHAR_MODE"})
-    add_includedirs(duilib_dir, {public = true})
-    add_files(duilib_dir .. "/**.cpp")
-    remove_files(
-        duilib_dir .. "/Utils/unzip.cpp",
-        duilib_dir .. "/Utils/UIDataExchange.cpp",
-        -- pugixml 已随 PR#3 迁至 fork 3rd/（不在 DuiLib glob 内），无需排除。
-        duilib_dir .. "/**/**Gtk.cpp",
-        -- 新上游引入 SDL 后端（DUILIB_SDL 宏门控），其头文件在宏门外包含 SDL.h，
-        -- Win32 构建必须整组排除（与 fork 根 xmake.lua 的排除清单一致）。
-        duilib_dir .. "/**/*Sdl.cpp",
-        duilib_dir .. "/**/*SDL.cpp",
-        duilib_dir .. "/Render/UIObject_Cairo.cpp",
-        duilib_dir .. "/Render/UIRender_Cairo.cpp",
-        duilib_dir .. "/Render/UIRender_CairoWin32.cpp",
-        duilib_dir .. "/Render/UIRenderFactory_Cairo.cpp"
-    )
+add_requires("duilib 0.1.0")
 
 -- 纯 CRUD 核心：数据模型、JSON 持久化、备份轮转、journal、软删除/撤销。
 -- 不依赖 DuiLib / shell32 / ole32，可被 core_tests 独立链接测试。
@@ -123,7 +89,7 @@ target("mlaunch")
     add_packages("nlohmann_json")
     add_deps("mlaunch-core")
     add_deps("mlaunch-tools")
-    add_deps("DuiLibLite")
+    add_packages("duilib")
 
     add_syslinks("user32", "gdi32", "comctl32", "comdlg32", "ole32", "oleaut32", "imm32", "winmm", "version", "uxtheme", "shell32", "advapi32", "dwmapi", "bcrypt")
 
