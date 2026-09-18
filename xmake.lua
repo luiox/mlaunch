@@ -6,12 +6,12 @@ add_rules("mode.debug", "mode.release")
 add_rules("plugin.compile_commands.autoupdate", {outputdir = "."})
 add_requires("gtest")
 
--- libca: 中心包仓（luiox/luiox-repo）git 直连包，仅 C++ core 形态消费。
--- 0.0.4 = 原 submodule 指针 d6676b8da。
+-- libca / micon: 中心包仓（luiox/luiox-repo）git 直连包，原 submodule 全部迁出。
+-- libca 0.0.8（560d263f3）：仅 C++ core 形态消费；em 形态已于 0.0.7 拆出至 luiox/libca-em。
+-- micon 0.2.0（f1a5a9da）= 原 submodule 指针，零 API 变化。
 add_repositories("luiox-repo https://github.com/luiox/luiox-repo.git")
-add_requires("libca 0.0.4")
-
-includes("third_party/micon")
+add_requires("libca 0.0.8")
+add_requires("micon 0.2.0")
 
 -- directory where the DuiLib source submodule is checked out
 local duilib_dir = "third_party/DuiLib_DuiEditor/DuiLib"
@@ -105,12 +105,14 @@ target("mlaunch")
     if is_mode("debug") then
         set_symbols("debug")
         set_optimize("none")
-        add_deps("micon_dynamic")
+        -- Debug 用运行期读盘变体（icons/ 随 after_build 拷到 targetdir）
+        add_packages("micon", {configs = {dynamic = true}})
         -- 仅 Debug 构建启用控制台输出（main.cpp 据此决定是否 AllocConsole）。
         add_defines("MLAUNCH_DEV_CONSOLE")
     else
         set_optimize("faster")
-        add_deps("micon_embed")
+        -- Release 内嵌 SVG 资产（包默认即 embed 变体）
+        add_packages("micon")
     end
 
     add_defines("UNICODE", "_UNICODE", "WIN32", "_WINDOWS", "UILIB_STATIC")
@@ -127,7 +129,10 @@ target("mlaunch")
 
     after_build(function (target)
         if is_mode("debug") then
-            os.cp(path.join(os.scriptdir(), "third_party", "micon", "icons"), path.join(target:targetdir(), "icons"))
+            -- dynamic 变体运行期从磁盘读 SVG；资源已随包安装，从包安装目录拷出
+            local pkg = target:pkg("micon")
+            assert(pkg, "micon package not attached")
+            os.cp(path.join(pkg:installdir(), "icons"), path.join(target:targetdir(), "icons"))
         end
     end)
 
