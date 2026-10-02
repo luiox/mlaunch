@@ -4,7 +4,8 @@ set_xmakever("2.8.3")
 
 add_rules("mode.debug", "mode.release")
 add_rules("plugin.compile_commands.autoupdate", {outputdir = "."})
-add_requires("gtest")
+add_repositories("luiox-repo https://github.com/luiox/luiox-repo.git")
+add_requires("gtest", "duilib 0.1.0", "uikit 0.2.0")
 
 -- libca options: only enable C++ core, disable embedded MCU and demo
 set_config("with_core", true)
@@ -15,37 +16,8 @@ set_config("with_tests", false)
 includes("third_party/libca")
 includes("third_party/micon")
 
--- directory where the DuiLib source submodule is checked out
-local duilib_dir = "third_party/DuiLib_DuiEditor/DuiLib"
-
-target("DuiLibLite")
-    set_kind("static")
-    set_languages("cxx17")
-
-    if is_mode("debug") then
-        set_symbols("debug")
-        set_optimize("none")
-    else
-        set_optimize("faster")
-    end
-
-    add_defines("WIN32", "_WIN32", "WINDOWS", "_WIN64", "UNICODE", "_UNICODE", "UILIB_EXPORTS", "UILIB_STATIC")
-    add_includedirs(duilib_dir, {public = true})
-    add_files(duilib_dir .. "/**.cpp")
-    remove_files(
-        duilib_dir .. "/Utils/unzip.cpp",
-        duilib_dir .. "/Utils/UIDataExchange.cpp",
-        -- pugixml 已随 PR#3 迁至 fork 3rd/（不在 DuiLib glob 内），无需排除。
-        duilib_dir .. "/**/**Gtk.cpp",
-        -- 新上游引入 SDL 后端（DUILIB_SDL 宏门控），其头文件在宏门外包含 SDL.h，
-        -- Win32 构建必须整组排除（与 fork 根 xmake.lua 的排除清单一致）。
-        duilib_dir .. "/**/*Sdl.cpp",
-        duilib_dir .. "/**/*SDL.cpp",
-        duilib_dir .. "/Render/UIObject_Cairo.cpp",
-        duilib_dir .. "/Render/UIRender_Cairo.cpp",
-        duilib_dir .. "/Render/UIRender_CairoWin32.cpp",
-        duilib_dir .. "/Render/UIRenderFactory_Cairo.cpp"
-    )
+-- duilib / uikit 均改由 luiox-repo 包供给（duilib 0.1.0 = fork 静态库包，
+-- uikit 0.2.0 = 主题引擎 + 控件层），vendored submodule 已随之移除。
 
 -- 纯 CRUD 核心：数据模型、JSON 持久化、备份轮转、journal、软删除/撤销。
 -- 不依赖 DuiLib / shell32 / ole32，可被 core_tests 独立链接测试。
@@ -91,9 +63,8 @@ target("mlaunch")
 
     add_files("src/ui/*.cpp")
     add_headerfiles("src/ui/*.h")
-    add_packages("nlohmann_json")
+    add_packages("nlohmann_json", "duilib", "uikit")
     add_deps("mlaunch-core")
-    add_deps("DuiLibLite")
 
     add_syslinks("user32", "gdi32", "comctl32", "comdlg32", "ole32", "oleaut32", "imm32", "winmm", "version", "uxtheme", "shell32", "advapi32", "dwmapi")
 
